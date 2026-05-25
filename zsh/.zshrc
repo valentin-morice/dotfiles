@@ -138,7 +138,7 @@ export PATH="$HOME/.local/bin:$PATH"
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 
 # bun completions
-[ -s "/home/valentin/.bun/_bun" ] && source "/home/valentin/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"

@@ -1,5 +1,5 @@
 configuration {
-    modi: "drun,window,power-profile:/home/valentin/.local/bin/profile-select";
+    modi: "drun,window,power-profile:profile-select";
     show-icons: false;
     font: "JetBrainsMono Nerd Font 11";
     drun-display-format: "{name}";
