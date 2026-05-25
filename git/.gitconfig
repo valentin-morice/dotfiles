@@ -1,3 +1,6 @@
+[user]
+	name = valentin
+	email = valentin@morice.live
 [credential "https://github.com"]
 	helper = 
 	helper = !/usr/bin/gh auth git-credential
