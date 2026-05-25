@@ -4,4 +4,7 @@
 # already sources /etc/profile.d/flatpak.sh, so flatpak .desktop files are
 # visible to `drun` session-wide. See memory feedback_session_env.
 
-exec rofi "$@"
+# power-profile is a script modi whose path must be absolute — rofi (launched
+# from i3) won't expand ~ or search PATH for it. Expand $HOME here so the config
+# stays free of a hardcoded username. -modi here overrides the config's list.
+exec rofi -modi "drun,window,power-profile:$HOME/.local/bin/profile-select" "$@"
