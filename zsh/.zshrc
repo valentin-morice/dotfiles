@@ -134,6 +134,9 @@ source $ZSH/oh-my-zsh.sh
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 export PATH="$HOME/.local/bin:$PATH"
 
+# 1Password SSH agent — used for SSH auth and commit signing (op-ssh-sign)
+export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+
 # bun completions
 [ -s "/home/valentin/.bun/_bun" ] && source "/home/valentin/.bun/_bun"
 

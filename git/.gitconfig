@@ -1,6 +1,7 @@
 [user]
 	name = valentin
 	email = valentin@morice.live
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM01UusCQCtFU00TsHQY2sDI9RGWj+ww8bY0i3Ig5CBB
 [credential "https://github.com"]
 	helper = 
 	helper = !/usr/bin/gh auth git-credential
@@ -17,3 +18,12 @@
 	line-numbers = true
 [merge]
 	conflictStyle = zdiff3
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	program = /opt/1Password/op-ssh-sign
+	allowedSignersFile = ~/.config/git/allowed_signers
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true
