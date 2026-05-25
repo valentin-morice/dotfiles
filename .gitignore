@@ -1,0 +1,4 @@
+# Secret — kept on disk for runtime (read via the conky symlink), never committed
+conky/.config/conky/imap.env
+# Compiled Go helper (built to ~/.local/bin/conky-mail-label, not tracked)
+conky/.config/conky/imap/imap

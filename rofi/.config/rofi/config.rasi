@@ -1,0 +1,137 @@
+configuration {
+    modi: "drun,window,power-profile:/home/valentin/.local/bin/profile-select";
+    show-icons: false;
+    font: "JetBrainsMono Nerd Font 11";
+    drun-display-format: "{name}";
+    drun-show-actions: false;
+    drun-match-fields: "name,generic,keywords";
+    window-format: "{c}   {t}";
+    sidebar-mode: false;
+    terminal: "alacritty";
+    kb-row-tab: "";
+    kb-element-next: "";
+    kb-element-prev: "";
+    kb-mode-next: "Tab";
+    kb-mode-previous: "Shift+Tab";
+}
+
+@theme "/dev/null"
+
+* {
+    bg:        #0d0d0d;
+    bg-alt:    #141414;
+    bg-sel:    #1c1c1c;
+    fg:        #d4d4d4;
+    fg-dim:    #6e6e6e;
+    accent:    #5294e2;
+    secondary: #e0a552;
+    border:    #1f1f1f;
+    urgent:    #ff5555;
+
+    background:                  @bg;
+    background-color:            transparent;
+    foreground:                  @fg;
+    text-color:                  @fg;
+
+    normal-background:           @bg;
+    normal-foreground:           @fg;
+    selected-normal-background:  @bg-sel;
+    selected-normal-foreground:  @accent;
+    alternate-normal-background: @bg;
+    alternate-normal-foreground: @fg;
+
+    active-background:           @bg;
+    active-foreground:           @accent;
+    selected-active-background:  @bg-sel;
+    selected-active-foreground:  @accent;
+    alternate-active-background: @bg;
+    alternate-active-foreground: @fg;
+
+    urgent-background:           @bg;
+    urgent-foreground:           @urgent;
+    selected-urgent-background:  @urgent;
+    selected-urgent-foreground:  @bg;
+    alternate-urgent-background: @bg;
+    alternate-urgent-foreground: @urgent;
+}
+
+window {
+    background-color: @bg;
+    border: 2;
+    border-color: @border;
+    width: 600;
+    padding: 12;
+}
+
+mainbox {
+    children: [ inputbar, listview, mode-switcher ];
+    spacing: 10;
+    padding: 0;
+    background-color: @bg;
+}
+
+mode-switcher {
+    background-color: @bg-alt;
+    padding: 4;
+    spacing: 4;
+}
+
+button {
+    background-color: @bg-alt;
+    text-color: @fg-dim;
+    padding: 4 10;
+    horizontal-align: 0.5;
+}
+
+button selected {
+    background-color: @bg-sel;
+    text-color: @accent;
+}
+
+inputbar {
+    children: [ prompt, entry ];
+    background-color: @bg-alt;
+    padding: 8 12;
+    spacing: 8;
+}
+
+prompt {
+    text-color: @secondary;
+    background-color: transparent;
+    str: "❯";
+}
+
+entry {
+    placeholder: "Search";
+    placeholder-color: @fg-dim;
+    text-color: @fg;
+    background-color: transparent;
+}
+
+listview {
+    lines: 8;
+    columns: 1;
+    spacing: 2;
+    cycle: true;
+    dynamic: true;
+    scrollbar: false;
+    background-color: @bg;
+}
+
+element {
+    padding: 6 10;
+    spacing: 8;
+    background-color: @bg;
+    text-color: @fg;
+}
+
+element selected {
+    background-color: @bg-sel;
+    text-color: @accent;
+}
+
+element-text {
+    background-color: transparent;
+    text-color: inherit;
+    vertical-align: 0.5;
+}
