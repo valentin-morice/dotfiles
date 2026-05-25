@@ -21,6 +21,7 @@ Personal configuration for an **Arch Linux + i3** desktop, managed with [GNU Sto
 | Shell | zsh + Oh My Zsh |
 | Multiplexer | tmux |
 | Git/Docker TUIs | lazygit, lazydocker |
+| AI coding | Claude Code (custom statusline) |
 
 Font: **JetBrainsMono Nerd Font**.
 
@@ -29,7 +30,7 @@ Font: **JetBrainsMono Nerd Font**.
 One Stow package per tool, each mirroring `$HOME`. For example `i3/.config/i3/config` → `~/.config/i3/config`.
 
 ```
-alacritty  bash  conky  dunst  fastfetch  git  i3
+alacritty  bash  claude  conky  dunst  fastfetch  git  i3
 lazydocker  lazygit  picom  polybar  redshift  rofi  tmux  zsh
 ```
 
