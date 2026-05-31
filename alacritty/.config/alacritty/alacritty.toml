@@ -9,15 +9,8 @@ bold_italic = { family = "JetBrainsMono Nerd Font", style = "Bold Italic" }
 x = 10
 y = 8
 
-[colors.primary]
-background = "#141414"
-
-[colors.normal]
-black = "#141414"
-blue = "#5294e2"
-
-[colors.bright]
-blue = "#5294e2"
+[general]
+import = ["~/.config/alacritty/colors.toml"]
 
 [[keyboard.bindings]]
 key = "Return"

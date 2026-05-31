@@ -1,3 +1,5 @@
+local C = dofile(os.getenv("HOME") .. "/.config/conky/colors.lua")
+
 -- Shared conky.config values. Each section conf merges these with its own
 -- section-specific overrides (gap_y, conky.text, minimum_height).
 common = {
@@ -5,11 +7,11 @@ common = {
     background = false,
     border_width = 0,
     cpu_avg_samples = 2,
-    default_color = 'ffffff',
-    color1 = '5294e2',
-    color2 = 'e0a552',
-    color3 = '888888',
-    color4 = 'ff5555',
+    default_color = C.default_color,
+    color1 = C.color1,
+    color2 = C.color2,
+    color3 = C.color3,
+    color4 = C.color4,
     double_buffer = true,
     draw_borders = false,
     draw_graph_borders = false,
@@ -26,7 +28,7 @@ common = {
     own_window_transparent = false,
     own_window_argb_visual = true,
     own_window_argb_value = 255,
-    own_window_colour = '0d0d0d',
+    own_window_colour = C.own_window_colour,
     own_window_class = 'Conky',
     border_inner_margin = 14,
     border_outer_margin = 0,
@@ -92,7 +94,7 @@ function conky_draw_borders(inner_y_str, inner_h_str)
                                          conky_window.visual, conky_window.width, conky_window.height)
     local cr = cairo_create(cs)
 
-    cairo_set_source_rgba(cr, 0x44/255, 0x44/255, 0x44/255, 1)
+    cairo_set_source_rgba(cr, C.border_r/255, C.border_g/255, C.border_b/255, 1)
 
     cairo_set_line_width(cr, 2)
     cairo_rectangle(cr, 1, 1, conky_window.width - 2, conky_window.height - 2)

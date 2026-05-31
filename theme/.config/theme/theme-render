@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Render every tool's color config from ~/.config/theme/palette.sh.
+# Reloads daemons that don't auto-reload, unless --no-reload is passed.
+
+set -euo pipefail
+
+THEME_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/theme"
+PALETTE="$THEME_DIR/palette.sh"
+TMPL="$THEME_DIR/templates"
+
+reload=1
+case "${1:-}" in
+    --no-reload) reload=0 ;;
+    "") ;;
+    *) echo "usage: theme-render [--no-reload]" >&2; exit 2 ;;
+esac
+
+# shellcheck disable=SC1090
+. "$PALETTE"
+
+# Build SHELL-FORMAT arg for envsubst: only $THEME_* names get substituted, so
+# polybar's ${colors.x}, i3's $mod, conky's ${color1} pass through untouched.
+vars=$(compgen -A export | grep '^THEME_' | sed 's/^/$/' | paste -sd ' ')
+
+render() {
+    local src="$TMPL/$1" dst="$2"
+    mkdir -p "$(dirname "$dst")"
+    envsubst "$vars" < "$src" > "$dst"
+}
+
+render polybar.colors.ini.tmpl        "$HOME/.config/polybar/colors.ini"
+render i3.colors.conf.tmpl            "$HOME/.config/i3/colors.conf"
+render alacritty.colors.toml.tmpl     "$HOME/.config/alacritty/colors.toml"
+render rofi.colors.rasi.tmpl          "$HOME/.config/rofi/colors.rasi"
+render conky.colors.lua.tmpl          "$HOME/.config/conky/colors.lua"
+render dunstrc.tmpl                   "$HOME/.config/dunst/dunstrc"
+render fastfetch.config.jsonc.tmpl    "$HOME/.config/fastfetch/config.jsonc"
+
+# flameshot.ini is GUI-rewritten; edit the two color keys in place.
+flameshot_ini="$HOME/.config/flameshot/flameshot.ini"
+if [ -f "$flameshot_ini" ]; then
+    sed -i -E \
+        -e "s|^(uiColor=).*|\1${THEME_accent}|" \
+        -e "s|^(contrastUiColor=).*|\1${THEME_accent}|" \
+        "$flameshot_ini"
+fi
+
+[ "$reload" -eq 1 ] || exit 0
+
+# Reload daemons that don't auto-reload. alacritty live-reloads its import;
+# rofi, flameshot, and fastfetch read on next launch.
+i3-msg reload >/dev/null
+"$HOME/.config/polybar/launch.sh"
+killall dunst 2>/dev/null || true
+setsid dunst >/dev/null 2>&1 &
+"$HOME/.config/conky/launch.sh"

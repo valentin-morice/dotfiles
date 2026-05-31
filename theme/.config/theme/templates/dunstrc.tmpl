@@ -20,7 +20,7 @@
     horizontal_padding = 14
     text_icon_padding = 0
     frame_width = 2
-    frame_color = "#444444"
+    frame_color = "${THEME_border_med}"
     gap_size = 14
     separator_color = frame
     sort = yes
@@ -58,20 +58,20 @@
     mouse_right_click = close_all
 
 [urgency_low]
-    background = "#0d0d0d"
-    foreground = "#aaaaaa"
-    highlight = "#6c6c6c"
+    background = "${THEME_bg}"
+    foreground = "${THEME_muted_warm}"
+    highlight = "${THEME_highlight}"
     timeout = 5
 
 [urgency_normal]
-    background = "#0d0d0d"
-    foreground = "#ffffff"
-    highlight = "#6c6c6c"
+    background = "${THEME_bg}"
+    foreground = "${THEME_fg}"
+    highlight = "${THEME_highlight}"
     timeout = 8
 
 [urgency_critical]
-    background = "#0d0d0d"
-    foreground = "#ffffff"
-    frame_color = "#ff5555"
-    highlight = "#ff5555"
+    background = "${THEME_bg}"
+    foreground = "${THEME_fg}"
+    frame_color = "${THEME_urgent}"
+    highlight = "${THEME_urgent}"
     timeout = 0
