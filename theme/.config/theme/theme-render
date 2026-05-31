@@ -28,6 +28,26 @@ render() {
     envsubst "$vars" < "$src" > "$dst"
 }
 
+# Ask up-front — before ANY visible recolor below (wallpaper, gsettings,
+# alacritty/VSCode live-reload, daemon relaunches) — whether to also kill +
+# relaunch GUI apps that only theme at launch (qt6ct Qt apps like zapzap). The
+# rofi prompt is the very first thing shown. The actual kill/relaunch is held
+# until after rendering (so apps come back into the new palette) and run at the
+# end of the reload branch. Only on interactive reload; never at startup.
+restart_snap=""
+if [ "$reload" -eq 1 ] && [ -n "${DISPLAY:-}" ] && command -v rofi >/dev/null; then
+    restart_snap=$(mktemp)
+    ask_rc=0
+    "$THEME_DIR/restart-gui-apps" --ask "$restart_snap" || ask_rc=$?
+    if [ "$ask_rc" -eq 10 ]; then
+        # Declined at the confirmation — abort the switch before anything is
+        # rendered or reloaded, so nothing changes. Exit 10 so theme-switch
+        # knows to roll back the persisted theme name (nothing was applied).
+        rm -f "$restart_snap"
+        exit 10
+    fi
+fi
+
 render polybar.colors.ini.tmpl        "$HOME/.config/polybar/colors.ini"
 render i3.colors.conf.tmpl            "$HOME/.config/i3/colors.conf"
 render alacritty.colors.toml.tmpl     "$HOME/.config/alacritty/colors.toml"
@@ -108,6 +128,15 @@ if [ "$reload" -eq 1 ]; then
     "$HOME/.config/conky/launch.sh"
     killall picom 2>/dev/null || true
     setsid picom >/dev/null 2>&1 &
+
+    # Carry out the GUI-app restart the user confirmed up-front, now that the
+    # new palette is rendered so apps relaunch into it. Detached so a killed
+    # parent can't abort it. Non-empty snapshot = confirmed; empty = declined.
+    if [ -s "$restart_snap" ]; then
+        setsid "$THEME_DIR/restart-gui-apps" --execute "$restart_snap" >/dev/null 2>&1 &
+    else
+        [ -n "$restart_snap" ] && rm -f "$restart_snap"
+    fi
 else
     # Startup (called from i3): ensure picom is running with the rendered config.
     pgrep -x picom >/dev/null || setsid picom >/dev/null 2>&1 &
