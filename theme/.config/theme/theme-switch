@@ -52,8 +52,6 @@ set_theme() {
 toggle() {
     local cur next first prev=""
     cur=$(current)
-    first=""
-    next=""
     while read -r name; do
         [ -n "$first" ] || first="$name"
         if [ "$prev" = "$cur" ]; then next="$name"; break; fi

@@ -60,25 +60,29 @@ con_ids() {
 # ---------------------------------------------------------------------------
 do_execute() {
     local file="${1:?--execute needs a snapshot file}"
-    local -a kpid=() kcwd=() kb64=()
-    local -a pcls=() pins=() pws=() pflt=() px=() py=() pw=() ph=() pdone=()
-    local -a tcls=() tins=()
+    local -a kill_pid=() kill_cwd=() kill_cmd_b64=()
+    local -a place_class=() place_inst=() place_ws=() place_float=() place_x=() place_y=() place_w=() place_h=() place_done=()
+    local -a tray_class=() tray_inst=()
+    # The 8 scratch fields a..h mean different things per snapshot tag:
+    #   K  a=pid       b=cwd       c=b64-cmdline
+    #   P  a=class     b=instance  c=workspace  d=floating  e=x f=y g=w h=h
+    #   T  a=class     b=instance
     local tag a b c d e f g h
 
     while IFS=$'\t' read -r tag a b c d e f g h; do
         case "$tag" in
-            K) kpid+=("$a"); kcwd+=("$b"); kb64+=("$c") ;;
-            P) pcls+=("$a"); pins+=("$b"); pws+=("$c"); pflt+=("$d")
-               px+=("$e"); py+=("$f"); pw+=("$g"); ph+=("$h"); pdone+=(0) ;;
-            T) tcls+=("$a"); tins+=("$b") ;;
+            K) kill_pid+=("$a"); kill_cwd+=("$b"); kill_cmd_b64+=("$c") ;;
+            P) place_class+=("$a"); place_inst+=("$b"); place_ws+=("$c"); place_float+=("$d")
+               place_x+=("$e"); place_y+=("$f"); place_w+=("$g"); place_h+=("$h"); place_done+=(0) ;;
+            T) tray_class+=("$a"); tray_inst+=("$b") ;;
         esac
     done < "$file"
     rm -f "$file"
 
     # Kill everything first (so the post-kill tree is a clean baseline).
     local i pid
-    for i in "${!kpid[@]}"; do
-        pid=${kpid[$i]}
+    for i in "${!kill_pid[@]}"; do
+        pid=${kill_pid[$i]}
         kill "$pid" 2>/dev/null || true
         for _ in $(seq 1 20); do [ -d "/proc/$pid" ] || break; sleep 0.1; done
         [ -d "/proc/$pid" ] && kill -9 "$pid" 2>/dev/null || true
@@ -91,18 +95,18 @@ do_execute() {
 
     # Relaunch.
     local -a args
-    for i in "${!kpid[@]}"; do
-        mapfile -d '' args < <(printf '%s' "${kb64[$i]}" | base64 -d)
+    for i in "${!kill_pid[@]}"; do
+        mapfile -d '' args < <(printf '%s' "${kill_cmd_b64[$i]}" | base64 -d)
         [ "${#args[@]}" -gt 0 ] || continue
         [ -z "${args[-1]}" ] && unset 'args[-1]'          # drop trailing-NUL empty arg
         [ "${#args[@]}" -gt 0 ] || continue
-        ( cd "${kcwd[$i]}" 2>/dev/null || cd "$HOME"; setsid "${args[@]}" >/dev/null 2>&1 & )
+        ( cd "${kill_cwd[$i]}" 2>/dev/null || cd "$HOME"; setsid "${args[@]}" >/dev/null 2>&1 & )
     done
 
     # Restore placement: poll for newly-appeared windows and move each back.
-    [ "${#pcls[@]}" -eq 0 ] && [ "${#tcls[@]}" -eq 0 ] && return
+    [ "${#place_class[@]}" -eq 0 ] && [ "${#tray_class[@]}" -eq 0 ] && return
     local -A used=()
-    local pending=${#pcls[@]} have_tray=${#tcls[@]}
+    local pending=${#place_class[@]} have_tray=${#tray_class[@]}
     # Normal windows get up to 10s to appear and be placed. Tray fallback is
     # best-effort: a tray window may appear late, or (with native start-in-tray)
     # never — so once all normal windows are placed, watch only briefly more for
@@ -116,12 +120,12 @@ do_execute() {
             [ -n "${known[$cid]:-}" ] && continue         # survivor, not relaunched
             [ -n "${used[$cid]:-}" ] && continue
             placed=0
-            for i in "${!pcls[@]}"; do
-                [ "${pdone[$i]}" = 1 ] && continue
-                [ "${pcls[$i]}" = "$wclass" ] || continue
-                [ -z "${pins[$i]}" ] || [ "${pins[$i]}" = "$winst" ] || continue
-                pdone[$i]=1; used[$cid]=1; placed=1; pending=$((pending - 1))
-                ws="${pws[$i]}"
+            for i in "${!place_class[@]}"; do
+                [ "${place_done[$i]}" = 1 ] && continue
+                [ "${place_class[$i]}" = "$wclass" ] || continue
+                [ -z "${place_inst[$i]}" ] || [ "${place_inst[$i]}" = "$winst" ] || continue
+                place_done[$i]=1; used[$cid]=1; placed=1; pending=$((pending - 1))
+                ws="${place_ws[$i]}"
                 if [ "$curws" != "$ws" ]; then
                     if [[ "$ws" =~ ^[0-9]+$ ]]; then
                         i3-msg "[con_id=$cid] move to workspace number $ws" >/dev/null 2>&1 || true
@@ -129,15 +133,15 @@ do_execute() {
                         i3-msg "[con_id=$cid] move to workspace \"$ws\"" >/dev/null 2>&1 || true
                     fi
                 fi
-                if [ "${pflt[$i]}" = user_on ]; then
-                    i3-msg "[con_id=$cid] floating enable, move position ${px[$i]} px ${py[$i]} px, resize set ${pw[$i]} px ${ph[$i]} px" >/dev/null 2>&1 || true
+                if [ "${place_float[$i]}" = user_on ]; then
+                    i3-msg "[con_id=$cid] floating enable, move position ${place_x[$i]} px ${place_y[$i]} px, resize set ${place_w[$i]} px ${place_h[$i]} px" >/dev/null 2>&1 || true
                 fi
                 break
             done
             [ "$placed" = 1 ] && continue
-            for i in "${!tcls[@]}"; do                    # tray fallback: hide window
-                [ "${tcls[$i]}" = "$wclass" ] || continue
-                [ -z "${tins[$i]}" ] || [ "${tins[$i]}" = "$winst" ] || continue
+            for i in "${!tray_class[@]}"; do              # tray fallback: hide window
+                [ "${tray_class[$i]}" = "$wclass" ] || continue
+                [ -z "${tray_inst[$i]}" ] || [ "${tray_inst[$i]}" = "$winst" ] || continue
                 i3-msg "[con_id=$cid] move scratchpad" >/dev/null 2>&1 || true
                 used[$cid]=1
                 break
@@ -167,6 +171,8 @@ collect() {
 
     local -A seen=() trayseen=() winpids=()
 
+    # True if word $1 is in space-separated list $2. Both sides padded with
+    # spaces so a match is whole-word only (e.g. "ab" doesn't match "abc").
     in_list() { case " $2 " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
     # consider <win|tray> <pid> <class> [win: <inst> <ws> <float> <x> <y> <w> <h>]
