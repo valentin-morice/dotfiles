@@ -20,6 +20,28 @@ export THEME_accent=#2f6fb3
 export THEME_secondary=#b5790a
 export THEME_urgent=#c8332b
 
+# Terminal ANSI 16-color palette (consumed by alacritty.colors.toml.tmpl).
+# black stays dark and white stays light in BOTH themes so palette-driven TUIs
+# (nmtui/newt, bluetooth TUIs) that paint with ANSI 0/7 stay legible; the six
+# hues track the theme accents. blue == accent by design. On the pale ground the
+# bright hues deepen (rather than lighten) so they keep contrast.
+export THEME_ansi_black=#1d2329
+export THEME_ansi_red=#c8332b
+export THEME_ansi_green=#2f7d4f
+export THEME_ansi_yellow=#b5790a
+export THEME_ansi_blue=#2f6fb3
+export THEME_ansi_magenta=#8b4f9e
+export THEME_ansi_cyan=#2b8a92
+export THEME_ansi_white=#e9eef2
+export THEME_ansi_bright_black=#6b7680
+export THEME_ansi_bright_red=#9e2820
+export THEME_ansi_bright_green=#246b41
+export THEME_ansi_bright_yellow=#946309
+export THEME_ansi_bright_blue=#265d99
+export THEME_ansi_bright_magenta=#74448a
+export THEME_ansi_bright_cyan=#237076
+export THEME_ansi_bright_white=#ffffff
+
 # Borders
 export THEME_border=#d3dae0
 export THEME_border_inactive=#c2cad1
