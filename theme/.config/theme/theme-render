@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Render every tool's color config from ~/.config/theme/palette.sh.
+# Render every tool's color config from the active theme's palette
+# (resolved by load.sh; see theme-switch to change it).
 # Reloads daemons that don't auto-reload, unless --no-reload is passed.
 
 set -euo pipefail
 
 THEME_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/theme"
-PALETTE="$THEME_DIR/palette.sh"
 TMPL="$THEME_DIR/templates"
 
 reload=1
@@ -16,7 +16,7 @@ case "${1:-}" in
 esac
 
 # shellcheck disable=SC1090
-. "$PALETTE"
+. "$THEME_DIR/load.sh"
 
 # Build SHELL-FORMAT arg for envsubst: only $THEME_* names get substituted, so
 # polybar's ${colors.x}, i3's $mod, conky's ${color1} pass through untouched.
@@ -35,6 +35,7 @@ render rofi.colors.rasi.tmpl          "$HOME/.config/rofi/colors.rasi"
 render conky.colors.lua.tmpl          "$HOME/.config/conky/colors.lua"
 render dunstrc.tmpl                   "$HOME/.config/dunst/dunstrc"
 render fastfetch.config.jsonc.tmpl    "$HOME/.config/fastfetch/config.jsonc"
+render picom.conf.tmpl                "$HOME/.config/picom/picom.conf"
 
 # flameshot.ini is GUI-rewritten; edit the two color keys in place.
 flameshot_ini="$HOME/.config/flameshot/flameshot.ini"
@@ -45,12 +46,34 @@ if [ -f "$flameshot_ini" ]; then
         "$flameshot_ini"
 fi
 
-[ "$reload" -eq 1 ] || exit 0
+# Wallpaper — applied even with --no-reload (i3 calls this at startup).
+if [ -n "${THEME_wallpaper:-}" ] && command -v feh >/dev/null; then
+    feh --no-fehbg --bg-fill "$THEME_wallpaper"
+fi
 
-# Reload daemons that don't auto-reload. alacritty live-reloads its import;
-# rofi, flameshot, and fastfetch read on next launch.
-i3-msg reload >/dev/null
-"$HOME/.config/polybar/launch.sh"
-killall dunst 2>/dev/null || true
-setsid dunst >/dev/null 2>&1 &
-"$HOME/.config/conky/launch.sh"
+# Claude Code follows the terminal background via its own "theme": "auto"
+# setting, so no action is needed here — it picks up the new theme on the next
+# session (no theme hot-reloads mid-session).
+
+# VSCodium theme — settings.json is JSONC (comments / trailing commas), so jq
+# would choke; replace the colorTheme value in place with sed instead, which
+# preserves the rest of the file. VSCodium watches the file and recolors live.
+vscode_settings="$HOME/.config/VSCodium/User/settings.json"
+if [ -f "$vscode_settings" ]; then
+    sed -i -E "s/(\"workbench\.colorTheme\"[[:space:]]*:[[:space:]]*\")[^\"]*\"/\1${THEME_vscode}\"/" "$vscode_settings"
+fi
+
+if [ "$reload" -eq 1 ]; then
+    # Reload daemons that don't auto-reload. alacritty live-reloads its import;
+    # rofi, flameshot, fastfetch, and VSCode read/watch on their own.
+    i3-msg reload >/dev/null
+    "$HOME/.config/polybar/launch.sh"
+    killall dunst 2>/dev/null || true
+    setsid dunst >/dev/null 2>&1 &
+    "$HOME/.config/conky/launch.sh"
+    killall picom 2>/dev/null || true
+    setsid picom >/dev/null 2>&1 &
+else
+    # Startup (called from i3): ensure picom is running with the rendered config.
+    pgrep -x picom >/dev/null || setsid picom >/dev/null 2>&1 &
+fi

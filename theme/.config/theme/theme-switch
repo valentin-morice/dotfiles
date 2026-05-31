@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Select the active theme and re-render every tool.
+#
+#   theme-switch <name>   activate palettes/<name>.sh
+#   theme-switch toggle   cycle to the next available palette
+#   theme-switch current  print the active theme name
+#   theme-switch list     list available palettes
+
+set -euo pipefail
+
+THEME_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/theme"
+PALETTES="$THEME_DIR/palettes"
+STATE="${XDG_CACHE_HOME:-$HOME/.cache}/theme/current"
+
+usage() { echo "usage: theme-switch <name|toggle|current|list>" >&2; exit 2; }
+
+list() {
+    local f
+    for f in "$PALETTES"/*.sh; do
+        [ -e "$f" ] && basename "$f" .sh
+    done
+}
+
+current() {
+    local name=dark
+    [ -r "$STATE" ] && IFS= read -r name < "$STATE" || true
+    [ -n "$name" ] && [ -r "$PALETTES/$name.sh" ] || name=dark
+    echo "$name"
+}
+
+set_theme() {
+    local name="$1"
+    if [ ! -r "$PALETTES/$name.sh" ]; then
+        echo "theme-switch: unknown theme '$name' (try: $(list | paste -sd, -))" >&2
+        exit 1
+    fi
+    mkdir -p "$(dirname "$STATE")"
+    printf '%s\n' "$name" > "$STATE"
+    "$THEME_DIR/theme-render"
+}
+
+toggle() {
+    local cur next first prev=""
+    cur=$(current)
+    first=""
+    next=""
+    while read -r name; do
+        [ -n "$first" ] || first="$name"
+        if [ "$prev" = "$cur" ]; then next="$name"; break; fi
+        prev="$name"
+    done < <(list)
+    # If current was the last entry (or unset), wrap to the first.
+    [ -n "$next" ] || next="$first"
+    [ -n "$next" ] || { echo "theme-switch: no palettes found" >&2; exit 1; }
+    set_theme "$next"
+}
+
+case "${1:-}" in
+    ""|-h|--help) usage ;;
+    current)      current ;;
+    list)         list ;;
+    toggle)       toggle ;;
+    *)            set_theme "$1" ;;
+esac

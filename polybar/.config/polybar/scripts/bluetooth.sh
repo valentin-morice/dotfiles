@@ -1,5 +1,5 @@
 #!/bin/bash
-. "$HOME/.config/theme/palette.sh"
+. "$HOME/.config/theme/load.sh"
 if ! bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
     echo "%{F${THEME_muted}}OFF%{F-}"
     exit

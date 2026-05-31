@@ -1,6 +1,6 @@
-# Centralized color palette. Consumed by theme-render via envsubst.
-# Phase 1: single palette (the existing dark look, consolidated). Phase 2
-# will promote this to palettes/<name>.sh and add a theme abstraction.
+# Dark theme palette. Sourced via load.sh and consumed by theme-render
+# (and the polybar scripts) through envsubst. To add a theme, copy this file
+# to palettes/<name>.sh, change the values, and run `theme-switch <name>`.
 
 # Backgrounds / foregrounds
 export THEME_bg=#0d0d0d
@@ -38,3 +38,13 @@ export THEME_urgent_bare=ff5555
 export THEME_border_r=0x44
 export THEME_border_g=0x44
 export THEME_border_b=0x44
+
+# Compositor shadow (picom)
+export THEME_shadow_color=#000000
+export THEME_shadow_opacity=0.35
+
+# VSCodium theme applied by theme-render (Claude Code follows the terminal via "auto")
+export THEME_vscode="Dark 2026"
+
+# Wallpaper (applied by theme-render via feh)
+export THEME_wallpaper="$HOME/Pictures/Wallpapers/harald-pliessnig-YSTegVN35Ss-unsplash.jpg"
