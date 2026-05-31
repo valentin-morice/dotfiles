@@ -44,6 +44,11 @@ export THEME_border_b=0xd1
 export THEME_shadow_color=#000000
 export THEME_shadow_opacity=0.18
 
+# GTK / Qt (Adwaita; light via prefer-dark flag + gsettings color-scheme)
+export THEME_gtk_prefer_dark=0
+export THEME_gtk_icon=Papirus
+export THEME_gtk_color_scheme=prefer-light
+
 # VSCodium theme applied by theme-render (Claude Code follows the terminal via "auto")
 export THEME_vscode="Light 2026"
 

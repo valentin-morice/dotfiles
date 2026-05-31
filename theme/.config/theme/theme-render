@@ -36,6 +36,8 @@ render conky.colors.lua.tmpl          "$HOME/.config/conky/colors.lua"
 render dunstrc.tmpl                   "$HOME/.config/dunst/dunstrc"
 render fastfetch.config.jsonc.tmpl    "$HOME/.config/fastfetch/config.jsonc"
 render picom.conf.tmpl                "$HOME/.config/picom/picom.conf"
+render gtk3.settings.ini.tmpl         "$HOME/.config/gtk-3.0/settings.ini"
+render gtk4.settings.ini.tmpl         "$HOME/.config/gtk-4.0/settings.ini"
 
 # flameshot.ini is GUI-rewritten; edit the two color keys in place.
 flameshot_ini="$HOME/.config/flameshot/flameshot.ini"
@@ -62,6 +64,39 @@ vscode_settings="$HOME/.config/VSCodium/User/settings.json"
 if [ -f "$vscode_settings" ]; then
     sed -i -E "s/(\"workbench\.colorTheme\"[[:space:]]*:[[:space:]]*\")[^\"]*\"/\1${THEME_vscode}\"/" "$vscode_settings"
 fi
+
+# GTK theme via gsettings — libadwaita/GTK4 apps follow color-scheme live, and
+# GNOME-ish GTK3 apps follow gtk-theme/icon-theme. The settings.ini files
+# rendered above cover apps that read them instead. Harmless without dconf.
+if command -v gsettings >/dev/null; then
+    gi="org.gnome.desktop.interface"
+    gsettings set "$gi" color-scheme "$THEME_gtk_color_scheme" 2>/dev/null || true
+    gsettings set "$gi" gtk-theme    "Adwaita"                 2>/dev/null || true
+    gsettings set "$gi" icon-theme   "$THEME_gtk_icon"         2>/dev/null || true
+fi
+
+# Qt — qt6ct (QT_QPA_PLATFORMTHEME=qt6ct in .zshenv) applies a Fusion palette
+# built here from the active theme. Qt apps pick it up on next launch. The 21
+# entries are QPalette roles in qt6ct's order (WindowText..PlaceholderText).
+qt6ct_dir="$HOME/.config/qt6ct"
+mkdir -p "$qt6ct_dir/colors"
+argb() { printf '#ff%s' "${1#\#}"; }   # #rrggbb -> opaque #ffrrggbb
+qt_active="$(argb "$THEME_fg"), $(argb "$THEME_bg_alt"), $(argb "$THEME_bg_alt2"), $(argb "$THEME_bg_sel"), $(argb "$THEME_border"), $(argb "$THEME_border_med"), $(argb "$THEME_fg"), $(argb "$THEME_fg"), $(argb "$THEME_fg"), $(argb "$THEME_bg"), $(argb "$THEME_bg_alt"), $(argb '#000000'), $(argb "$THEME_accent"), $(argb "$THEME_bg"), $(argb "$THEME_accent"), $(argb "$THEME_secondary"), $(argb "$THEME_bg_alt2"), $(argb "$THEME_bg"), $(argb "$THEME_bg_alt"), $(argb "$THEME_fg"), $(argb "$THEME_muted")"
+qt_disabled="$(argb "$THEME_muted"), $(argb "$THEME_bg_alt"), $(argb "$THEME_bg_alt2"), $(argb "$THEME_bg_sel"), $(argb "$THEME_border"), $(argb "$THEME_border_med"), $(argb "$THEME_muted"), $(argb "$THEME_fg"), $(argb "$THEME_muted"), $(argb "$THEME_bg"), $(argb "$THEME_bg_alt"), $(argb '#000000'), $(argb "$THEME_border_med"), $(argb "$THEME_muted"), $(argb "$THEME_accent"), $(argb "$THEME_secondary"), $(argb "$THEME_bg_alt2"), $(argb "$THEME_bg"), $(argb "$THEME_bg_alt"), $(argb "$THEME_muted"), $(argb "$THEME_muted")"
+cat > "$qt6ct_dir/colors/theme.conf" <<EOF
+[ColorScheme]
+active_colors=$qt_active
+inactive_colors=$qt_active
+disabled_colors=$qt_disabled
+EOF
+cat > "$qt6ct_dir/qt6ct.conf" <<EOF
+[Appearance]
+style=Fusion
+custom_palette=true
+color_scheme_path=$qt6ct_dir/colors/theme.conf
+icon_theme=$THEME_gtk_icon
+standard_dialogs=default
+EOF
 
 if [ "$reload" -eq 1 ]; then
     # Reload daemons that don't auto-reload. alacritty live-reloads its import;

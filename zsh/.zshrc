@@ -132,17 +132,12 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-export PATH="$HOME/.local/bin:$PATH"
 
 # 1Password SSH agent — used for SSH auth and commit signing (op-ssh-sign)
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
-
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
 
 # --- modern CLI tools ---
 
