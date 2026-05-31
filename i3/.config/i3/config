@@ -236,5 +236,6 @@ default_floating_border pixel 2
 # class                 border    backgr.   text      indicator child_border
 include ~/.config/i3/colors.conf
 
-# Polybar
-exec_always --no-startup-id ~/.config/polybar/launch.sh
+# Polybar — launched once at startup; it survives i3 reloads, and theme-render
+# owns relaunching it on theme switch (exec_always here would double-launch).
+exec --no-startup-id ~/.config/polybar/launch.sh
