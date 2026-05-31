@@ -50,7 +50,7 @@ set_theme() {
 }
 
 toggle() {
-    local cur next first prev=""
+    local cur next="" first="" prev=""
     cur=$(current)
     while read -r name; do
         [ -n "$first" ] || first="$name"
