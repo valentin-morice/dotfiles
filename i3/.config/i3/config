@@ -62,9 +62,16 @@ exec --no-startup-id thunar --daemon
 # The combination of xss-lock, nm-applet and pactl is a popular choice, so
 # they are included here as an example. Modify as you see fit.
 
-# xss-lock grabs a logind suspend inhibit lock and will use i3lock to lock the
-# screen before suspend. Use loginctl lock-session to lock your screen.
-exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock --nofork
+# xss-lock grabs a logind suspend inhibit lock and runs the themed lock script
+# before suspend. `loginctl lock-session` (and $mod+Shift+x below) route through
+# xss-lock to the same script, so the lock screen always matches the theme.
+exec --no-startup-id xss-lock --transfer-sleep-lock -- ~/.local/bin/lock
+bindsym $mod+Shift+x exec --no-startup-id loginctl lock-session
+
+# Idle-locking is owned by xidlehook (warn at 9 min, lock at 10). Turn off X's
+# built-in screensaver so it doesn't also trip xss-lock on idle (double-lock).
+exec_always --no-startup-id xset s off
+exec_always --no-startup-id ~/.config/i3/idle-lock.sh
 
 # Volume
 bindsym XF86AudioRaiseVolume exec --no-startup-id ~/.local/bin/volume-notify up

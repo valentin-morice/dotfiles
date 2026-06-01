@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Lock the screen with i3lock-color, themed from the active palette.
+#
+# Sources the live theme (load.sh) at lock time, so the lock screen always
+# matches whatever theme is current — nothing to re-render on `theme-switch`
+# (i3lock-color has no config file; it takes colors as CLI flags, so a runtime
+# source is the right fit, unlike the envsubst templates used elsewhere).
+#
+# Requires i3lock-color (AUR). Lives alongside theme-render/theme-switch;
+# PATH symlink in ../../.local/bin.
+#
+# Usage: lock            # lock now (blocks until unlocked; --nofork)
+#        lock --fork     # detach instead of blocking
+# i3's xss-lock invokes this with no args and needs the process to stay (nofork).
+
+set -euo pipefail
+
+THEME_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/theme"
+# shellcheck disable=SC1090
+. "$THEME_DIR/load.sh"
+
+# i3lock-color ring/text colors want RRGGBBAA (8 hex, no '#'); theme colors are
+# '#rrggbb'. c <#rrggbb> [aa] -> rrggbbaa (alpha defaults to ff/opaque).
+c() { local h=${1#\#}; printf '%s%s' "$h" "${2:-ff}"; }
+# Solid background wants plain RRGGBB (6 hex, no '#').
+bg6=${THEME_bg#\#}
+
+fork_flag=--nofork
+[ "${1:-}" = "--fork" ] && fork_flag=
+
+font="JetBrainsMono Nerd Font"
+
+exec i3lock \
+    ${fork_flag:+$fork_flag} \
+    --ignore-empty-password \
+    --show-failed-attempts \
+    --pass-media-keys --pass-volume-keys \
+    --color="$bg6" \
+    --clock \
+    --indicator \
+    --time-str="%H:%M" \
+    --date-str="%A %e %B" \
+    --time-font="$font" --date-font="$font" \
+    --verif-font="$font" --wrong-font="$font" \
+    --layout-font="$font" --greeter-font="$font" \
+    --time-size=34 --date-size=15 \
+    --radius=110 --ring-width=10 \
+    --inside-color="$(c "$THEME_bg_alt2")" \
+    --ring-color="$(c "$THEME_accent")" \
+    --insidever-color="$(c "$THEME_bg_alt2")" \
+    --ringver-color="$(c "$THEME_secondary")" \
+    --insidewrong-color="$(c "$THEME_bg_alt2")" \
+    --ringwrong-color="$(c "$THEME_urgent")" \
+    --line-uses-inside \
+    --separator-color="$(c "$THEME_bg")" \
+    --keyhl-color="$(c "$THEME_secondary")" \
+    --bshl-color="$(c "$THEME_urgent")" \
+    --time-color="$(c "$THEME_fg")" \
+    --date-color="$(c "$THEME_muted")" \
+    --verif-color="$(c "$THEME_secondary")" \
+    --wrong-color="$(c "$THEME_urgent")" \
+    --modif-color="$(c "$THEME_urgent")" \
+    --layout-color="$(c "$THEME_muted")" \
+    --greeter-color="$(c "$THEME_fg_soft")"
