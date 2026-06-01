@@ -34,19 +34,9 @@ set_theme() {
         echo "theme-switch: unknown theme '$name' (try: $(list | paste -sd, -))" >&2
         exit 1
     fi
-    # Remember the current theme so we can roll back if the switch is declined
-    # at theme-render's confirmation: it renders nothing and exits 10, so the
-    # persisted name must not advance or it would drift from what's displayed
-    # (a later toggle would then compute the wrong "next" theme).
-    local prev=""
-    [ -r "$STATE" ] && IFS= read -r prev < "$STATE" || true
     mkdir -p "$(dirname "$STATE")"
     printf '%s\n' "$name" > "$STATE"
-    local rc=0
-    "$THEME_DIR/theme-render" || rc=$?
-    if [ "$rc" -eq 10 ]; then
-        if [ -n "$prev" ]; then printf '%s\n' "$prev" > "$STATE"; else rm -f "$STATE"; fi
-    fi
+    "$THEME_DIR/theme-render"
 }
 
 toggle() {

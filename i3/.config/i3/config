@@ -32,6 +32,11 @@ exec --no-startup-id dex --autostart --environment i3
 # the wallpaper without reloading i3, so it's safe inside exec_always).
 exec_always --no-startup-id ~/.local/bin/theme-render --no-reload
 
+# XSETTINGS daemon: pushes the GTK theme/icon/cursor to running GTK apps so they
+# recolor live on theme-switch (i3 has no settings daemon otherwise). Started
+# after theme-render so its config exists; theme-render SIGHUPs it on switch.
+exec --no-startup-id xsettingsd
+
 # Compositor (shadows only) is started by theme-render above, so its config
 # tracks the active theme (shadow opacity/color differ per theme).
 

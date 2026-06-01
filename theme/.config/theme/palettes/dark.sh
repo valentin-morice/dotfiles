@@ -64,7 +64,10 @@ export THEME_border_b=0x44
 export THEME_shadow_color=#000000
 export THEME_shadow_opacity=0.35
 
-# GTK / Qt (Adwaita; dark via prefer-dark flag + gsettings color-scheme)
+# GTK / Qt. GTK3 reloads reliably only on a theme-NAME change, so dark uses the
+# named Adwaita-dark (needs gnome-themes-extra) rather than the prefer-dark flag
+# alone; GTK4/libadwaita + Qt follow gsettings color-scheme / the portal.
+export THEME_gtk_theme=Adwaita-dark
 export THEME_gtk_prefer_dark=1
 export THEME_gtk_icon=Papirus-Dark
 export THEME_gtk_color_scheme=prefer-dark

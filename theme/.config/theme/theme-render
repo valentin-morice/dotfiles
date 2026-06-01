@@ -28,26 +28,6 @@ render() {
     envsubst "$vars" < "$src" > "$dst"
 }
 
-# Ask up-front — before ANY visible recolor below (wallpaper, gsettings,
-# alacritty/VSCode live-reload, daemon relaunches) — whether to also kill +
-# relaunch GUI apps that only theme at launch (qt6ct Qt apps like zapzap). The
-# rofi prompt is the very first thing shown. The actual kill/relaunch is held
-# until after rendering (so apps come back into the new palette) and run at the
-# end of the reload branch. Only on interactive reload; never at startup.
-restart_snap=""
-if [ "$reload" -eq 1 ] && [ -n "${DISPLAY:-}" ] && command -v rofi >/dev/null; then
-    restart_snap=$(mktemp)
-    ask_rc=0
-    "$THEME_DIR/restart-gui-apps" --ask "$restart_snap" || ask_rc=$?
-    if [ "$ask_rc" -eq 10 ]; then
-        # Declined at the confirmation — abort the switch before anything is
-        # rendered or reloaded, so nothing changes. Exit 10 so theme-switch
-        # knows to roll back the persisted theme name (nothing was applied).
-        rm -f "$restart_snap"
-        exit 10
-    fi
-fi
-
 render polybar.colors.ini.tmpl        "$HOME/.config/polybar/colors.ini"
 render i3.colors.conf.tmpl            "$HOME/.config/i3/colors.conf"
 render alacritty.colors.toml.tmpl     "$HOME/.config/alacritty/colors.toml"
@@ -58,6 +38,7 @@ render fastfetch.config.jsonc.tmpl    "$HOME/.config/fastfetch/config.jsonc"
 render picom.conf.tmpl                "$HOME/.config/picom/picom.conf"
 render gtk3.settings.ini.tmpl         "$HOME/.config/gtk-3.0/settings.ini"
 render gtk4.settings.ini.tmpl         "$HOME/.config/gtk-4.0/settings.ini"
+render xsettingsd.conf.tmpl           "$HOME/.config/xsettingsd/xsettingsd.conf"
 
 # flameshot.ini is GUI-rewritten; edit the two color keys in place.
 flameshot_ini="$HOME/.config/flameshot/flameshot.ini"
@@ -85,38 +66,23 @@ if [ -f "$vscode_settings" ]; then
     sed -i -E "s/(\"workbench\.colorTheme\"[[:space:]]*:[[:space:]]*\")[^\"]*\"/\1${THEME_vscode}\"/" "$vscode_settings"
 fi
 
-# GTK theme via gsettings — libadwaita/GTK4 apps follow color-scheme live, and
-# GNOME-ish GTK3 apps follow gtk-theme/icon-theme. The settings.ini files
-# rendered above cover apps that read them instead. Harmless without dconf.
+# GTK theme via gsettings — libadwaita/GTK4 apps follow color-scheme live. This
+# is also what xdg-desktop-portal-gtk exposes as the freedesktop appearance
+# color-scheme that Qt reads (see Qt note below). GTK3 apps recolor live via
+# xsettingsd (SIGHUP'd in the reload branch); the rendered settings.ini files
+# are the startup fallback. Harmless without dconf.
 if command -v gsettings >/dev/null; then
     gi="org.gnome.desktop.interface"
     gsettings set "$gi" color-scheme "$THEME_gtk_color_scheme" 2>/dev/null || true
-    gsettings set "$gi" gtk-theme    "Adwaita"                 2>/dev/null || true
+    gsettings set "$gi" gtk-theme    "$THEME_gtk_theme"        2>/dev/null || true
     gsettings set "$gi" icon-theme   "$THEME_gtk_icon"         2>/dev/null || true
 fi
 
-# Qt — qt6ct (QT_QPA_PLATFORMTHEME=qt6ct in .zshenv) applies a Fusion palette
-# built here from the active theme. Qt apps pick it up on next launch. The 21
-# entries are QPalette roles in qt6ct's order (WindowText..PlaceholderText).
-qt6ct_dir="$HOME/.config/qt6ct"
-mkdir -p "$qt6ct_dir/colors"
-argb() { printf '#ff%s' "${1#\#}"; }   # #rrggbb -> opaque #ffrrggbb
-qt_active="$(argb "$THEME_fg"), $(argb "$THEME_bg_alt"), $(argb "$THEME_bg_alt2"), $(argb "$THEME_bg_sel"), $(argb "$THEME_border"), $(argb "$THEME_border_med"), $(argb "$THEME_fg"), $(argb "$THEME_fg"), $(argb "$THEME_fg"), $(argb "$THEME_bg"), $(argb "$THEME_bg_alt"), $(argb '#000000'), $(argb "$THEME_accent"), $(argb "$THEME_bg"), $(argb "$THEME_accent"), $(argb "$THEME_secondary"), $(argb "$THEME_bg_alt2"), $(argb "$THEME_bg"), $(argb "$THEME_bg_alt"), $(argb "$THEME_fg"), $(argb "$THEME_muted")"
-qt_disabled="$(argb "$THEME_muted"), $(argb "$THEME_bg_alt"), $(argb "$THEME_bg_alt2"), $(argb "$THEME_bg_sel"), $(argb "$THEME_border"), $(argb "$THEME_border_med"), $(argb "$THEME_muted"), $(argb "$THEME_fg"), $(argb "$THEME_muted"), $(argb "$THEME_bg"), $(argb "$THEME_bg_alt"), $(argb '#000000'), $(argb "$THEME_border_med"), $(argb "$THEME_muted"), $(argb "$THEME_accent"), $(argb "$THEME_secondary"), $(argb "$THEME_bg_alt2"), $(argb "$THEME_bg"), $(argb "$THEME_bg_alt"), $(argb "$THEME_muted"), $(argb "$THEME_muted")"
-cat > "$qt6ct_dir/colors/theme.conf" <<EOF
-[ColorScheme]
-active_colors=$qt_active
-inactive_colors=$qt_active
-disabled_colors=$qt_disabled
-EOF
-cat > "$qt6ct_dir/qt6ct.conf" <<EOF
-[Appearance]
-style=Fusion
-custom_palette=true
-color_scheme_path=$qt6ct_dir/colors/theme.conf
-icon_theme=$THEME_gtk_icon
-standard_dialogs=default
-EOF
+# Qt — apps use QT_QPA_PLATFORMTHEME=xdgdesktopportal (.zshenv) and follow the
+# freedesktop appearance "color-scheme" that the portal derives from the
+# gsettings color-scheme set just above, flipping light/dark live (Qt 6.8+),
+# with no restart. QtWebEngine maps it to prefers-color-scheme, so web-content
+# apps (e.g. zapzap) flip too. Light/dark only by design — no per-app palette.
 
 if [ "$reload" -eq 1 ]; then
     # Reload daemons that don't auto-reload. alacritty live-reloads its import;
@@ -129,13 +95,13 @@ if [ "$reload" -eq 1 ]; then
     killall picom 2>/dev/null || true
     setsid picom >/dev/null 2>&1 &
 
-    # Carry out the GUI-app restart the user confirmed up-front, now that the
-    # new palette is rendered so apps relaunch into it. Detached so a killed
-    # parent can't abort it. Non-empty snapshot = confirmed; empty = declined.
-    if [ -s "$restart_snap" ]; then
-        setsid "$THEME_DIR/restart-gui-apps" --execute "$restart_snap" >/dev/null 2>&1 &
+    # GTK apps recolor live via xsettingsd (no restart): SIGHUP makes it re-read
+    # the freshly rendered config and push it to every client. Start it if it
+    # somehow isn't running (normally i3 autostarts it once per session).
+    if pgrep -x xsettingsd >/dev/null; then
+        pkill -HUP xsettingsd
     else
-        [ -n "$restart_snap" ] && rm -f "$restart_snap"
+        setsid xsettingsd >/dev/null 2>&1 &
     fi
 else
     # Startup (called from i3): ensure picom is running with the rendered config.

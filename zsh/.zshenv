@@ -11,7 +11,10 @@ export PATH="$HOME/.local/bin:$PATH"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
-# Qt apps read their palette from qt6ct, whose Fusion colour scheme theme-render
-# regenerates from the active palette on each toggle. Needs: qt6ct (extra repo).
-# (Qt5 apps would need qt5ct + this set to qt5ct instead.)
-export QT_QPA_PLATFORMTHEME=qt6ct
+# Qt apps follow the freedesktop appearance color-scheme via the xdg-desktop-
+# portal theme plugin, so they flip light/dark live on theme-switch (Qt 6.8+,
+# incl. QtWebEngine prefers-color-scheme — fixes zapzap's half-themed window).
+# theme-render drives it through the gsettings color-scheme. Force Fusion so the
+# style follows the scheme cleanly. Needs: xdg-desktop-portal + -gtk backend.
+export QT_QPA_PLATFORMTHEME=xdgdesktopportal
+export QT_STYLE_OVERRIDE=Fusion

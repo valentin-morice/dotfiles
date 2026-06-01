@@ -49,6 +49,8 @@ Stow each package individually with `stow <name>`, or remove one with `stow -D <
 Core: `i3-wm polybar rofi alacritty dunst picom conky redshift fastfetch zsh tmux stow feh`
 Shell CLI: `zoxide fzf fd eza bat git-delta` (plus `nvm`, `bun`)
 TUIs/other: `lazygit lazydocker flameshot` · tray via `snixembed` (AUR)
+Theming: `xsettingsd xdg-desktop-portal-gtk gnome-themes-extra` — live GTK/Qt light-dark on `theme-switch` (GTK3 via Adwaita/Adwaita-dark name-switch over xsettingsd; Qt via `QT_QPA_PLATFORMTHEME=xdgdesktopportal`)
+Lock/idle: `i3lock-color` (AUR) · `xidlehook` (AUR) · `xorg-xset` — themed lock + warn-then-lock idle daemon
 Signing/secrets: `1password` + `1password-cli` (SSH agent & commit signing)
 
 ## Post-install (not tracked in the repo)
