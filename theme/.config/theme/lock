@@ -22,8 +22,6 @@ THEME_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/theme"
 # i3lock-color ring/text colors want RRGGBBAA (8 hex, no '#'); theme colors are
 # '#rrggbb'. c <#rrggbb> [aa] -> rrggbbaa (alpha defaults to ff/opaque).
 c() { local h=${1#\#}; printf '%s%s' "$h" "${2:-ff}"; }
-# Solid background wants plain RRGGBB (6 hex, no '#').
-bg6=${THEME_bg#\#}
 
 fork_flag=--nofork
 [ "${1:-}" = "--fork" ] && fork_flag=
@@ -35,7 +33,7 @@ exec i3lock \
     --ignore-empty-password \
     --show-failed-attempts \
     --pass-media-keys --pass-volume-keys \
-    --color="$bg6" \
+    --color="$(c "$THEME_bg")" \
     --clock \
     --indicator \
     --time-str="%H:%M" \
