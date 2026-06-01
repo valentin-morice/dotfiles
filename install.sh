@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# Bootstrap this dotfiles repo on a fresh Arch + i3 machine.
+#
+#   ./install.sh
+#
+# Idempotent: re-running skips already-installed packages, restows symlinks,
+# and never clobbers existing secrets. Safe to run as your normal user — the
+# AUR helper escalates with sudo where it needs to; do not run this with sudo.
+#
+# What it does NOT do (deliberately — see the closing notes it prints):
+#   - install an audio server for pactl (system-dependent; avoids conflicts)
+#   - install nvm / bun / Oh My Zsh (each has its own installer)
+#   - place a wallpaper
+
+set -euo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# --- pretty output --------------------------------------------------------
+if [ -t 1 ]; then
+    c_info=$'\033[34m'; c_ok=$'\033[32m'; c_warn=$'\033[33m'; c_err=$'\033[31m'; c_off=$'\033[0m'
+else
+    c_info=; c_ok=; c_warn=; c_err=; c_off=
+fi
+info() { printf '%s==>%s %s\n' "$c_info" "$c_off" "$*"; }
+ok()   { printf '%s ok %s %s\n' "$c_ok"   "$c_off" "$*"; }
+warn() { printf '%s !! %s %s\n' "$c_warn" "$c_off" "$*" >&2; }
+die()  { printf '%serr%s %s\n' "$c_err"  "$c_off" "$*" >&2; exit 1; }
+
+# --- preflight ------------------------------------------------------------
+info "Preflight checks"
+
+command -v pacman >/dev/null || die "pacman not found — this script targets Arch Linux."
+
+# An AUR helper is required: several packages (i3lock-color, xidlehook,
+# snixembed, lazydocker, 1password*) live in the AUR. paru/yay install repo
+# and AUR packages alike, so we route everything through it.
+AUR=""
+for h in paru yay; do
+    if command -v "$h" >/dev/null; then AUR="$h"; break; fi
+done
+[ -n "$AUR" ] || die "No AUR helper (paru/yay) found. Install one first, e.g.:
+    sudo pacman -S --needed base-devel git
+    git clone https://aur.archlinux.org/paru.git && cd paru && makepkg -si"
+ok "Using AUR helper: $AUR"
+
+[ "$(basename "$REPO")" = ".dotfiles" ] || \
+    warn "Repo dir is '$REPO', not ~/.dotfiles — stow targets \$HOME so this is fine, just unusual."
+[ -d "$REPO/.git" ] || warn "No .git in $REPO — the git-identity step will be skipped."
+
+# --- packages -------------------------------------------------------------
+# Repo + AUR mixed; the helper sorts them out. --needed makes this idempotent.
+PACKAGES=(
+    # WM / desktop
+    i3-wm polybar rofi alacritty dunst picom conky redshift fastfetch feh
+    # shell / CLI
+    zsh tmux stow zoxide fzf fd eza bat git-delta
+    # TUIs / tray  (lazydocker, snixembed are AUR)
+    lazygit lazydocker flameshot snixembed
+    # hardware keys
+    playerctl brightnessctl
+    # build / vcs
+    go github-cli
+    # theming
+    xsettingsd xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme
+    # lock / idle  (i3lock-color, xidlehook are AUR)
+    xss-lock i3lock-color xidlehook xorg-xset
+    # secrets / signing  (both AUR)
+    1password 1password-cli
+)
+info "Installing ${#PACKAGES[@]} packages via $AUR (already-present ones are skipped)"
+"$AUR" -S --needed "${PACKAGES[@]}"
+ok "Packages installed"
+
+# --- stow -----------------------------------------------------------------
+info "Stowing packages into \$HOME"
+cd "$REPO"
+# --restow re-links cleanly on a re-run; one package per top-level dir.
+stow --restow --target="$HOME" -- */
+ok "Symlinks in place"
+
+# --- git identity (the gitconfig-symlink fixup) ---------------------------
+# ~/.gitconfig is itself tracked + symlinked here, so a history rewrite (rebase)
+# rewinds it mid-operation and breaks signing. Pin the identity in the repo's
+# LOCAL config, reading the exact values from the tracked gitconfig so there's
+# a single source of truth.
+if [ -d "$REPO/.git" ]; then
+    info "Setting repo-local git identity + 1Password SSH signing"
+    src="$REPO/git/.gitconfig"
+    git -C "$REPO" config --local user.name        "$(git config --file "$src" user.name)"
+    git -C "$REPO" config --local user.email       "$(git config --file "$src" user.email)"
+    git -C "$REPO" config --local user.signingkey  "$(git config --file "$src" user.signingkey)"
+    git -C "$REPO" config --local gpg.format       "$(git config --file "$src" gpg.format)"
+    git -C "$REPO" config --local gpg.ssh.program  "$(git config --file "$src" gpg.ssh.program)"
+    git -C "$REPO" config --local commit.gpgsign   "$(git config --file "$src" commit.gpgsign)"
+    ok "git identity pinned to repo-local config"
+fi
+
+# --- conky mail helper: secret scaffold + build ---------------------------
+imap_env="$HOME/.config/conky/imap.env"
+if [ ! -f "$imap_env" ]; then
+    info "Scaffolding $imap_env (gitignored secret — edit it before use)"
+    mkdir -p "$(dirname "$imap_env")"
+    cat > "$imap_env" <<'EOF'
+IMAP_USER=you@example.com
+IMAP_HOST=imap.example.com
+IMAP_PASS=your-app-password
+EOF
+    warn "Edit $imap_env with real IMAP credentials, or the mail widget stays blank."
+else
+    ok "imap.env already present — left untouched"
+fi
+
+imap_src="$HOME/.config/conky/imap"
+if [ -d "$imap_src" ]; then
+    info "Building conky-mail-label"
+    ( cd "$imap_src" && go build -o "$HOME/.local/bin/conky-mail-label" )
+    ok "conky-mail-label built to ~/.local/bin/"
+fi
+
+# --- generate the non-stowed (theme-rendered) configs ---------------------
+# dunst, picom, fastfetch, gtk, xsettingsd, etc. are produced by theme-render
+# from the active palette (defaults to dark). --no-reload just writes files —
+# it won't try to poke daemons that aren't running yet.
+info "Rendering theme configs (default palette: dark)"
+mkdir -p "$HOME/.cache/theme"
+[ -f "$HOME/.cache/theme/current" ] || printf 'dark\n' > "$HOME/.cache/theme/current"
+if "$HOME/.config/theme/theme-render" --no-reload; then
+    ok "Theme configs rendered"
+else
+    warn "theme-render reported errors (commonly a missing wallpaper) — configs were still written."
+fi
+
+# --- done -----------------------------------------------------------------
+cat <<EOF
+
+${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
+
+  • Wallpaper   — drop one under ~/Pictures/Wallpapers/ (path is set per-palette
+                  in ~/.config/theme/palettes/*.sh).
+  • IMAP creds  — edit ~/.config/conky/imap.env if you haven't.
+  • Audio       — pactl volume keys need a PulseAudio-compatible server
+                  (e.g. pipewire-pulse); not auto-installed to avoid conflicts.
+  • Optional    — nvm, bun, and Oh My Zsh each have their own installers.
+  • Log out/in  — so the Qt portal env (QT_QPA_PLATFORMTHEME) and the xsettingsd
+                  / xdg-desktop-portal autostarts take effect.
+EOF
