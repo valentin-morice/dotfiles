@@ -125,6 +125,13 @@ if [ -d "$imap_src" ]; then
     ok "imap-daemon built to ~/.local/bin/"
 fi
 
+# The imap.service user unit is stowed (systemd package) above. Reload so
+# systemd picks it up, but don't auto-enable: with placeholder credentials it
+# would just restart-loop. Enable it yourself once imap.env holds real values.
+if command -v systemctl >/dev/null; then
+    systemctl --user daemon-reload 2>/dev/null || true
+fi
+
 # --- generate the non-stowed (theme-rendered) configs ---------------------
 # dunst, picom, fastfetch, gtk, xsettingsd, etc. are produced by theme-render
 # from the active palette (defaults to dark). --no-reload just writes files —
@@ -145,7 +152,10 @@ ${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
 
   • Wallpaper   — drop one under ~/Pictures/Wallpapers/ (path is set per-palette
                   in ~/.config/theme/palettes/*.sh).
-  • IMAP creds  — edit ~/.config/conky/imap.env if you haven't.
+  • IMAP creds  — edit ~/.config/conky/imap.env, then start the mail daemon:
+                  systemctl --user enable --now imap.service
+  • bin helpers — \`stow bin\` to deploy the ~/.local/bin scripts (volume/mic/
+                  brightness notifiers, conky helpers, power-profile picker).
   • Audio       — pactl volume keys need a PulseAudio-compatible server
                   (e.g. pipewire-pulse); not auto-installed to avoid conflicts.
   • Optional    — nvm, bun, and Oh My Zsh each have their own installers.

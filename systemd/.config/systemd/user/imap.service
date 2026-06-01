@@ -1,0 +1,14 @@
+[Unit]
+Description=IMAP IDLE notifier for conky mail widget
+After=graphical-session.target
+
+[Service]
+Type=simple
+# All config + credentials (IMAP_USER/IMAP_HOST/IMAP_PASS) come from this file (chmod 600).
+EnvironmentFile=%h/.config/conky/imap.env
+ExecStart=%h/.local/bin/imap-daemon
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=default.target

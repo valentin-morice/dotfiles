@@ -30,11 +30,13 @@ Font: **JetBrainsMono Nerd Font**.
 One Stow package per tool, each mirroring `$HOME`. For example `i3/.config/i3/config` → `~/.config/i3/config`.
 
 ```
-alacritty  bash  bin  claude  conky  flameshot  git  i3
-lazydocker  lazygit  polybar  redshift  rofi  theme  tmux  zsh
+alacritty  bash  bin  claude  conky  flameshot  git  i3  lazydocker
+lazygit  polybar  redshift  rofi  systemd  theme  tmux  zsh
 ```
 
 `dunst`, `fastfetch`, and `picom` have no package of their own — their configs are *generated* by `theme-render` from the active palette, not stowed.
+
+`systemd` holds the `imap.service` user unit that runs the conky mail daemon (`imap-daemon`). It's stowed by `install.sh`, but **enabling** it is left to you (it needs real IMAP credentials first — see Post-install).
 
 `bin` holds personal `~/.local/bin` helper scripts (volume/brightness/mic notifiers, conky data helpers, a rofi power-profile picker). It's tracked for version control but **opt-in**: `install.sh` does not deploy it. Enable it with `stow bin`.
 
@@ -51,7 +53,9 @@ AUR packages through your AUR helper), stows all packages (except the opt-in
 `bin`), pins the repo-local git signing identity, scaffolds the conky mail
 secret, builds the `imap-daemon` mail backend, and renders the theme. Re-run it
 any time. It requires an AUR helper (`paru`/`yay`) to already be present, and
-should be run as your normal user — not with sudo.
+should be run as your normal user — not with sudo. It does **not** enable the
+mail daemon's user service (it'd restart-loop without real credentials) — do
+that yourself after filling in `imap.env` (see Post-install).
 
 ### Manual install
 
@@ -65,10 +69,11 @@ Core: `i3-wm polybar rofi alacritty dunst picom conky redshift fastfetch zsh tmu
 Hardware keys: `playerctl` (media) · `brightnessctl` (brightness, also used by the idle-dim) · a PulseAudio-compatible server for `pactl` volume control (e.g. `pipewire-pulse`)
 Shell CLI: `zoxide fzf fd eza bat git-delta` (plus `nvm`, `bun`)
 TUIs/other: `lazygit lazydocker flameshot` · tray via `snixembed` (AUR)
-Build: `go` — compiles the conky mail helper (see Post-install)
+Build: `go` — compiles `imap-daemon`, the conky mail backend (see Post-install)
 Theming: `xsettingsd xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme` — live GTK/Qt light-dark on `theme-switch` (GTK3 via Adwaita/Adwaita-dark name-switch over xsettingsd; Qt via `QT_QPA_PLATFORMTHEME=xdgdesktopportal`)
 Lock/idle: `xss-lock i3lock-color xidlehook` (last two AUR) · `xorg-xset` — themed lock + warn-then-lock idle daemon (dims via `brightnessctl`, above)
 Signing/secrets: `1password` + `1password-cli` (SSH agent & commit signing)
+`bin` helpers (opt-in package): `power-profiles-daemon` (profile-select) · `xclip` (clip-notify) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) — `pactl`/`brightnessctl` are already listed above
 
 ## Post-install (not tracked in the repo)
 
@@ -83,7 +88,11 @@ here for the manual path and for reference. The **wallpaper** is always manual.
   IMAP_HOST=imap.example.com
   IMAP_PASS=your-app-password
   ```
-  Then build the daemon (Go required): `cd ~/.config/conky/imap && go build -o ~/.local/bin/imap-daemon`. It's run via a `~/.config/systemd/user/imap.service` user unit (not tracked here); the `conky-mail-label`/`conky-mail-subject` wrappers in the `bin` package read the file it writes.
+  Then build the daemon (Go required): `cd ~/.config/conky/imap && go build -o ~/.local/bin/imap-daemon`. It's run by the tracked `imap.service` user unit (`systemd` package) — once `imap.env` holds real values, enable it:
+  ```sh
+  systemctl --user enable --now imap.service
+  ```
+  The `conky-mail-label`/`conky-mail-subject` wrappers that the widget calls live in the opt-in `bin` package, so `stow bin` is also needed for the widget to render.
 - **Wallpaper** is not included; i3 expects one under `~/Pictures/Wallpapers/` (path set per-palette in `~/.config/theme/palettes/*.sh`).
 - **Commit signing** uses a 1Password-held SSH key (`op-ssh-sign`). Because this repo *tracks its own `~/.gitconfig`* via symlink, a history rewrite (e.g. `git rebase`) rewinds that file mid-operation and breaks identity/signing. Fix on a fresh clone — set them in the repo's **local** config (the script reads these straight from the tracked gitconfig):
   ```sh
