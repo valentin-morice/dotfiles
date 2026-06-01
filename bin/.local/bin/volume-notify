@@ -1,0 +1,47 @@
+#!/bin/bash
+# Adjust volume and show a dunst notification with a Nerd Font icon, a
+# right-aligned percentage, and a progress bar.
+# Usage: volume-notify up|down|mute
+
+sink="@DEFAULT_SINK@"
+
+# Width target (in monospace chars) for the title row. Tune if the percentage
+# doesn't sit flush right against the box edge.
+WIDTH=30
+
+case "$1" in
+    up)   pactl set-sink-mute "$sink" 0
+          pactl set-sink-volume "$sink" +5% ;;
+    down) pactl set-sink-mute "$sink" 0
+          pactl set-sink-volume "$sink" -5% ;;
+    mute) pactl set-sink-mute "$sink" toggle
+          if [ "$(pactl get-sink-mute "$sink")" = "Mute: yes" ]; then
+              brightnessctl -d platform::mute s 1 >/dev/null
+          else
+              brightnessctl -d platform::mute s 0 >/dev/null
+          fi ;;
+    *)    echo "usage: $0 up|down|mute" >&2; exit 2 ;;
+esac
+
+vol=$(pactl get-sink-volume "$sink" | grep -oP '\d+(?=%)' | head -n1)
+muted=$(pactl get-sink-mute "$sink" | awk '{print $2}')
+
+if [ "$muted" = "yes" ]; then
+    icon="󰝟"
+    right="muted"
+    bar=0
+else
+    if   [ "$vol" -ge 66 ]; then icon="󰕾"
+    elif [ "$vol" -ge 33 ]; then icon="󰖀"
+    else                         icon="󰕿"
+    fi
+    right="${vol}%"
+    bar=$vol
+fi
+
+left="$icon Volume"
+title=$(printf '%-*s%s' $((WIDTH - ${#right})) "$left" "$right")
+
+notify-send -h string:x-canonical-private-synchronous:volume \
+            -h int:value:"$bar" \
+            "$title"

@@ -1,0 +1,22 @@
+#!/bin/bash
+# Adjust backlight brightness and show a dunst notification with a Nerd Font
+# icon, a right-aligned percentage, and a progress bar.
+# Usage: brightness-notify up|down
+
+WIDTH=30
+
+case "$1" in
+    up)   brightnessctl set +5% >/dev/null ;;
+    down) brightnessctl set 5%- >/dev/null ;;
+    *)    echo "usage: $0 up|down" >&2; exit 2 ;;
+esac
+
+pct=$(brightnessctl -m | awk -F, '{print $4}' | tr -d '%')
+left="󰃠 Brightness"
+right="${pct}%"
+
+title=$(printf '%-*s%s' $((WIDTH - ${#right})) "$left" "$right")
+
+notify-send -h string:x-canonical-private-synchronous:brightness \
+            -h int:value:"$pct" \
+            "$title"

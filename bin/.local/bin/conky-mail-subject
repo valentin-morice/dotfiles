@@ -1,0 +1,12 @@
+#!/bin/bash
+# Subject line for the mail widget. Shows the most recent unread subject
+# (truncated by imap-daemon), or "No emails to read" when inbox is clear.
+
+state="/tmp/imap-$USER.txt"
+c=$(awk 'NR==1' "$state" 2>/dev/null)
+if [ -z "$c" ] || [ "$c" = "0" ]; then
+    echo "No emails to read"
+else
+    subj=$(awk 'NR==2' "$state" 2>/dev/null)
+    [ -n "$subj" ] && echo "$subj" || echo "(no subject)"
+fi

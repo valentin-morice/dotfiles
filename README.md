@@ -30,11 +30,13 @@ Font: **JetBrainsMono Nerd Font**.
 One Stow package per tool, each mirroring `$HOME`. For example `i3/.config/i3/config` → `~/.config/i3/config`.
 
 ```
-alacritty  bash  claude  conky  flameshot  git  i3
+alacritty  bash  bin  claude  conky  flameshot  git  i3
 lazydocker  lazygit  polybar  redshift  rofi  theme  tmux  zsh
 ```
 
 `dunst`, `fastfetch`, and `picom` have no package of their own — their configs are *generated* by `theme-render` from the active palette, not stowed.
+
+`bin` holds personal `~/.local/bin` helper scripts (volume/brightness/mic notifiers, conky data helpers, a rofi power-profile picker). It's tracked for version control but **opt-in**: `install.sh` does not deploy it. Enable it with `stow bin`.
 
 ## Install
 
@@ -45,11 +47,11 @@ cd ~/.dotfiles
 ```
 
 `install.sh` is idempotent: it installs every dependency (routing both repo and
-AUR packages through your AUR helper), stows all packages, pins the repo-local
-git signing identity, scaffolds the conky mail secret, builds the mail helper,
-and renders the theme. Re-run it any time. It requires an AUR helper
-(`paru`/`yay`) to already be present, and should be run as your normal user —
-not with sudo.
+AUR packages through your AUR helper), stows all packages (except the opt-in
+`bin`), pins the repo-local git signing identity, scaffolds the conky mail
+secret, builds the `imap-daemon` mail backend, and renders the theme. Re-run it
+any time. It requires an AUR helper (`paru`/`yay`) to already be present, and
+should be run as your normal user — not with sudo.
 
 ### Manual install
 
@@ -81,7 +83,7 @@ here for the manual path and for reference. The **wallpaper** is always manual.
   IMAP_HOST=imap.example.com
   IMAP_PASS=your-app-password
   ```
-  Then build the helper (Go required): `cd ~/.config/conky/imap && go build -o ~/.local/bin/conky-mail-label`.
+  Then build the daemon (Go required): `cd ~/.config/conky/imap && go build -o ~/.local/bin/imap-daemon`. It's run via a `~/.config/systemd/user/imap.service` user unit (not tracked here); the `conky-mail-label`/`conky-mail-subject` wrappers in the `bin` package read the file it writes.
 - **Wallpaper** is not included; i3 expects one under `~/Pictures/Wallpapers/` (path set per-palette in `~/.config/theme/palettes/*.sh`).
 - **Commit signing** uses a 1Password-held SSH key (`op-ssh-sign`). Because this repo *tracks its own `~/.gitconfig`* via symlink, a history rewrite (e.g. `git rebase`) rewinds that file mid-operation and breaks identity/signing. Fix on a fresh clone — set them in the repo's **local** config (the script reads these straight from the tracked gitconfig):
   ```sh

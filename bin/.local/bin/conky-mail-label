@@ -1,0 +1,8 @@
+#!/bin/bash
+# Right-side label for the mail widget: "unread" in color2 when there are
+# unread messages, empty when there are none.
+
+c=$(awk 'NR==1' "/tmp/imap-$USER.txt" 2>/dev/null)
+if [ -n "$c" ] && [ "$c" != "0" ]; then
+    printf '${color2}unread${color}'
+fi

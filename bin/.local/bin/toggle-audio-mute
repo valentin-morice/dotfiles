@@ -1,0 +1,7 @@
+#!/bin/bash
+pactl set-sink-mute @DEFAULT_SINK@ toggle
+if [ "$(pactl get-sink-mute @DEFAULT_SINK@)" = "Mute: yes" ]; then
+    brightnessctl -d platform::mute s 1 >/dev/null
+else
+    brightnessctl -d platform::mute s 0 >/dev/null
+fi

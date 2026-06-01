@@ -1,0 +1,10 @@
+#!/bin/bash
+# Rofi script-mode helper for switching the power-profiles-daemon profile.
+# - When invoked with no args, prints the list of available profiles for rofi.
+# - When invoked with an arg, applies that profile.
+set -e
+if [ -n "$1" ]; then
+    powerprofilesctl set "$1"
+    exit 0
+fi
+powerprofilesctl list | awk '/^[[:space:]]*\*?[[:space:]]*[a-z-]+:$/ {gsub(/[*:[:space:]]/,""); print}'

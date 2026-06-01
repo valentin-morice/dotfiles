@@ -1,0 +1,16 @@
+#!/bin/bash
+WIDTH=30
+
+pactl set-source-mute @DEFAULT_SOURCE@ toggle
+if [ "$(pactl get-source-mute @DEFAULT_SOURCE@)" = "Mute: yes" ]; then
+    brightnessctl -d platform::micmute s 1 >/dev/null
+    icon="󰍭"; right="muted"
+else
+    brightnessctl -d platform::micmute s 0 >/dev/null
+    icon="󰍬"; right="on"
+fi
+
+left="$icon Microphone"
+title=$(printf '%-*s%s' $((WIDTH - ${#right})) "$left" "$right")
+
+notify-send -h string:x-canonical-private-synchronous:micmute "$title"

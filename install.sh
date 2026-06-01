@@ -76,8 +76,12 @@ ok "Packages installed"
 info "Stowing packages into \$HOME"
 cd "$REPO"
 # --restow re-links cleanly on a re-run; one package per top-level dir.
-stow --restow --target="$HOME" -- */
-ok "Symlinks in place"
+# `bin` (personal ~/.local/bin helper scripts) is tracked for version control
+# but deliberately NOT deployed here — enable it by hand with `stow bin`.
+pkgs=()
+for d in */; do [ "$d" = "bin/" ] || pkgs+=("$d"); done
+stow --restow --target="$HOME" -- "${pkgs[@]}"
+ok "Symlinks in place (skipped 'bin' — run 'stow bin' to deploy those helpers)"
 
 # --- git identity (the gitconfig-symlink fixup) ---------------------------
 # ~/.gitconfig is itself tracked + symlinked here, so a history rewrite (rebase)
@@ -113,9 +117,12 @@ fi
 
 imap_src="$HOME/.config/conky/imap"
 if [ -d "$imap_src" ]; then
-    info "Building conky-mail-label"
-    ( cd "$imap_src" && go build -o "$HOME/.local/bin/conky-mail-label" )
-    ok "conky-mail-label built to ~/.local/bin/"
+    info "Building imap-daemon (the conky mail backend)"
+    # The Go module builds the daemon that writes /tmp/imap-$USER.txt; the
+    # conky-mail-label / conky-mail-subject wrappers (in the `bin` package)
+    # just read that file. The daemon is run via ~/.config/systemd/user/imap.service.
+    ( cd "$imap_src" && go build -o "$HOME/.local/bin/imap-daemon" )
+    ok "imap-daemon built to ~/.local/bin/"
 fi
 
 # --- generate the non-stowed (theme-rendered) configs ---------------------
