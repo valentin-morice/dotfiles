@@ -36,9 +36,11 @@ lazygit  polybar  redshift  rofi  systemd  theme  tmux  zsh
 
 `dunst`, `fastfetch`, and `picom` have no package of their own — their configs are *generated* by `theme-render` from the active palette, not stowed.
 
+Packages bundle their own `~/.local/bin` helpers where the config needs them: `conky` ships `conky-bar`, `conky-mail-label`, `conky-mail-subject`, `cpu-temp` (its widgets call these), and `theme` ships `theme-switch`/`theme-render`/`lock`. These deploy automatically with their package.
+
 `systemd` holds the `imap.service` user unit that runs the conky mail daemon (`imap-daemon`). It's stowed by `install.sh`, but **enabling** it is left to you (it needs real IMAP credentials first — see Post-install).
 
-`bin` holds personal `~/.local/bin` helper scripts (volume/brightness/mic notifiers, conky data helpers, a rofi power-profile picker). It's tracked for version control but **opt-in**: `install.sh` does not deploy it. Enable it with `stow bin`.
+`bin` holds the remaining personal `~/.local/bin` helpers that aren't tied to one config: volume/brightness/mic notifiers, a clipboard notifier, and a rofi power-profile picker. It's tracked for version control but **opt-in**: `install.sh` does not deploy it. Enable it with `stow bin`.
 
 ## Install
 
@@ -92,7 +94,7 @@ here for the manual path and for reference. The **wallpaper** is always manual.
   ```sh
   systemctl --user enable --now imap.service
   ```
-  The `conky-mail-label`/`conky-mail-subject` wrappers that the widget calls live in the opt-in `bin` package, so `stow bin` is also needed for the widget to render.
+  The `conky-mail-label`/`conky-mail-subject` wrappers the widget calls ship in the `conky` package, so they're already in place — no extra step.
 - **Wallpaper** is not included; i3 expects one under `~/Pictures/Wallpapers/` (path set per-palette in `~/.config/theme/palettes/*.sh`).
 - **Commit signing** uses a 1Password-held SSH key (`op-ssh-sign`). Because this repo *tracks its own `~/.gitconfig`* via symlink, a history rewrite (e.g. `git rebase`) rewinds that file mid-operation and breaks identity/signing. Fix on a fresh clone — set them in the repo's **local** config (the script reads these straight from the tracked gitconfig):
   ```sh

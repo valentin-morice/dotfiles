@@ -119,8 +119,9 @@ imap_src="$HOME/.config/conky/imap"
 if [ -d "$imap_src" ]; then
     info "Building imap-daemon (the conky mail backend)"
     # The Go module builds the daemon that writes /tmp/imap-$USER.txt; the
-    # conky-mail-label / conky-mail-subject wrappers (in the `bin` package)
-    # just read that file. The daemon is run via ~/.config/systemd/user/imap.service.
+    # conky-mail-label / conky-mail-subject wrappers (in the `conky` package,
+    # auto-stowed) just read that file. The daemon is run via the imap.service
+    # user unit (systemd package).
     ( cd "$imap_src" && go build -o "$HOME/.local/bin/imap-daemon" )
     ok "imap-daemon built to ~/.local/bin/"
 fi
@@ -154,8 +155,10 @@ ${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
                   in ~/.config/theme/palettes/*.sh).
   • IMAP creds  — edit ~/.config/conky/imap.env, then start the mail daemon:
                   systemctl --user enable --now imap.service
-  • bin helpers — \`stow bin\` to deploy the ~/.local/bin scripts (volume/mic/
-                  brightness notifiers, conky helpers, power-profile picker).
+  • bin helpers — \`stow bin\` to deploy the personal ~/.local/bin scripts
+                  (volume/mic/brightness notifiers, clipboard notifier,
+                  rofi power-profile picker). Conky's own helpers are already
+                  deployed with the conky package.
   • Audio       — pactl volume keys need a PulseAudio-compatible server
                   (e.g. pipewire-pulse); not auto-installed to avoid conflicts.
   • Optional    — nvm, bun, and Oh My Zsh each have their own installers.
