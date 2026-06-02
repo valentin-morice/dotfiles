@@ -1,0 +1,66 @@
+#!/bin/bash
+# Rofi script-mode helper: connect/disconnect & scan bluetooth via bluetoothctl.
+#   no args         -> list paired devices (connected marked '*') + [scan] row
+#   selection in $1 -> ROFI_INFO carries the device MAC; toggle connect/disconnect
+# [scan] runs a timed discovery, then lists everything found so a new device can
+# be paired+trusted+connected in one pick.
+# Modeled on the power-menu / profile-select script-mode convention.
+set -eu
+
+notify() { command -v notify-send >/dev/null 2>&1 && notify-send -a bluetooth "$@" || true; }
+
+connected() { bluetoothctl info "$1" 2>/dev/null | grep -q "Connected: yes"; }
+paired()    { bluetoothctl info "$1" 2>/dev/null | grep -q "Paired: yes"; }
+
+# `bluetoothctl devices [Paired]` prints: "Device AA:BB:.. Name with spaces"
+emit_devices() {
+    # $@ = bluetoothctl args (e.g. "devices Paired" or "devices"); intentionally
+    # unquoted so multi-word forms word-split into separate arguments.
+    bluetoothctl $* 2>/dev/null | while read -r _ mac name; do
+        if connected "$mac"; then mark="* "; else mark="  "; fi
+        printf '%s%s\0info\x1f%s\n' "$mark" "$name" "$mac"
+    done
+}
+
+emit_menu() {
+    printf '\0prompt\x1fbluetooth\n'
+    printf '[scan]\0info\x1f__scan__\n'
+    emit_devices devices Paired
+}
+
+emit_scan_menu() {
+    printf '\0prompt\x1fbluetooth-scan\n'
+    emit_devices devices
+}
+
+toggle() {
+    mac="$1"
+    if connected "$mac"; then
+        bluetoothctl disconnect "$mac" >/dev/null 2>&1 \
+            && notify "Disconnected" "$mac" || notify "Failed to disconnect" "$mac"
+        return
+    fi
+    paired "$mac" || bluetoothctl pair "$mac" >/dev/null 2>&1
+    bluetoothctl trust "$mac" >/dev/null 2>&1 || true
+    if bluetoothctl connect "$mac" >/dev/null 2>&1; then
+        notify "Connected" "$mac"
+    else
+        notify "Failed to connect" "$mac"
+    fi
+}
+
+if [ "$#" -gt 0 ] && [ -n "$1" ]; then
+    info="${ROFI_INFO-}"
+    case "$info" in
+        __scan__)
+            notify "Scanning for devices…"
+            bluetoothctl --timeout 8 scan on >/dev/null 2>&1 || true
+            emit_scan_menu
+            exit 0
+            ;;
+    esac
+    [ -n "$info" ] && toggle "$info"
+    exit 0
+fi
+
+emit_menu

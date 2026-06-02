@@ -1,0 +1,78 @@
+#!/bin/bash
+# Rofi script-mode helper: connect to / scan for wifi via NetworkManager.
+#   no args         -> print the menu (active network marked '*', [scan] row)
+#   selection in $1 -> ROFI_INFO carries "<ssid>\t<security>"; act on it
+# A new secured network triggers a one-shot `rofi -dmenu -password` for the
+# passphrase — the only sub-rofi call, since script-mode can't mask input.
+# Modeled on the power-menu / profile-select script-mode convention.
+set -eu
+
+notify() { command -v notify-send >/dev/null 2>&1 && notify-send -a wifi "$@" || true; }
+
+emit_menu() {
+    printf '\0prompt\x1fwifi\n'
+    printf '[scan]\0info\x1f__scan__\n'
+    # SSID is requested last so that ':' inside an SSID (escaped by -e as '\:')
+    # can't shift the IN-USE/SIGNAL/SECURITY fields; we rejoin and unescape it.
+    nmcli -t -e yes -f IN-USE,SIGNAL,SECURITY,SSID dev wifi list \
+    | awk -F: '
+        {
+            inuse=$1; sig=$2; sec=$3
+            ssid=$4; for (i=5;i<=NF;i++) ssid=ssid ":" $i
+            gsub(/\\:/, ":", ssid)
+            if (ssid=="" || seen[ssid]++) next
+            if (sec=="") sec="open"
+            mark = (inuse=="*") ? "* " : "  "
+            printf "%s%s  (%s, %s%%)\0info\x1f%s\t%s\n", mark, ssid, sec, sig, ssid, sec
+        }'
+}
+
+connect() {
+    ssid="$1"; sec="$2"
+    # Existing saved profile: just bring it up.
+    if nmcli -t -f NAME con show 2>/dev/null | grep -Fxq "$ssid"; then
+        if nmcli con up id "$ssid" >/dev/null 2>&1; then
+            notify "Connected" "$ssid"
+        else
+            notify "Failed to connect" "$ssid"
+        fi
+        return
+    fi
+    if [ "$sec" = "open" ] || [ "$sec" = "--" ] || [ -z "$sec" ]; then
+        # Open (or unknown — try without a password first).
+        if nmcli dev wifi connect "$ssid" >/dev/null 2>&1; then
+            notify "Connected" "$ssid"; return
+        fi
+        [ "$sec" = "open" ] && { notify "Failed to connect" "$ssid"; return; }
+    fi
+    pw=$(rofi -dmenu -password -p "$ssid" -mesg "Passphrase" -lines 0 </dev/null) || return
+    [ -z "$pw" ] && return
+    if nmcli dev wifi connect "$ssid" password "$pw" >/dev/null 2>&1; then
+        notify "Connected" "$ssid"
+    else
+        notify "Failed to connect" "$ssid"
+    fi
+}
+
+if [ "$#" -gt 0 ] && [ -n "$1" ]; then
+    info="${ROFI_INFO-}"
+    case "$info" in
+        __scan__)
+            nmcli dev wifi rescan >/dev/null 2>&1 || true
+            sleep 2
+            emit_menu
+            exit 0
+            ;;
+    esac
+    if [ -n "$info" ]; then
+        ssid="${info%%$'\t'*}"
+        sec="${info##*$'\t'}"
+    else
+        # Typed entry (e.g. a hidden SSID): treat the text as the SSID.
+        ssid="$1"; sec=""
+    fi
+    connect "$ssid" "$sec"
+    exit 0
+fi
+
+emit_menu

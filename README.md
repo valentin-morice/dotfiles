@@ -40,7 +40,7 @@ Packages bundle their own `~/.local/bin` helpers where the config needs them: `c
 
 `systemd` holds the `imap.service` user unit that runs the conky mail daemon (`imap-daemon`). It's stowed by `install.sh`, but **enabling** it is left to you (it needs real IMAP credentials first — see Post-install).
 
-`bin` holds the remaining personal `~/.local/bin` helpers that aren't tied to one config: volume/brightness/mic notifiers, a clipboard notifier, and a rofi power-profile picker. It's tracked for version control but **opt-in**: `install.sh` does not deploy it. Enable it with `stow bin`.
+`bin` holds the remaining personal `~/.local/bin` helpers that aren't tied to one config: volume/brightness/mic notifiers, a clipboard notifier + history browser, and rofi menus (power-profile, power, wifi, bluetooth). It's tracked for version control but **opt-in**: `install.sh` does not deploy it. Enable it with `stow bin`.
 
 ## Install
 
@@ -75,7 +75,7 @@ Build: `go` — compiles `imap-daemon`, the conky mail backend (see Post-install
 Theming: `xsettingsd xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme` — live GTK/Qt light-dark on `theme-switch` (GTK3 via Adwaita/Adwaita-dark name-switch over xsettingsd; Qt via `QT_QPA_PLATFORMTHEME=xdgdesktopportal`)
 Lock/idle: `xss-lock i3lock-color xidlehook` (last two AUR) · `xorg-xset` — themed lock + warn-then-lock idle daemon (dims via `brightnessctl`, above)
 Signing/secrets: `1password` + `1password-cli` (SSH agent & commit signing)
-`bin` helpers (opt-in package): `power-profiles-daemon` (profile-select) · `xclip` (clip-notify) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) — `pactl`/`brightnessctl` are already listed above
+`bin` helpers (opt-in package): `power-profiles-daemon` (profile-select) · `xclip` + `clipnotify` (clip-notify / clip-menu) · `networkmanager` (wifi-menu) · `bluez-utils` (bt-menu) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) — `pactl`/`brightnessctl` are already listed above
 
 ## Post-install (not tracked in the repo)
 

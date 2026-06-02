@@ -109,6 +109,18 @@ bindsym $mod+Shift+q kill
 # Application launcher
 bindsym $mod+d exec --no-startup-id ~/.config/rofi/launch.sh -show drun
 
+# Clipboard history (entries recorded by clip-notify)
+bindsym $mod+c exec --no-startup-id ~/.config/rofi/launch.sh -show clipboard
+
+# Wifi menu (connect / rescan via NetworkManager)
+bindsym $mod+n exec --no-startup-id ~/.config/rofi/launch.sh -show wifi
+
+# Bluetooth menu (connect / scan via bluetoothctl)
+bindsym $mod+b exec --no-startup-id ~/.config/rofi/launch.sh -show bluetooth
+
+# Power menu (lock / logout / suspend / reboot / shutdown)
+bindsym $mod+Escape exec --no-startup-id ~/.config/rofi/launch.sh -show power-menu
+
 # Screenshots (flameshot)
 bindsym Print exec --no-startup-id flameshot gui
 bindsym Shift+Print exec --no-startup-id flameshot full -p ~/Pictures/Screenshots

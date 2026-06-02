@@ -156,9 +156,10 @@ ${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
   • IMAP creds  — edit ~/.config/conky/imap.env, then start the mail daemon:
                   systemctl --user enable --now imap.service
   • bin helpers — \`stow bin\` to deploy the personal ~/.local/bin scripts
-                  (volume/mic/brightness notifiers, clipboard notifier,
-                  rofi power-profile picker). Conky's own helpers are already
-                  deployed with the conky package.
+                  (volume/mic/brightness notifiers, clipboard notifier +
+                  history browser, rofi power-profile / power menu pickers).
+                  Conky's own helpers are already deployed with the conky
+                  package.
   • Audio       — pactl volume keys need a PulseAudio-compatible server
                   (e.g. pipewire-pulse); not auto-installed to avoid conflicts.
   • Optional    — nvm, bun, and Oh My Zsh each have their own installers.

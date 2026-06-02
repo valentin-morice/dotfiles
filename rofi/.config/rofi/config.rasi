@@ -50,7 +50,7 @@ window {
     background-color: @bg;
     border: 2;
     border-color: @border;
-    width: 600;
+    width: 720;
     padding: 12;
 }
 
@@ -100,7 +100,7 @@ entry {
 }
 
 listview {
-    lines: 8;
+    lines: 11;
     columns: 1;
     spacing: 2;
     cycle: true;

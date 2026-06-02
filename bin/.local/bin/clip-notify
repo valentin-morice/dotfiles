@@ -1,5 +1,6 @@
 #!/bin/bash
-# Show a dunst notification whenever the X CLIPBOARD changes.
+# Show a dunst notification whenever the X CLIPBOARD changes, and record the
+# text into a history store that the `clip-menu` rofi modi browses.
 # Requires: clipnotify, xclip.
 
 # Single-instance lock — silently exit if another copy is already running.
@@ -8,6 +9,34 @@ flock -n 9 || exit 0
 
 PREVIEW_MAX=80
 last_hash=""
+
+# Clipboard history: one file per clip named by its sha1, plus an `index` of
+# `hash<TAB>one-line-preview` lines, most-recent first. clip-menu is the reader.
+STORE="${XDG_CACHE_HOME:-$HOME/.cache}/clipboard"
+HIST_MAX=200
+mkdir -p "$STORE"
+
+# store_clip <content> <hash>: save full content, prepend a deduped index line,
+# cap the index, then drop clip files no longer referenced by it.
+store_clip() {
+    local content="$1" hash="$2" disp tmp="$STORE/.index.tmp"
+    printf '%s' "$content" > "$STORE/$hash"
+
+    disp=$(printf '%s' "$content" | tr '\n\t' '  ' | tr -s ' ')
+    disp=${disp# }
+    [ "${#disp}" -gt 120 ] && disp="${disp:0:120}…"
+
+    { printf '%s\t%s\n' "$hash" "$disp"
+      [ -f "$STORE/index" ] && grep -v "^$hash	" "$STORE/index"
+    } | head -n "$HIST_MAX" > "$tmp"
+    mv "$tmp" "$STORE/index"
+
+    awk -F'\t' 'NF{print $1}' "$STORE/index" > "$STORE/.keep"
+    for f in "$STORE"/*; do
+        case "${f##*/}" in index | .index.tmp | .keep) continue ;; esac
+        grep -qxF "${f##*/}" "$STORE/.keep" || rm -f "$f"
+    done
+}
 
 while clipnotify; do
     # Skip non-text clipboard contents (images, files, etc.)
@@ -22,6 +51,8 @@ while clipnotify; do
     hash=$(printf '%s' "$content" | sha1sum | cut -d' ' -f1)
     [ "$hash" = "$last_hash" ] && continue
     last_hash=$hash
+
+    store_clip "$content" "$hash"
 
     chars=$(printf '%s' "$content" | wc -m)
     lines=$(printf '%s\n' "$content" | wc -l)

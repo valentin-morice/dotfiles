@@ -1,0 +1,21 @@
+#!/bin/bash
+# Rofi script-mode helper for session power actions.
+# - With no args, prints the menu entries for rofi.
+# - With an entry as $1, performs that action.
+#
+# Lock routes through `loginctl lock-session` (not the lock script directly) so
+# it goes via xss-lock and matches $mod+Shift+x — one themed lock path. No
+# Hibernate entry: swap is zram (RAM-backed), so hibernate can't work here.
+set -e
+
+case "$1" in
+    lock)     exec loginctl lock-session ;;
+    logout)   exec i3-msg exit ;;
+    suspend)  exec systemctl suspend ;;
+    reboot)   exec systemctl reboot ;;
+    shutdown) exec systemctl poweroff ;;
+    "")
+        printf '\0prompt\x1fpower\n'
+        printf 'lock\nlogout\nsuspend\nreboot\nshutdown\n'
+        ;;
+esac
