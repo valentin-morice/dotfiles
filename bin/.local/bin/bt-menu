@@ -33,6 +33,10 @@ emit_scan_menu() {
     emit_devices devices
 }
 
+# Connect, echoing bluetoothctl's combined output so callers can inspect the
+# failure reason (e.g. br-connection-key-missing).
+try_connect() { bluetoothctl connect "$1" 2>&1; }
+
 toggle() {
     mac="$1"
     if connected "$mac"; then
@@ -42,11 +46,35 @@ toggle() {
     fi
     paired "$mac" || bluetoothctl pair "$mac" >/dev/null 2>&1
     bluetoothctl trust "$mac" >/dev/null 2>&1 || true
-    if bluetoothctl connect "$mac" >/dev/null 2>&1; then
+
+    out=$(try_connect "$mac")
+    if connected "$mac"; then
         notify "Connected" "$mac"
-    else
-        notify "Failed to connect" "$mac"
+        return
     fi
+
+    # br-connection-key-missing: the bond stored on this host is stale (the
+    # device rotated its link key, typically after pairing to another host).
+    # Retrying connect is futile — drop the bond and re-pair before retrying.
+    # Scoped narrowly to this error so ordinary failures (device off / out of
+    # range) keep the good bond intact and just report failure.
+    case "$out" in
+        *key-missing*)
+            notify "Stale pairing — re-pairing" "$mac"
+            bluetoothctl remove "$mac" >/dev/null 2>&1 || true
+            bluetoothctl pair "$mac" >/dev/null 2>&1 || true
+            bluetoothctl trust "$mac" >/dev/null 2>&1 || true
+            try_connect "$mac" >/dev/null 2>&1 || true
+            if connected "$mac"; then
+                notify "Connected" "$mac"
+            else
+                notify "Re-pair failed" "Put $mac in pairing mode, then retry"
+            fi
+            ;;
+        *)
+            notify "Failed to connect" "$mac"
+            ;;
+    esac
 }
 
 if [ "$#" -gt 0 ] && [ -n "$1" ]; then
