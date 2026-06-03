@@ -11,6 +11,23 @@ export PATH="$HOME/.local/bin:$PATH"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
+# nvm default node on PATH for EVERY shell (incl. non-interactive & scripts),
+# so node/npm/npx are real binaries that child processes inherit — agents and
+# `sh -c 'node ...'` no longer fall through to the system node. This only
+# prepends a dir (cheap); full nvm stays lazy-loaded in .zshrc. Resolves the
+# default alias chain (default -> lts/* -> lts/krypton -> vX) without sourcing
+# nvm; runs in an anonymous fn so locals don't leak into the environment.
+export NVM_DIR="$HOME/.nvm"
+() {
+  local target=default hops=0
+  while [[ $target != v[0-9]* && hops -lt 8 && -r $NVM_DIR/alias/$target ]]; do
+    target="$(<$NVM_DIR/alias/$target)"
+    (( hops++ ))
+  done
+  [[ $target == v[0-9]* && -d $NVM_DIR/versions/node/$target/bin ]] &&
+    path=("$NVM_DIR/versions/node/$target/bin" $path)
+}
+
 # Qt apps follow the freedesktop appearance color-scheme via the xdg-desktop-
 # portal theme plugin, so they flip light/dark live on theme-switch (Qt 6.8+,
 # incl. QtWebEngine prefers-color-scheme — fixes zapzap's half-themed window).

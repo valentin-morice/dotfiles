@@ -1,18 +1,16 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
-# nvm: lazy-load to keep shell startup fast (was ~830ms eager).
-# First call to nvm/node/npm/npx/corepack sources nvm fully, then re-runs.
-export NVM_DIR="$HOME/.nvm"
-_nvm_lazy() {
-  unset -f nvm node npm npx corepack
+# nvm: node/npm/npx/corepack are real binaries on PATH (the default version is
+# prepended in .zshenv), so they work in scripts, non-interactive shells, and
+# child processes — no shell-function shadowing. Only `nvm` itself is lazy: the
+# ~830ms init-nvm.sh source (version management + completion) is deferred to the
+# first `nvm` call. NVM_DIR is exported from .zshenv.
+nvm() {
+  unset -f nvm
   source /usr/share/nvm/init-nvm.sh
+  nvm "$@"
 }
-nvm()      { _nvm_lazy; nvm "$@"; }
-node()     { _nvm_lazy; node "$@"; }
-npm()      { _nvm_lazy; npm "$@"; }
-npx()      { _nvm_lazy; npx "$@"; }
-corepack() { _nvm_lazy; corepack "$@"; }
 
 # Auto-switch node version on entering a dir with .nvmrc. Stays lazy: only
 # invokes nvm (triggering the full load) when an .nvmrc is actually found by
