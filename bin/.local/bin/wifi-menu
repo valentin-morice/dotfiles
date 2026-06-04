@@ -2,12 +2,12 @@
 # Rofi script-mode helper: connect to / scan for wifi via NetworkManager.
 #   no args         -> print the menu (active network marked '*', [scan] row)
 #   selection in $1 -> ROFI_INFO carries "<ssid>\t<security>"; act on it
-# A new secured network needs a passphrase via `rofi -dmenu -password`, but that
+# A new secured network needs a password via `rofi -dmenu -password`, but that
 # can't run inline: while rofi runs us in script-mode it holds the keyboard grab,
 # so a nested rofi can't grab it and dies silently (the bug where selecting a
 # secured network just dropped). Instead we detach a `__pwprompt` re-exec of
 # ourselves and emit nothing, so the parent rofi closes and releases the grab;
-# the detached copy then prompts + connects, re-prompting on a wrong passphrase.
+# the detached copy then prompts + connects, re-prompting on a wrong password.
 # Modeled on the power-menu / profile-select script-mode convention.
 set -eu
 
@@ -31,9 +31,9 @@ emit_menu() {
         }'
 }
 
-# Try every path that needs no passphrase. Returns 0 when fully handled
+# Try every path that needs no password. Returns 0 when fully handled
 # (connected, or an open network that failed); returns 10 to signal the caller
-# that a passphrase prompt is required (which must be detached — see __pwprompt).
+# that a password prompt is required (which must be detached — see __pwprompt).
 try_connect() {
     ssid="$1"; sec="$2"
     # Existing saved profile: just bring it up.
@@ -55,7 +55,7 @@ try_connect() {
     return 10
 }
 
-# Prompt for a passphrase and connect, looping on failure. Runs detached (NOT in
+# Prompt for a password and connect, looping on failure. Runs detached (NOT in
 # rofi script-mode), so it is free to spawn its own rofi for the masked input.
 prompt_and_connect() {
     ssid="$1"
@@ -82,7 +82,7 @@ prompt_and_connect() {
             notify "Wi-Fi connected" "$ssid"
             return 0
         fi
-        # Failure is usually a wrong passphrase. nmcli leaves a half-created
+        # Failure is usually a wrong password. nmcli leaves a half-created
         # profile caching the bad secret, which would block a retry — delete it,
         # surface the error, and re-prompt (Esc cancels via the `|| return` above).
         nmcli con delete id "$ssid" >/dev/null 2>&1 || true
@@ -91,7 +91,7 @@ prompt_and_connect() {
     done
 }
 
-# Detached re-exec entry point for the passphrase prompt.
+# Detached re-exec entry point for the password prompt.
 if [ "${1-}" = "__pwprompt" ]; then
     prompt_and_connect "$2"
     exit 0
@@ -117,7 +117,7 @@ if [ "$#" -gt 0 ] && [ -n "$1" ]; then
     rc=0
     try_connect "$ssid" "$sec" || rc=$?
     if [ "$rc" = 10 ]; then
-        # Needs a passphrase: detach so this script-mode invocation can exit and
+        # Needs a password: detach so this script-mode invocation can exit and
         # let rofi close (freeing the grab), then prompt + connect out of band.
         setsid -f "$0" __pwprompt "$ssid" >/dev/null 2>&1 </dev/null
     fi
