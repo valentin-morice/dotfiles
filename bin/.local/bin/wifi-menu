@@ -70,12 +70,11 @@ prompt_and_connect() {
     # placeholder, and label the prompt "Password" (the SSID is the message line
     # — embedding it in a sentence reads absurdly for networks named "Internet").
     overrides='mainbox { children: [ inputbar, message ]; }
-               entry { placeholder: ""; }
-               prompt { str: "Password"; }'
+               entry { placeholder: ""; }'
 
     mesg="$ssid"
     while :; do
-        pw=$(rofi -dmenu -password -mesg "$mesg" -theme-str "$overrides" \
+        pw=$(rofi -dmenu -password -p "Password" -mesg "$mesg" -theme-str "$overrides" \
             </dev/null) || return 0
         [ -z "$pw" ] && return 0
         if err=$(nmcli -w 20 dev wifi connect "$ssid" password "$pw" 2>&1); then
