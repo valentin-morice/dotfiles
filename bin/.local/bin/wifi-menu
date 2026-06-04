@@ -37,6 +37,11 @@ emit_menu() {
             if (inuse=="*") active[ssid]=1
         }
         END {
+            # Mark the connected SSID as rofi’s "active" row so the theme tints it
+            # (accent colour). Row 0 is [scan], so order[i] is entry index i.
+            aidx=-1
+            for (i=1;i<=n;i++) if (order[i] in active) aidx=i
+            if (aidx>=0) printf "\0active\x1f%d\n", aidx
             for (i=1;i<=n;i++) {
                 s=order[i]
                 mark=(s in active) ? "* " : "  "

@@ -121,6 +121,19 @@ element selected {
     text-color: @accent;
 }
 
+/* "active" rows (e.g. the connected wifi) tinted accent. The explicit element
+   text-colors above mask the legacy active-* palette vars, so set the active
+   state colors directly here. */
+element normal.active,
+element alternate.active {
+    text-color: @accent;
+}
+
+element selected.active {
+    background-color: @bg-sel;
+    text-color: @accent;
+}
+
 element-text {
     background-color: transparent;
     text-color: inherit;
