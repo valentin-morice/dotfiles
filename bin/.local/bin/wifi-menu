@@ -39,7 +39,7 @@ try_connect() {
     # Existing saved profile: just bring it up.
     if nmcli -t -f NAME con show 2>/dev/null | grep -Fxq "$ssid"; then
         if nmcli con up id "$ssid" >/dev/null 2>&1; then
-            notify "Connected" "$ssid"
+            notify "Wi-Fi connected" "$ssid"
         else
             notify "Failed to connect" "$ssid"
         fi
@@ -48,7 +48,7 @@ try_connect() {
     if [ "$sec" = "open" ] || [ "$sec" = "--" ] || [ -z "$sec" ]; then
         # Open (or unknown — try without a password first).
         if nmcli -w 20 dev wifi connect "$ssid" >/dev/null 2>&1; then
-            notify "Connected" "$ssid"; return 0
+            notify "Wi-Fi connected" "$ssid"; return 0
         fi
         [ "$sec" = "open" ] && { notify "Failed to connect" "$ssid"; return 0; }
     fi
@@ -63,12 +63,19 @@ prompt_and_connect() {
     # we open our own rofi (up to ~5s); otherwise our prompt can't grab input.
     for _ in $(seq 1 100); do pgrep -x rofi >/dev/null 2>&1 || break; sleep 0.05; done
 
-    mesg="Passphrase"
+    # The shared rofi theme is built for the multi-modi launcher: it pins the
+    # mode-switcher (tabs) into mainbox, drops the `message` element, and sets a
+    # "Search" placeholder — all wrong for a password box. Override per-prompt to
+    # show just the input + our message, and clear the placeholder.
+    overrides='mainbox { children: [ inputbar, message ]; } entry { placeholder: ""; }'
+
+    mesg="Passphrase for $ssid"
     while :; do
-        pw=$(rofi -dmenu -password -p "$ssid" -mesg "$mesg" -lines 0 </dev/null) || return 0
+        pw=$(rofi -dmenu -password -p "wifi" -mesg "$mesg" -theme-str "$overrides" \
+            </dev/null) || return 0
         [ -z "$pw" ] && return 0
         if err=$(nmcli -w 20 dev wifi connect "$ssid" password "$pw" 2>&1); then
-            notify "Connected" "$ssid"
+            notify "Wi-Fi connected" "$ssid"
             return 0
         fi
         # Failure is usually a wrong passphrase. nmcli leaves a half-created
@@ -76,7 +83,7 @@ prompt_and_connect() {
         # surface the error, and re-prompt (Esc cancels via the `|| return` above).
         nmcli con delete id "$ssid" >/dev/null 2>&1 || true
         notify "Connection failed" "$err"
-        mesg="Wrong password? Try again — Esc to cancel"
+        mesg="Wrong password for $ssid — try again (Esc to cancel)"
     done
 }
 
