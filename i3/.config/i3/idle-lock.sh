@@ -10,9 +10,14 @@
 #
 # xidlehook --timer values are DELTAS: the first is seconds since the user went
 # idle; each later one is seconds since the previous timer fired.
-#   540s idle  -> warning notification
-#   +60s       -> lock
-# Become active after the warning and the canceller dismisses the notification.
+#   540s idle  -> dim + warning notification
+#   +60s       -> un-dim, then lock (lock screen shows at full brightness)
+#
+# Each timer's canceller runs only when the user becomes active AFTER that timer
+# fired but BEFORE the next one. So once the +60s lock timer fires, the warn
+# timer's canceller can no longer run — only the lock timer's. Both cancellers
+# must therefore be `unwarn` (restore brightness + clear notification); leaving
+# the lock timer's empty left the screen stuck at 10% on every return past 10min.
 #
 # Requires: xidlehook, dunst (dunstify), brightnessctl, the `lock` script.
 # --not-when-audio needs xidlehook built with PulseAudio support; drop it if
@@ -36,6 +41,11 @@ case "${1:-}" in
         [ -r "$idfile" ] && dunstify -C "$(cat "$idfile")" 2>/dev/null
         rm -f "$idfile"
         exit 0 ;;
+    lock)
+        # The dim was only the pre-lock warning — undo it (and clear the warning
+        # notification) so the lock screen comes up at full brightness, then lock.
+        "$0" unwarn
+        exec "$HOME/.local/bin/lock" ;;
 esac
 
 # No arg: (re)start the daemon as a single instance.
@@ -45,4 +55,4 @@ exec xidlehook \
     --not-when-fullscreen \
     --not-when-audio \
     --timer 540 "$0 warn" "$0 unwarn" \
-    --timer 60  "$HOME/.local/bin/lock" ''
+    --timer 60  "$0 lock" "$0 unwarn"
