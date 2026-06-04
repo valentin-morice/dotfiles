@@ -18,16 +18,30 @@ emit_menu() {
     printf '[scan]\0info\x1f__scan__\n'
     # SSID is requested last so that ':' inside an SSID (escaped by -e as '\:')
     # can't shift the IN-USE/SIGNAL/SECURITY fields; we rejoin and unescape it.
+    #
+    # An SSID can list several BSSIDs (one per AP). We dedup to the first row
+    # (nmcli sorts by signal, so strongest) for the signal/security shown, but
+    # the in-use '*' may sit on a weaker BSSID — so OR the in-use flag across all
+    # rows of the SSID, else the connected network renders unmarked.
     nmcli -t -e yes -f IN-USE,SIGNAL,SECURITY,SSID dev wifi list \
     | awk -F: '
         {
             inuse=$1; sig=$2; sec=$3
             ssid=$4; for (i=5;i<=NF;i++) ssid=ssid ":" $i
             gsub(/\\:/, ":", ssid)
-            if (ssid=="" || seen[ssid]++) next
-            if (sec=="") sec="open"
-            mark = (inuse=="*") ? "* " : "  "
-            printf "%s%s  (%s, %s%%)\0info\x1f%s\t%s\n", mark, ssid, sec, sig, ssid, sec
+            if (ssid=="") next
+            if (!(ssid in seen)) {
+                seen[ssid]=1; order[++n]=ssid
+                sigv[ssid]=sig; secv[ssid]=(sec=="" ? "open" : sec)
+            }
+            if (inuse=="*") active[ssid]=1
+        }
+        END {
+            for (i=1;i<=n;i++) {
+                s=order[i]
+                mark=(s in active) ? "* " : "  "
+                printf "%s%s  (%s, %s%%)\0info\x1f%s\t%s\n", mark, s, secv[s], sigv[s], s, secv[s]
+            }
         }'
 }
 
