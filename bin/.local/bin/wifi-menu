@@ -77,15 +77,14 @@ prompt_and_connect() {
         pw=$(rofi -dmenu -password -p "Password" -mesg "$mesg" -theme-str "$overrides" \
             </dev/null) || return 0
         [ -z "$pw" ] && return 0
-        if err=$(nmcli -w 20 dev wifi connect "$ssid" password "$pw" 2>&1); then
+        if nmcli -w 20 dev wifi connect "$ssid" password "$pw" >/dev/null 2>&1; then
             notify "Wi-Fi connected" "$ssid"
             return 0
         fi
         # Failure is usually a wrong password. nmcli leaves a half-created
-        # profile caching the bad secret, which would block a retry — delete it,
-        # surface the error, and re-prompt (Esc cancels via the `|| return` above).
+        # profile caching the bad secret, which would block a retry — delete it
+        # and re-prompt (the rofi message says it all; Esc cancels via `|| return`).
         nmcli con delete id "$ssid" >/dev/null 2>&1 || true
-        notify "Connection failed" "$err"
         mesg="$ssid — wrong password, try again (Esc to cancel)"
     done
 }
