@@ -1,6 +1,6 @@
 #!/bin/bash
 # Rofi script-mode helper: connect/disconnect & scan bluetooth via bluetoothctl.
-#   no args         -> list paired devices (connected marked '*') + [scan] row
+#   no args         -> list paired devices (connected marked '*' + accent tint) + [scan] row
 #   selection in $1 -> ROFI_INFO carries the device MAC; toggle connect/disconnect
 # [scan] runs a timed discovery, then lists everything found so a new device can
 # be paired+trusted+connected in one pick.
@@ -14,23 +14,43 @@ paired()    { bluetoothctl info "$1" 2>/dev/null | grep -q "Paired: yes"; }
 
 # `bluetoothctl devices [Paired]` prints: "Device AA:BB:.. Name with spaces"
 emit_devices() {
-    # $@ = bluetoothctl args (e.g. "devices Paired" or "devices"); intentionally
+    # $1 = row index of the first device (callers prepend a [scan] row or not);
+    # the rest are bluetoothctl args (e.g. "devices Paired"), intentionally
     # unquoted so multi-word forms word-split into separate arguments.
-    bluetoothctl $* 2>/dev/null | while read -r _ mac name; do
-        if connected "$mac"; then mark="* "; else mark="  "; fi
-        printf '%s%s\0info\x1f%s\n' "$mark" "$name" "$mac"
+    #
+    # Connected devices are marked '*' AND flagged as rofi "active" rows so the
+    # theme tints them. We buffer first (a NUL-bearing row can't be captured in a
+    # shell var, but plain mac/name/state can) to emit one \0active line with all
+    # connected indices — several devices can be connected at once.
+    base=$1; shift
+    macs=(); names=(); conns=()
+    while read -r _ mac name; do
+        [ -n "$mac" ] || continue
+        macs+=("$mac"); names+=("$name")
+        if connected "$mac"; then conns+=(1); else conns+=(0); fi
+    done < <(bluetoothctl $* 2>/dev/null)
+
+    actidx=""
+    for j in "${!macs[@]}"; do
+        [ "${conns[$j]}" = 1 ] && actidx="${actidx:+$actidx,}$((base + j))"
+    done
+    [ -n "$actidx" ] && printf '\0active\x1f%s\n' "$actidx"
+
+    for j in "${!macs[@]}"; do
+        if [ "${conns[$j]}" = 1 ]; then mark="* "; else mark="  "; fi
+        printf '%s%s\0info\x1f%s\n' "$mark" "${names[$j]}" "${macs[$j]}"
     done
 }
 
 emit_menu() {
     printf '\0prompt\x1fbluetooth\n'
     printf '[scan]\0info\x1f__scan__\n'
-    emit_devices devices Paired
+    emit_devices 1 devices Paired   # [scan] is row 0, so devices start at 1
 }
 
 emit_scan_menu() {
     printf '\0prompt\x1fbluetooth-scan\n'
-    emit_devices devices
+    emit_devices 0 devices          # no [scan] row, devices start at 0
 }
 
 # Connect, echoing bluetoothctl's combined output so callers can inspect the
