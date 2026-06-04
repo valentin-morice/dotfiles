@@ -64,14 +64,18 @@ prompt_and_connect() {
     for _ in $(seq 1 100); do pgrep -x rofi >/dev/null 2>&1 || break; sleep 0.05; done
 
     # The shared rofi theme is built for the multi-modi launcher: it pins the
-    # mode-switcher (tabs) into mainbox, drops the `message` element, and sets a
-    # "Search" placeholder — all wrong for a password box. Override per-prompt to
-    # show just the input + our message, and clear the placeholder.
-    overrides='mainbox { children: [ inputbar, message ]; } entry { placeholder: ""; }'
+    # mode-switcher (tabs) into mainbox, drops the `message` element, sets a
+    # "Search" placeholder, and a "❯" prompt — all wrong for a password box.
+    # Override per-prompt to show just the input + our message, clear the
+    # placeholder, and label the prompt "Password" (the SSID is the message line
+    # — embedding it in a sentence reads absurdly for networks named "Internet").
+    overrides='mainbox { children: [ inputbar, message ]; }
+               entry { placeholder: ""; }
+               prompt { str: "Password"; }'
 
-    mesg="Passphrase for $ssid"
+    mesg="$ssid"
     while :; do
-        pw=$(rofi -dmenu -password -p "wifi" -mesg "$mesg" -theme-str "$overrides" \
+        pw=$(rofi -dmenu -password -mesg "$mesg" -theme-str "$overrides" \
             </dev/null) || return 0
         [ -z "$pw" ] && return 0
         if err=$(nmcli -w 20 dev wifi connect "$ssid" password "$pw" 2>&1); then
@@ -83,7 +87,7 @@ prompt_and_connect() {
         # surface the error, and re-prompt (Esc cancels via the `|| return` above).
         nmcli con delete id "$ssid" >/dev/null 2>&1 || true
         notify "Connection failed" "$err"
-        mesg="Wrong password for $ssid — try again (Esc to cancel)"
+        mesg="$ssid — wrong password, try again (Esc to cancel)"
     done
 }
 
