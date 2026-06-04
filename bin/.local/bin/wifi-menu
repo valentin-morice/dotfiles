@@ -2,8 +2,12 @@
 # Rofi script-mode helper: connect to / scan for wifi via NetworkManager.
 #   no args         -> print the menu (active network marked '*', [scan] row)
 #   selection in $1 -> ROFI_INFO carries "<ssid>\t<security>"; act on it
-# A new secured network triggers a one-shot `rofi -dmenu -password` for the
-# passphrase — the only sub-rofi call, since script-mode can't mask input.
+# A new secured network needs a passphrase via `rofi -dmenu -password`, but that
+# can't run inline: while rofi runs us in script-mode it holds the keyboard grab,
+# so a nested rofi can't grab it and dies silently (the bug where selecting a
+# secured network just dropped). Instead we detach a `__pwprompt` re-exec of
+# ourselves and emit nothing, so the parent rofi closes and releases the grab;
+# the detached copy then prompts + connects, re-prompting on a wrong passphrase.
 # Modeled on the power-menu / profile-select script-mode convention.
 set -eu
 
@@ -27,7 +31,10 @@ emit_menu() {
         }'
 }
 
-connect() {
+# Try every path that needs no passphrase. Returns 0 when fully handled
+# (connected, or an open network that failed); returns 10 to signal the caller
+# that a passphrase prompt is required (which must be detached — see __pwprompt).
+try_connect() {
     ssid="$1"; sec="$2"
     # Existing saved profile: just bring it up.
     if nmcli -t -f NAME con show 2>/dev/null | grep -Fxq "$ssid"; then
@@ -36,23 +43,48 @@ connect() {
         else
             notify "Failed to connect" "$ssid"
         fi
-        return
+        return 0
     fi
     if [ "$sec" = "open" ] || [ "$sec" = "--" ] || [ -z "$sec" ]; then
         # Open (or unknown — try without a password first).
-        if nmcli dev wifi connect "$ssid" >/dev/null 2>&1; then
-            notify "Connected" "$ssid"; return
+        if nmcli -w 20 dev wifi connect "$ssid" >/dev/null 2>&1; then
+            notify "Connected" "$ssid"; return 0
         fi
-        [ "$sec" = "open" ] && { notify "Failed to connect" "$ssid"; return; }
+        [ "$sec" = "open" ] && { notify "Failed to connect" "$ssid"; return 0; }
     fi
-    pw=$(rofi -dmenu -password -p "$ssid" -mesg "Passphrase" -lines 0 </dev/null) || return
-    [ -z "$pw" ] && return
-    if nmcli dev wifi connect "$ssid" password "$pw" >/dev/null 2>&1; then
-        notify "Connected" "$ssid"
-    else
-        notify "Failed to connect" "$ssid"
-    fi
+    return 10
 }
+
+# Prompt for a passphrase and connect, looping on failure. Runs detached (NOT in
+# rofi script-mode), so it is free to spawn its own rofi for the masked input.
+prompt_and_connect() {
+    ssid="$1"
+    # Wait for the script-mode rofi to exit and release the keyboard grab before
+    # we open our own rofi (up to ~5s); otherwise our prompt can't grab input.
+    for _ in $(seq 1 100); do pgrep -x rofi >/dev/null 2>&1 || break; sleep 0.05; done
+
+    mesg="Passphrase"
+    while :; do
+        pw=$(rofi -dmenu -password -p "$ssid" -mesg "$mesg" -lines 0 </dev/null) || return 0
+        [ -z "$pw" ] && return 0
+        if err=$(nmcli -w 20 dev wifi connect "$ssid" password "$pw" 2>&1); then
+            notify "Connected" "$ssid"
+            return 0
+        fi
+        # Failure is usually a wrong passphrase. nmcli leaves a half-created
+        # profile caching the bad secret, which would block a retry — delete it,
+        # surface the error, and re-prompt (Esc cancels via the `|| return` above).
+        nmcli con delete id "$ssid" >/dev/null 2>&1 || true
+        notify "Connection failed" "$err"
+        mesg="Wrong password? Try again — Esc to cancel"
+    done
+}
+
+# Detached re-exec entry point for the passphrase prompt.
+if [ "${1-}" = "__pwprompt" ]; then
+    prompt_and_connect "$2"
+    exit 0
+fi
 
 if [ "$#" -gt 0 ] && [ -n "$1" ]; then
     info="${ROFI_INFO-}"
@@ -71,7 +103,13 @@ if [ "$#" -gt 0 ] && [ -n "$1" ]; then
         # Typed entry (e.g. a hidden SSID): treat the text as the SSID.
         ssid="$1"; sec=""
     fi
-    connect "$ssid" "$sec"
+    rc=0
+    try_connect "$ssid" "$sec" || rc=$?
+    if [ "$rc" = 10 ]; then
+        # Needs a passphrase: detach so this script-mode invocation can exit and
+        # let rofi close (freeing the grab), then prompt + connect out of band.
+        setsid -f "$0" __pwprompt "$ssid" >/dev/null 2>&1 </dev/null
+    fi
     exit 0
 fi
 
