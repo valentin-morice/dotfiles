@@ -1,0 +1,63 @@
+/* waybar style — rendered by theme-render from the active palette.
+ * Reproduces the polybar look: flat (no rounding), text labels, semibold
+ * JetBrainsMono, accent-tinted focused workspace, muted inactive ones. */
+
+* {
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 0;
+}
+
+window#waybar {
+    background-color: ${THEME_bg};
+    color: ${THEME_fg};
+}
+
+/* Workspaces — flat blocks, accent fill on the focused one (label-focused). */
+#workspaces button {
+    padding: 0 11px;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    color: ${THEME_muted};
+    background-color: transparent;
+}
+#workspaces button:hover {
+    background-color: ${THEME_bg_alt2};
+    box-shadow: none;
+    text-shadow: none;
+}
+#workspaces button.visible {
+    color: ${THEME_fg};
+}
+#workspaces button.focused {
+    color: ${THEME_bg};
+    background-color: ${THEME_accent};
+}
+#workspaces button.urgent {
+    color: ${THEME_bg};
+    background-color: ${THEME_urgent};
+}
+
+/* Center + right modules (module-margin spacing, padding-right 2 on the bar). */
+#clock,
+#custom-mail,
+#pulseaudio,
+#network,
+#bluetooth,
+#battery,
+#tray {
+    padding: 0 9px;
+}
+#tray {
+    padding-right: 14px;
+}
+
+tooltip {
+    background-color: ${THEME_bg_alt2};
+    border: 1px solid ${THEME_border_med};
+}
+tooltip label {
+    color: ${THEME_fg};
+}

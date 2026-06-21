@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Bootstrap this dotfiles repo on a fresh Arch + i3 machine.
+# Bootstrap this dotfiles repo on a fresh Arch machine (sway/Wayland primary,
+# i3/X11 kept as a side-by-side fallback).
 #
 #   ./install.sh
 #
@@ -51,8 +52,16 @@ ok "Using AUR helper: $AUR"
 # --- packages -------------------------------------------------------------
 # Repo + AUR mixed; the helper sorts them out. --needed makes this idempotent.
 PACKAGES=(
-    # WM / desktop
-    i3-wm polybar rofi alacritty dunst picom conky redshift fastfetch feh
+    # Wayland / sway session  (satty, swaylock-effects are AUR)
+    # rofi 2.0+ (repo) has native Wayland upstream — the old rofi-wayland fork
+    # is no longer needed.
+    sway swaybg swayidle swaylock-effects waybar gammastep
+    grim slurp satty wl-clipboard jq
+    rofi xorg-xwayland xdg-desktop-portal-wlr
+    # X11 / i3 session — kept for the side-by-side fallback during migration
+    i3-wm polybar picom conky redshift feh
+    # WM-neutral desktop  (rofi-wayland above provides the rofi binary)
+    alacritty dunst fastfetch
     # shell / CLI
     zsh tmux stow zoxide fzf fd eza bat git-delta
     # TUIs / tray  (lazydocker, snixembed are AUR)
@@ -63,7 +72,7 @@ PACKAGES=(
     go github-cli
     # theming
     xsettingsd xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme
-    # lock / idle  (i3lock-color, xidlehook are AUR)
+    # lock / idle  (i3lock-color, xidlehook are AUR; X11 fallback path)
     xss-lock i3lock-color xidlehook xorg-xset
     # secrets / signing  (both AUR)
     1password 1password-cli
@@ -73,15 +82,23 @@ info "Installing ${#PACKAGES[@]} packages via $AUR (already-present ones are ski
 ok "Packages installed"
 
 # --- stow -----------------------------------------------------------------
-info "Stowing packages into \$HOME"
+# Packages are grouped: common/ (both sessions), x11/ (i3), wayland/ (sway).
+# We deploy all three so either session is selectable at the ly login screen
+# (side-by-side). --restow re-links cleanly on a re-run; one package per dir.
+# `common/bin` (personal ~/.local/bin helpers) is tracked but deliberately NOT
+# deployed here — enable it by hand with `stow -d common bin`.
+info "Stowing packages into \$HOME (common + x11 + wayland)"
 cd "$REPO"
-# --restow re-links cleanly on a re-run; one package per top-level dir.
-# `bin` (personal ~/.local/bin helper scripts) is tracked for version control
-# but deliberately NOT deployed here — enable it by hand with `stow bin`.
-pkgs=()
-for d in */; do [ "$d" = "bin/" ] || pkgs+=("$d"); done
-stow --restow --target="$HOME" -- "${pkgs[@]}"
-ok "Symlinks in place (skipped 'bin' — run 'stow bin' to deploy those helpers)"
+for group in common x11 wayland; do
+    pkgs=()
+    for d in "$group"/*/; do
+        name="$(basename "$d")"
+        [ "$group/$name" = "common/bin" ] && continue
+        pkgs+=("$name")
+    done
+    [ "${#pkgs[@]}" -gt 0 ] && stow --restow --dir="$group" --target="$HOME" -- "${pkgs[@]}"
+done
+ok "Symlinks in place (skipped 'common/bin' — run 'stow -d common bin' to deploy those helpers)"
 
 # --- git identity (the gitconfig-symlink fixup) ---------------------------
 # ~/.gitconfig is itself tracked + symlinked here, so a history rewrite (rebase)
@@ -101,7 +118,7 @@ if [ -d "$REPO/.git" ]; then
 fi
 
 # --- conky mail helper: secret scaffold + build ---------------------------
-imap_env="$HOME/.config/conky/imap.env"
+imap_env="$HOME/.config/imap/imap.env"
 if [ ! -f "$imap_env" ]; then
     info "Scaffolding $imap_env (gitignored secret — edit it before use)"
     mkdir -p "$(dirname "$imap_env")"
@@ -115,13 +132,13 @@ else
     ok "imap.env already present — left untouched"
 fi
 
-imap_src="$HOME/.config/conky/imap"
+imap_src="$HOME/.config/imap"
 if [ -d "$imap_src" ]; then
-    info "Building imap-daemon (the conky mail backend)"
+    info "Building imap-daemon (the shared mail backend)"
     # The Go module builds the daemon that writes /tmp/imap-$USER.txt; the
-    # conky-mail-label / conky-mail-subject wrappers (in the `conky` package,
-    # auto-stowed) just read that file. The daemon is run via the imap.service
-    # user unit (systemd package).
+    # waybar custom/mail module (waybar-mail) and conky's conky-mail-label /
+    # conky-mail-subject wrappers just read that file. The daemon is run via the
+    # imap.service user unit (systemd package).
     ( cd "$imap_src" && go build -o "$HOME/.local/bin/imap-daemon" )
     ok "imap-daemon built to ~/.local/bin/"
 fi
@@ -153,9 +170,9 @@ ${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
 
   • Wallpaper   — drop one under ~/Pictures/Wallpapers/ (path is set per-palette
                   in ~/.config/theme/palettes/*.sh).
-  • IMAP creds  — edit ~/.config/conky/imap.env, then start the mail daemon:
+  • IMAP creds  — edit ~/.config/imap/imap.env, then start the mail daemon:
                   systemctl --user enable --now imap.service
-  • bin helpers — \`stow bin\` to deploy the personal ~/.local/bin scripts
+  • bin helpers — \`stow -d common bin\` to deploy the personal ~/.local/bin scripts
                   (volume/mic/brightness notifiers, clipboard notifier +
                   history browser, rofi power-profile / power menu pickers).
                   Conky's own helpers are already deployed with the conky
@@ -163,6 +180,8 @@ ${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
   • Audio       — pactl volume keys need a PulseAudio-compatible server
                   (e.g. pipewire-pulse); not auto-installed to avoid conflicts.
   • Optional    — nvm, bun, and Oh My Zsh each have their own installers.
-  • Log out/in  — so the Qt portal env (QT_QPA_PLATFORMTHEME) and the xsettingsd
-                  / xdg-desktop-portal autostarts take effect.
+  • Session     — pick "sway" at the ly login screen for the Wayland session
+                  (or "i3" for the X11 fallback). Both are themed.
+  • Log out/in  — so the Qt portal env (QT_QPA_PLATFORMTHEME) and the
+                  xdg-desktop-portal autostarts take effect.
 EOF
