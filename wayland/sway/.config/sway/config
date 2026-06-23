@@ -142,10 +142,12 @@ bindsym $mod+Escape exec ~/.config/rofi/launch.sh -show power-menu
 for_window [app_id="netmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
 for_window [app_id="btmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
 
-# Force Firefox pop-up windows (print/open-file dialogs, JS window.open, etc.)
+# Force browser pop-up windows (print/open-file dialogs, JS window.open, etc.)
 # to float. In-content pop-ups drawn inside the page can't be matched here.
 for_window [app_id="firefox" window_type="dialog"] floating enable
 for_window [app_id="firefox" window_role="pop-up"] floating enable
+for_window [app_id="chromium" window_type="dialog"] floating enable
+for_window [app_id="chromium" window_role="pop-up"] floating enable
 
 # Screenshots (grim + slurp + satty)
 bindsym Print exec ~/.local/bin/screenshot region
