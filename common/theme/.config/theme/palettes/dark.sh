@@ -47,13 +47,19 @@ export THEME_border_unfocused=#222222
 export THEME_border_med=#444444
 export THEME_urgent_dark=#900000
 
-# Bare (no #) forms for conky lua string fields
+# Bare (no #) forms for conky lua string fields and fuzzel's RRGGBBAA colours
+# (fuzzel.ini.tmpl appends an "ff" alpha to each).
 export THEME_fg_bare=ffffff
 export THEME_bg_bare=0d0d0d
 export THEME_accent_bare=5294e2
 export THEME_secondary_bare=e0a552
 export THEME_muted_bare=888888
 export THEME_urgent_bare=ff5555
+# Extra bare forms consumed by fuzzel (mirror THEME_bg_sel/fg_soft/muted_dim/border)
+export THEME_bg_sel_bare=1c1c1c
+export THEME_fg_soft_bare=d4d4d4
+export THEME_muted_dim_bare=6e6e6e
+export THEME_border_bare=1f1f1f
 
 # RGB components for the conky cairo border (matches THEME_border_med)
 export THEME_border_r=0x44
