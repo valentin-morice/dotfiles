@@ -53,11 +53,14 @@ ok "Using AUR helper: $AUR"
 # Repo + AUR mixed; the helper sorts them out. --needed makes this idempotent.
 PACKAGES=(
     # Wayland / sway session  (satty, swaylock-effects are AUR)
-    # rofi 2.0+ (repo) has native Wayland upstream — the old rofi-wayland fork
-    # is no longer needed.
+    # fuzzel is the sway launcher; rofi 2.0+ (repo, native Wayland) stays for the
+    # i3/X11 fallback — launch.sh dispatches between them by $WAYLAND_DISPLAY.
     sway swaybg swayidle swaylock-effects waybar gammastep
-    grim slurp satty wl-clipboard jq
+    grim slurp satty wl-clipboard jq fuzzel
     rofi xorg-xwayland xdg-desktop-portal-wlr
+    # Network / Bluetooth TUIs (replaced the rofi wifi/bluetooth menus; opened in
+    # a floating terminal from $mod+n / $mod+b). bluetuith is AUR.
+    networkmanager bluetuith
     # X11 / i3 session — kept for the side-by-side fallback during migration
     i3-wm polybar picom conky redshift feh
     # WM-neutral desktop  (rofi-wayland above provides the rofi binary)
@@ -174,7 +177,8 @@ ${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
                   systemctl --user enable --now imap.service
   • bin helpers — \`stow -d common bin\` to deploy the personal ~/.local/bin scripts
                   (volume/mic/brightness notifiers, clipboard notifier +
-                  history browser, rofi power-profile / power menu pickers).
+                  history browser, the rofi script-modi power-profile / power /
+                  clipboard pickers, and their fuzzel-* equivalents for sway).
                   Conky's own helpers are already deployed with the conky
                   package.
   • Audio       — pactl volume keys need a PulseAudio-compatible server
