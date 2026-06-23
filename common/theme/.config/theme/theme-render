@@ -46,6 +46,15 @@ render gtk3.settings.ini.tmpl         "$HOME/.config/gtk-3.0/settings.ini"
 render gtk4.settings.ini.tmpl         "$HOME/.config/gtk-4.0/settings.ini"
 render xsettingsd.conf.tmpl           "$HOME/.config/xsettingsd/xsettingsd.conf"
 
+# bluetuith (Bluetooth TUI). Rendered as a whole file rather than patched in
+# place (cf. VSCodium below): it renders via tcell in truecolor, so named colors
+# are fixed RGB and can't follow the terminal palette, and it rewrites its own
+# config in koanf's HJSON style (unquoted, no commas) on exit, which jq can't
+# parse. The template carries the keybindings too, so they're version-controlled
+# here (like Claude's settings.json). bluetuith reads strict JSON fine (it's a
+# subset of HJSON). It has no live theme reload, so colors apply on next launch.
+render bluetuith.conf.tmpl            "$HOME/.config/bluetuith/bluetuith.conf"
+
 # flameshot.ini is GUI-rewritten; edit the two color keys in place.
 flameshot_ini="$HOME/.config/flameshot/flameshot.ini"
 if [ -f "$flameshot_ini" ]; then

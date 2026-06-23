@@ -51,7 +51,7 @@ display-agnostic: it writes `/tmp/imap-$USER.txt`, which both the Wayland
 `waybar` `custom/mail` module and the X11 `conky` mail widget just read. So it
 lives in `common/` and a Wayland-only setup needs nothing from `x11/`.
 
-`dunst`, `fastfetch`, and `picom` have no package of their own — their configs are *generated* by `theme-render` from the active palette, not stowed. The `sway` colours (`colors.conf`), and the whole `waybar` `config` + `style.css`, are likewise theme-rendered (gitignored). Each package ships the `~/.local/bin` helpers its config calls: `sway` → `idle.sh` (swayidle) + `screenshot`; `waybar` → `launch.sh` + `waybar-mail`. (`verify-wayland`, a one-off migration self-test, lives in the opt-in `bin` package.)
+`dunst`, `fastfetch`, `picom`, and `bluetuith` have no package of their own — their configs are *generated* by `theme-render` from the active palette, not stowed. (`bluetuith` renders in truecolor so it can't follow the terminal palette, and it rewrites its config in HJSON on exit; the template carries its keybindings too, and it picks up colours on next launch.) The `sway` colours (`colors.conf`), and the whole `waybar` `config` + `style.css`, are likewise theme-rendered (gitignored). Each package ships the `~/.local/bin` helpers its config calls: `sway` → `idle.sh` (swayidle) + `screenshot`; `waybar` → `launch.sh` + `waybar-mail`. (`verify-wayland`, a one-off migration self-test, lives in the opt-in `bin` package.)
 
 Packages bundle their own `~/.local/bin` helpers where the config needs them: `conky` ships `conky-bar`, `conky-mail-label`, `conky-mail-subject`, `cpu-temp` (its widgets call these), and `theme` ships `theme-switch`/`theme-render`/`lock`. These deploy automatically with their package.
 
