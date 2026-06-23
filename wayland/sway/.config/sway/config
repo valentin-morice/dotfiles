@@ -39,8 +39,9 @@ input "type:keyboard" {
 # whole desktop. Add `output <name> { ... }` here only if a display needs a
 # mode/scale/position.
 
-# Wallpaper: theme-render sets the per-theme wallpaper via `swaymsg output '*' bg`
-# (see the exec of theme-render below), so no static bg here.
+# Wallpaper: awww-daemon (a swww fork) owns the background (started in Autostart
+# below); theme-render sets the per-theme image with a cross-fade. swaybg can't
+# fade (draws once and exits, flashing black on swap), so awww replaces it.
 
 # Hide the pointer after 3s idle (replaces unclutter --timeout 3).
 seat * hide_cursor 3000
@@ -49,8 +50,14 @@ seat * hide_cursor 3000
 # XDG autostart .desktop files (1Password, Ferdium, etc.).
 exec dex --autostart --environment sway
 
-# Wallpaper + per-tool colors for the active theme (renders configs and sets the
-# wallpaper via swaymsg without reloading sway, so it's safe inside exec_always).
+# Wallpaper daemon — owns the background and cross-fades between images. Started
+# once (exec, not exec_always, so it survives reloads); theme-render sets the
+# actual image once the daemon is up.
+exec awww-daemon
+
+# Wallpaper image + per-tool colors for the active theme (renders configs and
+# fades to the wallpaper via awww without reloading sway, so it's safe inside
+# exec_always).
 exec_always ~/.local/bin/theme-render --no-reload
 
 # Status bar.
@@ -116,14 +123,24 @@ bindsym $mod+d exec ~/.config/rofi/launch.sh -show drun
 # Clipboard history (entries recorded by clip-notify)
 bindsym $mod+c exec ~/.config/rofi/launch.sh -show clipboard
 
-# Wifi menu (connect / rescan via NetworkManager)
-bindsym $mod+n exec ~/.config/rofi/launch.sh -show wifi
+# Window switcher (fuzzel) and CPU power-profile picker. These were tab-only in
+# the rofi launcher; fuzzel has no mode-switcher, so they get their own binds.
+# $mod+w (was "layout tabbed") is the window switcher's mnemonic home.
+bindsym $mod+w exec ~/.config/rofi/launch.sh -show window
+bindsym $mod+p exec ~/.config/rofi/launch.sh -show profile
 
-# Bluetooth menu (connect / scan via bluetoothctl)
-bindsym $mod+b exec ~/.config/rofi/launch.sh -show bluetooth
+# Wi-Fi (nmtui) and Bluetooth (bluetuith) in a floating terminal — replaced the
+# rofi wifi/bluetooth script-modi (see for_window rules below).
+bindsym $mod+n exec alacritty --app-id netmenu-float -e nmtui
+bindsym $mod+b exec alacritty --app-id btmenu-float -e bluetuith
 
 # Power menu (lock / logout / suspend / reboot / shutdown)
 bindsym $mod+Escape exec ~/.config/rofi/launch.sh -show power-menu
+
+# Float + centre the network/bluetooth TUI terminals so they read like the old
+# pop-up menus rather than tiling into the layout.
+for_window [app_id="netmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
+for_window [app_id="btmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
 
 # Screenshots (grim + slurp + satty)
 bindsym Print exec ~/.local/bin/screenshot region
@@ -166,9 +183,10 @@ bindsym $mod+v split v
 # enter fullscreen mode for the focused container
 bindsym $mod+f fullscreen toggle
 
-# change container layout (stacked, tabbed, toggle split)
+# change container layout (stacked, toggle split). $mod+w used to be "layout
+# tabbed" but is now the fuzzel window switcher; toggle tabbed via $mod+e cycling
+# or "layout tabbed" on demand if ever needed.
 bindsym $mod+s layout stacking
-bindsym $mod+w layout tabbed
 bindsym $mod+e layout toggle split
 
 # toggle tiling / floating

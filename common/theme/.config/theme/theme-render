@@ -65,9 +65,25 @@ if [ -f "$flameshot_ini" ]; then
 fi
 
 # Wallpaper — applied even with --no-reload (the WM calls this at startup).
-# Wayland: set it on every output via swaymsg. X11: feh.
+# Wayland: awww (a swww fork) owns the background via a persistent daemon, so the
+# image swaps with no black frame even with an instant transition — swaybg can't
+# (it draws once and exits, so sway drops the old surface before the new paints,
+# flashing black). We use `--transition-type none` for a clean instant switch
+# (the cross-fade lives in waybar's CSS instead). awww-daemon is started from the
+# sway config; we also ensure it here (first install / not yet ready). awww has
+# no `query` subcommand, so we detect readiness by retrying `awww img` until the
+# daemon's socket answers (~2s cap). If awww isn't installed, fall back to
+# swaybg via swaymsg. X11: feh.
 if [ -n "${THEME_wallpaper:-}" ]; then
-    if [ -n "${SWAYSOCK:-}" ] && command -v swaymsg >/dev/null; then
+    if [ -n "${SWAYSOCK:-}" ] && command -v awww >/dev/null 2>&1; then
+        if ! pgrep -x awww-daemon >/dev/null 2>&1; then
+            awww-daemon >/dev/null 2>&1 &
+        fi
+        i=0
+        until awww img "$THEME_wallpaper" --transition-type none >/dev/null 2>&1; do
+            i=$((i + 1)); [ "$i" -ge 40 ] && break; sleep 0.05
+        done
+    elif [ -n "${SWAYSOCK:-}" ] && command -v swaymsg >/dev/null; then
         swaymsg output '*' bg "$THEME_wallpaper" fill >/dev/null 2>&1 || true
     elif command -v feh >/dev/null; then
         feh --no-fehbg --bg-fill "$THEME_wallpaper"
