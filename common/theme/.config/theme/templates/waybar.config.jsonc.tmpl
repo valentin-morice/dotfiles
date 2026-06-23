@@ -1,18 +1,34 @@
 // waybar config — rendered by theme-render from the active palette.
-// The accent-coloured text prefixes (WIFI/BT/VOL/BAT/MAIL) use pango <span>
-// with the theme accent, so the whole file is theme-dependent (hence rendered,
-// not stowed — like dunst/picom). Layout/spacing live in style.css.
+// The accent/muted text prefixes (WIFI/BT/VOL/BAT/MAIL) use pango <span> with
+// the FROZEN colours (THEME_accent_fixed/THEME_muted_fixed), which are equal in
+// every theme — so this rendered file is byte-identical between light and dark.
+// Deliberate: per-theme colour lives entirely in style.css, which waybar
+// live-applies via reload_style_on_change (below) with no reset/flicker. The
+// config has no in-place reload, so anything theme-varying here would force the
+// flickery SIGUSR2 reset. Layout/spacing live in style.css.
 {
+    // Watch style.css and hot-apply CSS changes in place (no widget reset) —
+    // this is what makes a theme switch recolour smoothly instead of flickering.
+    "reload_style_on_change": true,
+
     "layer": "top",
     "position": "bottom",
     "height": 29,
-    "modules-left": ["sway/workspaces"],
+    "modules-left": ["sway/workspaces", "sway/mode"],
     "modules-center": ["clock"],
     "modules-right": ["custom/mail", "pulseaudio", "network", "bluetooth", "battery", "tray"],
 
     "sway/workspaces": {
         "disable-scroll": true,
         "format": "{name}"
+    },
+
+    // Binding-mode indicator (e.g. "resize"); auto-hidden in the default mode,
+    // mirroring polybar's internal/i3 mode label. Accent-coloured like the
+    // other text labels, hence rendered from the palette.
+    "sway/mode": {
+        "format": "<span foreground='${THEME_accent_fixed}'>{}</span>",
+        "tooltip": false
     },
 
     "clock": {
@@ -28,15 +44,15 @@
     },
 
     "pulseaudio": {
-        "format": "<span foreground='${THEME_accent}'>VOL</span> {volume}%",
-        "format-muted": "<span foreground='${THEME_accent}'>VOL</span> <span foreground='${THEME_muted}'>MUTED</span>"
+        "format": "<span foreground='${THEME_accent_fixed}'>VOL</span> {volume}%",
+        "format-muted": "<span foreground='${THEME_accent_fixed}'>VOL</span> <span foreground='${THEME_muted_fixed}'>MUTED</span>"
     },
 
     "network": {
         "interval": 5,
-        "format-wifi": "<span foreground='${THEME_accent}'>WIFI</span> {essid}",
-        "format-ethernet": "<span foreground='${THEME_accent}'>ETH</span> {ifname}",
-        "format-disconnected": "<span foreground='${THEME_accent}'>WIFI</span> <span foreground='${THEME_muted}'>OFFLINE</span>",
+        "format-wifi": "<span foreground='${THEME_accent_fixed}'>WIFI</span> {essid}",
+        "format-ethernet": "<span foreground='${THEME_accent_fixed}'>ETH</span> {ifname}",
+        "format-disconnected": "<span foreground='${THEME_accent_fixed}'>WIFI</span> <span foreground='${THEME_muted_fixed}'>OFFLINE</span>",
         "tooltip-format-wifi": "{essid} ({signalStrength}%)",
         "tooltip-format-ethernet": "{ifname}",
         "tooltip-format-disconnected": "disconnected",
@@ -44,10 +60,10 @@
     },
 
     "bluetooth": {
-        "format": "<span foreground='${THEME_accent}'>BT</span> ON",
-        "format-off": "<span foreground='${THEME_accent}'>BT</span> <span foreground='${THEME_muted}'>OFF</span>",
-        "format-disabled": "<span foreground='${THEME_accent}'>BT</span> <span foreground='${THEME_muted}'>OFF</span>",
-        "format-connected": "<span foreground='${THEME_accent}'>BT</span> {device_alias}",
+        "format": "<span foreground='${THEME_accent_fixed}'>BT</span> ON",
+        "format-off": "<span foreground='${THEME_accent_fixed}'>BT</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
+        "format-disabled": "<span foreground='${THEME_accent_fixed}'>BT</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
+        "format-connected": "<span foreground='${THEME_accent_fixed}'>BT</span> {device_alias}",
         "tooltip-format-connected": "{device_alias}",
         "on-click": "alacritty -e bluetuith"
     },
@@ -56,10 +72,9 @@
         "bat": "BAT0",
         "adapter": "AC",
         "interval": 5,
-        "states": { "full": 98 },
-        "format": "<span foreground='${THEME_accent}'>BAT</span> {capacity}%",
-        "format-charging": "<span foreground='${THEME_accent}'>BAT</span> {capacity}%+",
-        "format-full": "<span foreground='${THEME_accent}'>BAT</span> <span foreground='${THEME_muted}'>FULL</span>"
+        "format": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%",
+        "format-charging": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%+",
+        "format-full": "<span foreground='${THEME_accent_fixed}'>BAT</span> <span foreground='${THEME_muted_fixed}'>FULL</span>"
     },
 
     "tray": {

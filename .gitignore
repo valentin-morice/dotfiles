@@ -14,3 +14,7 @@ wayland/waybar/.config/waybar/config
 wayland/waybar/.config/waybar/style.css
 common/alacritty/.config/alacritty/colors.toml
 common/rofi/.config/rofi/colors.rasi
+
+# Launch-time style overlay written by waybar/launch.sh (@imports style.css);
+# waybar watches it for flicker-free live recolour on theme switch.
+wayland/waybar/.config/waybar/style-live.css

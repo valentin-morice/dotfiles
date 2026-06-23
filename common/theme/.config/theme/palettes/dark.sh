@@ -19,6 +19,15 @@ export THEME_accent=#5294e2
 export THEME_secondary=#e0a552
 export THEME_urgent=#ff5555
 
+# Frozen prefix colours — IDENTICAL across light/dark by design. The waybar
+# accent/muted text prefixes (VOL/WIFI/BT/BAT/MAIL + the MUTED/OFFLINE/… state
+# words) live in the *config*, which has no flicker-free in-place reload. Pinning
+# them to one cross-theme value keeps the rendered config byte-identical between
+# themes, so a theme switch only rewrites the CSS — which waybar live-applies via
+# reload_style_on_change with no reset. Mid-blue / mid-grey read on both grounds.
+export THEME_accent_fixed=#3a7bc8
+export THEME_muted_fixed=#808488
+
 # Terminal ANSI 16-color palette (consumed by alacritty.colors.toml.tmpl).
 # black stays dark and white stays light in BOTH themes so palette-driven TUIs
 # (nmtui/newt, bluetooth TUIs) that paint with ANSI 0/7 stay legible; the six

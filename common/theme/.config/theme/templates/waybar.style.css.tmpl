@@ -12,6 +12,13 @@
 window#waybar {
     background-color: ${THEME_bg};
     color: ${THEME_fg};
+    /* Cross-fade the bar surface on theme switch (reload_style_on_change applies
+     * the new palette live, GTK3 honours the transition), 0.5s. The wallpaper
+     * itself swaps instantly (awww --transition-type none) — only the bar fades.
+     * Scoped to the bar surface — a transition on #workspaces button would also
+     * smear the focused-accent block during normal workspace navigation, not
+     * just on theme switch. */
+    transition: background-color 500ms ease, color 500ms ease;
 }
 
 /* Workspaces — flat blocks, accent fill on the focused one (label-focused). */
@@ -40,6 +47,11 @@ window#waybar {
     background-color: ${THEME_urgent};
 }
 
+/* Binding-mode indicator — same horizontal padding as a workspace block. */
+#mode {
+    padding: 0 11px;
+}
+
 /* Center + right modules (module-margin spacing, padding-right 2 on the bar). */
 #clock,
 #custom-mail,
@@ -57,7 +69,9 @@ window#waybar {
 tooltip {
     background-color: ${THEME_bg_alt2};
     border: 1px solid ${THEME_border_med};
+    transition: background-color 500ms ease, border-color 500ms ease;
 }
 tooltip label {
     color: ${THEME_fg};
+    transition: color 500ms ease;
 }

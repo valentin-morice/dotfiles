@@ -20,6 +20,12 @@ export THEME_accent=#2f6fb3
 export THEME_secondary=#b5790a
 export THEME_urgent=#c8332b
 
+# Frozen prefix colours — IDENTICAL across light/dark by design (see dark.sh for
+# the rationale: keeps the rendered waybar *config* byte-identical between themes
+# so a switch only touches the CSS, which reloads live without a flicker/reset).
+export THEME_accent_fixed=#3a7bc8
+export THEME_muted_fixed=#808488
+
 # Terminal ANSI 16-color palette (consumed by alacritty.colors.toml.tmpl).
 # black stays dark and white stays light in BOTH themes so palette-driven TUIs
 # (nmtui/newt, bluetooth TUIs) that paint with ANSI 0/7 stay legible; the six

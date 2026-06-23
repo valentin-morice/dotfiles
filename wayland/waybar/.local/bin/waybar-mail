@@ -4,12 +4,15 @@
 # and emits waybar JSON. The IMAP backend (imap-daemon + imap.service) is
 # unchanged and display-agnostic, so the mail alert survives the migration 1:1.
 #
-# The "MAIL" prefix is accent-coloured to match the bar's other text labels;
-# the accent is sourced live from the active theme so it tracks theme-switch.
+# The "MAIL" prefix is accent-coloured to match the bar's other text labels. It
+# uses the FROZEN accent (THEME_accent_fixed, equal across themes) like the rest
+# of the config-side prefixes, so the JSON is theme-independent and a theme
+# switch needs no module re-exec — only style.css recolours, live.
 state="/tmp/imap-$USER.txt"
 
 # shellcheck disable=SC1091
-. "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_accent="#5294e2"
+. "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_accent_fixed="#3a7bc8"
+THEME_accent_fixed="${THEME_accent_fixed:-#3a7bc8}"
 
 c=$(awk 'NR==1' "$state" 2>/dev/null)
 subj=$(awk 'NR==2' "$state" 2>/dev/null)
@@ -21,5 +24,5 @@ if [ -z "$c" ] || [ "$c" = "0" ]; then
     printf '{"text":"","class":"read"}\n'
 else
     printf '{"text":"<span foreground=\\"%s\\">MAIL</span> %s","tooltip":"%s","class":"unread"}\n' \
-        "$THEME_accent" "$c" "$(esc "$subj")"
+        "$THEME_accent_fixed" "$c" "$(esc "$subj")"
 fi

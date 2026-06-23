@@ -113,11 +113,17 @@ if [ "$reload" -eq 1 ]; then
     setsid dunst >/dev/null 2>&1 &
 
     if [ -n "${SWAYSOCK:-}" ]; then
-        # Wayland session. `swaymsg reload` re-applies the rendered client.*
-        # border colours; the bar's pango prefixes are theme-coloured so it's a
-        # full restart, not a CSS SIGUSR2. (No xsettingsd: the xdg settings
-        # portal drives live GTK3/Qt recolour from the gsettings call above.)
-        swaymsg reload >/dev/null
+        # Wayland session. Apply the per-theme border colours LIVE via swaymsg
+        # (client.* are runtime-settable, taking effect on all current/future
+        # windows) instead of `swaymsg reload`. Reload would re-read the config —
+        # but it also cycles swaybg, blanking the wallpaper to black for ~250ms,
+        # which is the flash we're avoiding. The wallpaper itself was already
+        # swapped gap-free by the `swaymsg output bg` above; launch.sh bumps
+        # waybar's watched style overlay for the flicker-free CSS recolour. So a
+        # theme switch touches nothing that resets — no reload, no flash. (No
+        # xsettingsd: the xdg settings portal drives live GTK3/Qt recolour from
+        # the gsettings call above.)
+        swaymsg "$(grep -E '^[[:space:]]*client\.' "$HOME/.config/sway/colors.conf" | paste -sd ';')" >/dev/null 2>&1 || true
         "$HOME/.config/waybar/launch.sh"
     else
         # X11 session.
