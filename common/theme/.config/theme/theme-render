@@ -38,6 +38,7 @@ render polybar.colors.ini.tmpl        "$HOME/.config/polybar/colors.ini"
 render alacritty.colors.toml.tmpl     "$HOME/.config/alacritty/colors.toml"
 render rofi.colors.rasi.tmpl          "$HOME/.config/rofi/colors.rasi"
 render fuzzel.ini.tmpl                "$HOME/.config/fuzzel/fuzzel.ini"
+render zathurarc.tmpl                 "$HOME/.config/zathura/zathurarc"
 render conky.colors.lua.tmpl          "$HOME/.config/conky/colors.lua"
 render dunstrc.tmpl                   "$HOME/.config/dunst/dunstrc"
 render fastfetch.config.jsonc.tmpl    "$HOME/.config/fastfetch/config.jsonc"
@@ -127,6 +128,19 @@ if [ "$reload" -eq 1 ]; then
     # common to both sessions.
     killall dunst 2>/dev/null || true
     setsid dunst >/dev/null 2>&1 &
+
+    # zathura (PDF reader, both sessions) reads zathurarc only at startup and
+    # doesn't watch the file — but its D-Bus interface re-sources it live, so
+    # every `set` (UI chrome + recolor colours) re-applies with no restart or
+    # flash, like VSCodium. Push SourceConfig to each running instance; each
+    # owns the well-known name org.pwmt.zathura.PID-<pid>.
+    if command -v busctl >/dev/null; then
+        busctl --user list 2>/dev/null | awk '/^org\.pwmt\.zathura\.PID-/{print $1}' |
+            while read -r zname; do
+                busctl --user call "$zname" /org/pwmt/zathura \
+                    org.pwmt.zathura SourceConfig >/dev/null 2>&1 || true
+            done
+    fi
 
     if [ -n "${SWAYSOCK:-}" ]; then
         # Wayland session. Apply the per-theme border colours LIVE via swaymsg
