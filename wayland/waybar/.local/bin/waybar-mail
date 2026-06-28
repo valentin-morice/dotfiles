@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# waybar custom/mail module — the conky mail widget's replacement. Reads the
+# state file the imap-daemon writes (line 1 = unread count, line 2 = subject)
+# and emits waybar JSON. The IMAP backend (imap-daemon + imap.service) is
+# unchanged and display-agnostic, so the mail alert survives the migration 1:1.
+#
+# The "MAIL" prefix is accent-coloured to match the bar's other text labels. It
+# uses the FROZEN accent (THEME_accent_fixed, equal across themes) like the rest
+# of the config-side prefixes, so the JSON is theme-independent and a theme
+# switch needs no module re-exec — only style.css recolours, live.
+state="/tmp/imap-$USER.txt"
+
+# shellcheck disable=SC1091
+. "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_accent_fixed="#3a7bc8"
+THEME_accent_fixed="${THEME_accent_fixed:-#3a7bc8}"
+
+c=$(awk 'NR==1' "$state" 2>/dev/null)
+subj=$(awk 'NR==2' "$state" 2>/dev/null)
+
+# JSON-escape the tooltip (subjects can contain quotes/backslashes).
+esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+if [ -z "$c" ] || [ "$c" = "0" ]; then
+    printf '{"text":"","class":"read"}\n'
+else
+    printf '{"text":"<span foreground=\\"%s\\">MAIL</span> %s","tooltip":"%s","class":"unread"}\n' \
+        "$THEME_accent_fixed" "$c" "$(esc "$subj")"
+fi

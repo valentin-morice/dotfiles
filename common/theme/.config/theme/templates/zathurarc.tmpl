@@ -1,0 +1,75 @@
+# zathurarc — RENDERED by theme-render from this template into
+# ~/.config/zathura/zathurarc. Do NOT edit the generated file; edit this
+# template (layout/behaviour) or the palette (colours: palettes/{light,dark}.sh).
+#
+# zathura is the PDF reader (both sessions). It has no @include, so — like
+# fuzzel and dunst — the whole file is rendered rather than split into a colors
+# file. zathura doesn't watch the file, but theme-render pushes a live re-source
+# over D-Bus (SourceConfig) on switch, so colours recolour with no restart.
+# Recolour (document inversion) is OFF by default so figures render true; the
+# light/dark colours below are pre-wired to the palette, so toggling it with
+# "r" gives a theme-matched dark page. UI chrome always follows the theme.
+
+# --- Font / behaviour -------------------------------------------------------
+set font "JetBrainsMono Nerd Font 11"
+set selection-clipboard clipboard
+set adjust-open "best-fit"
+set window-title-basename true
+set statusbar-basename true
+set statusbar-home-tilde true
+set guioptions "s"
+set scroll-step 80
+set page-v-padding 2
+set page-h-padding 2
+
+# --- UI chrome (always applied) --------------------------------------------
+set default-bg          "${THEME_bg}"
+set default-fg          "${THEME_fg}"
+set statusbar-bg        "${THEME_bg_alt}"
+set statusbar-fg        "${THEME_fg_soft}"
+set inputbar-bg         "${THEME_bg_alt}"
+set inputbar-fg         "${THEME_fg}"
+
+set notification-bg     "${THEME_bg_alt}"
+set notification-fg     "${THEME_fg_soft}"
+set notification-error-bg   "${THEME_urgent_dark}"
+set notification-error-fg   "${THEME_fg}"
+set notification-warning-bg "${THEME_secondary}"
+set notification-warning-fg "${THEME_bg}"
+
+set completion-bg            "${THEME_bg_alt}"
+set completion-fg            "${THEME_fg_soft}"
+set completion-group-bg      "${THEME_bg_alt2}"
+set completion-group-fg      "${THEME_muted}"
+set completion-highlight-bg  "${THEME_bg_sel}"
+set completion-highlight-fg  "${THEME_accent}"
+
+set index-bg            "${THEME_bg_alt}"
+set index-fg            "${THEME_fg_soft}"
+set index-active-bg     "${THEME_bg_sel}"
+set index-active-fg     "${THEME_accent}"
+
+set render-loading-bg   "${THEME_bg}"
+set render-loading-fg   "${THEME_muted}"
+
+# Search highlights are left at zathura's translucent defaults: this build's
+# colour parser rejects #RRGGBBAA (8-digit hex) and only takes #RRGGBB or
+# rgba(r,g,b,a) — and an opaque themed fill would hide the matched text. The
+# palette is hex (no decimal channels for rgba), so theming these isn't worth a
+# palette change; the defaults are readable on both light and dark grounds.
+
+# --- Recolour (toggle with "r") --------------------------------------------
+# Off by default; colours wired to the palette so a toggle matches the theme.
+set recolor false
+set recolor-keephue true
+set recolor-lightcolor  "${THEME_bg}"
+set recolor-darkcolor   "${THEME_fg_soft}"
+
+# --- Keybindings ------------------------------------------------------------
+map r recolor
+map R rotate
+map <C-i> recolor
+map u scroll half-up
+map d scroll half-down
+map D toggle_page_mode
+map i toggle_index

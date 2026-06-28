@@ -1,0 +1,23 @@
+#!/bin/sh
+# Fuzzel front-end for switching the power-profiles-daemon profile (Wayland/sway
+# path; the i3/X11 path uses profile-select as a rofi script-modus). The active
+# profile is marked '* ' like the rofi version; fuzzel can't tint a single row,
+# so the accent tint is dropped (the marker remains).
+set -eu
+
+cur=$(powerprofilesctl get 2>/dev/null || true)
+
+# powerprofilesctl list prints stanzas like "* performance:" / "  balanced:".
+profiles=$(powerprofilesctl list | awk '
+    /^[[:space:]]*\*?[[:space:]]*[a-z-]+:$/ {
+        name = $0; gsub(/[*:[:space:]]/, "", name); print name
+    }')
+
+menu=$(printf '%s\n' "$profiles" | while IFS= read -r p; do
+    [ -z "$p" ] && continue
+    if [ "$p" = "$cur" ]; then printf '* %s\n' "$p"; else printf '  %s\n' "$p"; fi
+done)
+
+sel=$(printf '%s\n' "$menu" | fuzzel --dmenu --prompt 'profile ❯ ') || exit 0
+sel=${sel#\* }; sel=${sel#  }    # strip the mark from the display text
+[ -n "$sel" ] && powerprofilesctl set "$sel"

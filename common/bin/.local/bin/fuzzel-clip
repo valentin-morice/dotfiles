@@ -1,0 +1,20 @@
+#!/bin/sh
+# Fuzzel front-end for the clipboard history that clip-notify records (Wayland/
+# sway path; the i3/X11 path uses clip-menu as a rofi script-modus). Same store
+# format: $STORE/index holds "hash<TAB>one-line-preview" lines, most-recent
+# first, with the full content in $STORE/<hash>.
+#
+# rofi carried the hash out-of-band via \0info; fuzzel can't, so we show only
+# the previews and map the chosen row back to its hash by LINE INDEX (exact —
+# no risk of two identical previews colliding) via fuzzel --dmenu --index.
+set -eu
+
+STORE="${XDG_CACHE_HOME:-$HOME/.cache}/clipboard"
+INDEX="$STORE/index"
+[ -f "$INDEX" ] || exit 0
+
+idx=$(cut -f2- "$INDEX" | fuzzel --dmenu --index --prompt 'clipboard ❯ ') || exit 0
+[ -n "$idx" ] || exit 0
+
+hash=$(awk -F'\t' -v n="$((idx + 1))" 'NR == n { print $1; exit }' "$INDEX")
+[ -n "$hash" ] && [ -f "$STORE/$hash" ] && wl-copy < "$STORE/$hash"

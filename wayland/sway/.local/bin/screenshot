@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Screenshot wrapper (grim + slurp + satty) — the Wayland replacement for the
+# flameshot bindings. Saves into ~/Pictures/Screenshots with a timestamp name.
+#
+#   screenshot region   region select, then open in satty to annotate  (Print)
+#   screenshot full      whole output(s) straight to a file            (Shift+Print)
+#   screenshot output    the focused output straight to a file         (Ctrl+Print)
+#
+# Requires: grim, slurp, satty, jq (output mode), wl-clipboard (satty copy).
+set -euo pipefail
+
+dir="$HOME/Pictures/Screenshots"
+mkdir -p "$dir"
+ts=$(date +%Y-%m-%d_%H-%M-%S)
+out="$dir/screenshot_$ts.png"
+
+case "${1:-region}" in
+    region)
+        geom=$(slurp) || exit 0   # Esc / no selection -> cancel cleanly
+        grim -g "$geom" - | satty --filename - --output-filename "$out" --copy-command wl-copy
+        ;;
+    full)
+        grim "$out"
+        ;;
+    output)
+        name=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
+        grim -o "$name" "$out"
+        ;;
+    *)
+        echo "usage: screenshot [region|full|output]" >&2
+        exit 2
+        ;;
+esac

@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# Runtime 1:1 verification for the sway/Wayland migration. Run this INSIDE a
+# sway session (after ./install.sh + logging into "sway" at ly):
+#
+#     verify-wayland
+#
+# It mechanically checks each migrated feature against its i3/X11 counterpart
+# and prints PASS / WARN / FAIL. WARN = needs a human eyeball (e.g. tray icons);
+# FAIL = something is actually broken. Exit status is non-zero if anything FAILs.
+# Safe to re-run; the only side effect is a clipboard round-trip test.
+
+pass=0; warn=0; fail=0
+P() { printf '  \033[32mPASS\033[0m  %s\n' "$1"; pass=$((pass+1)); }
+W() { printf '  \033[33mWARN\033[0m  %s\n' "$1"; warn=$((warn+1)); }
+F() { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; fail=$((fail+1)); }
+H() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+
+have() { command -v "$1" >/dev/null 2>&1; }
+running() { pgrep -x "$1" >/dev/null 2>&1; }
+
+H "Session"
+if [ -n "${SWAYSOCK:-}" ] && swaymsg -t get_version >/dev/null 2>&1; then
+    P "sway is running ($(swaymsg -t get_version 2>/dev/null | jq -r .human_readable 2>/dev/null))"
+else
+    F "not inside a sway session (SWAYSOCK unset / swaymsg failed) — run this in sway"
+    echo; echo "Aborting: the rest only makes sense under sway."; exit 1
+fi
+[ "${XDG_SESSION_TYPE:-}" = wayland ] && P "XDG_SESSION_TYPE=wayland" || W "XDG_SESSION_TYPE=${XDG_SESSION_TYPE:-unset} (expected wayland)"
+case ":${XDG_CURRENT_DESKTOP:-}:" in
+    *:sway:*) P "XDG_CURRENT_DESKTOP contains sway (${XDG_CURRENT_DESKTOP}) — portal backend" ;;
+    *) W "XDG_CURRENT_DESKTOP=${XDG_CURRENT_DESKTOP:-unset} — GTK3/Qt live theming may not work (see plan §8/§10)" ;;
+esac
+
+H "Compositor / WM (plan §1)"
+running sway && P "sway process up" || F "sway process not found"
+have swaynag && P "swaynag present (exit dialog)" || F "swaynag missing"
+seatcfg=$(swaymsg -t get_seats 2>/dev/null | jq -r '.[0].name' 2>/dev/null)
+[ -n "$seatcfg" ] && P "seat present ($seatcfg) — hide_cursor active" || W "could not read seat"
+out=$(swaymsg -t get_outputs 2>/dev/null | jq -r '.[] | select(.active) | .name' 2>/dev/null | head -1)
+[ -n "$out" ] && P "active output: $out" || W "no active output reported"
+# sway doesn't report runtime-set bg in get_outputs, so check the swaybg process
+# theme-render spawns instead.
+if pgrep -x swaybg >/dev/null 2>&1; then
+    P "swaybg running (wallpaper set: $(pgrep -ax swaybg | grep -oE '[^ /]+\.(jpg|jpeg|png)' | head -1))"
+else
+    W "swaybg not running — no wallpaper (theme-render sets it via swaymsg output bg)"
+fi
+
+H "Bar: waybar (plan §2)"
+running waybar && P "waybar running" || F "waybar not running (check /tmp/waybar.log)"
+cfg="$HOME/.config/waybar/config"
+if [ -f "$cfg" ]; then
+    sed 's#^[[:space:]]*//.*##' "$cfg" | jq -e . >/dev/null 2>&1 \
+        && P "waybar config is valid JSON" || F "waybar config is INVALID JSON"
+    grep -q '"tray"' "$cfg" && P "tray module configured (native SNI — verify icons by eye)" || W "no tray module in config"
+    W "eyeball: workspaces, VOL/WIFI/BT/BAT prefixes accent-coloured, tray icons visible"
+else
+    F "waybar config missing at $cfg"
+fi
+
+H "Launcher + menus: rofi-wayland (plan §3)"
+have rofi && P "rofi present ($(rofi -version 2>/dev/null | head -1))" || F "rofi missing"
+rv=$(rofi -version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1)
+if rofi -version 2>/dev/null | grep -qi wayland; then
+    P "rofi has explicit wayland support (lbonn fork)"
+elif [ -n "$rv" ] && [ "${rv%%.*}" -ge 2 ]; then
+    P "rofi $rv — mainline ≥2.0 (native Wayland merged upstream; rofi-wayland now redundant)"
+else
+    W "rofi $rv — pre-2.0 mainline is X11-only; runs via XWayland (menus still work)"
+fi
+[ -x "$HOME/.config/rofi/launch.sh" ] && P "rofi launch.sh present" || F "rofi launch.sh missing"
+W "manual: Super+d (drun), Super+c (clipboard), Super+n (wifi — test a SECURED network password prompt), Super+b (bt), Super+Escape (power)"
+
+H "Clipboard: wl-clipboard (plan §4)"
+have wl-copy && have wl-paste && P "wl-clipboard present" || F "wl-clipboard (wl-copy/wl-paste) missing"
+if have wl-copy && have wl-paste; then
+    tok="wl-verify-$$-$(date +%s)"
+    printf '%s' "$tok" | wl-copy 2>/dev/null
+    got=$(wl-paste --no-newline 2>/dev/null)
+    [ "$got" = "$tok" ] && P "clipboard round-trip works" || F "clipboard round-trip failed (got: '${got:0:20}')"
+fi
+running clip-notify || pgrep -f 'bin/clip-notify' >/dev/null 2>&1 \
+    && P "clip-notify watcher running" || W "clip-notify not detected (Super+c history won't populate)"
+
+H "Screenshots: grim/slurp/satty (plan §5)"
+for b in grim slurp satty; do have "$b" && P "$b present" || F "$b missing"; done
+[ -x "$HOME/.local/bin/screenshot" ] && P "screenshot wrapper present" || F "screenshot wrapper missing"
+W "manual: Print (region→satty), Shift+Print (full), Ctrl+Print (focused output)"
+
+H "Mail alert: waybar custom/mail (plan §6)"
+state="/tmp/imap-$USER.txt"
+systemctl --user is-active imap.service >/dev/null 2>&1 && P "imap.service active" \
+    || W "imap.service not active (enable: systemctl --user enable --now imap.service)"
+[ -r "$state" ] && P "mail state file present ($state)" || W "no mail state file yet (daemon not run / no mail)"
+if [ -x "$HOME/.local/bin/waybar-mail" ]; then
+    out=$("$HOME/.local/bin/waybar-mail" 2>/dev/null)
+    printf '%s' "$out" | jq -e . >/dev/null 2>&1 && P "waybar-mail emits valid JSON" || F "waybar-mail JSON invalid: $out"
+else
+    F "waybar-mail script missing"
+fi
+
+H "Lock + idle: swaylock/swayidle (plan §7)"
+have swaylock && P "swaylock present" || F "swaylock missing"
+running swayidle && P "swayidle running" || F "swayidle not running (idle-lock + before-sleep won't fire)"
+[ -x "$HOME/.config/sway/idle.sh" ] && P "idle.sh present" || F "idle.sh missing"
+W "manual: Super+Shift+x locks (themed); idle ~9min dims then locks at ~10min"
+
+H "Colour temperature: gammastep (plan §9)"
+have gammastep && P "gammastep present" || F "gammastep missing"
+running gammastep && P "gammastep running" || W "gammastep not running"
+
+H "Theme system + portals (plan §8/§10)"
+[ -x "$HOME/.local/bin/theme-render" ] && P "theme-render present" || F "theme-render missing"
+busctl --user list 2>/dev/null | grep -q org.freedesktop.portal.Desktop \
+    && P "xdg-desktop-portal.Desktop on the bus" || W "portal not on bus yet (GTK3/Qt live theming relies on it)"
+scheme=$(busctl --user call org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop \
+    org.freedesktop.portal.Settings Read ss org.freedesktop.appearance color-scheme 2>/dev/null)
+[ -n "$scheme" ] && P "portal exposes appearance color-scheme ($scheme)" || W "could not read appearance color-scheme from portal"
+have Xwayland && P "Xwayland present (1Password/Electron under XWayland)" || W "Xwayland missing (X11-only apps won't run)"
+W "manual: Super+Shift+t toggles theme — GTK + Qt apps should recolour live"
+
+printf '\n\033[1mSummary:\033[0m %d pass, %d warn, %d fail\n' "$pass" "$warn" "$fail"
+[ "$fail" -eq 0 ] && echo "No hard failures. Resolve any WARNs by eye." || echo "Hard failures above — see FAIL lines."
+exit $(( fail > 0 ? 1 : 0 ))

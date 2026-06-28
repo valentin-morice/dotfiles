@@ -1,0 +1,273 @@
+# sway config — ported from the i3 config (i3wm.org syntax is shared).
+# Differences from i3 are Wayland-specific: input/output/seat blocks replace
+# xrandr/unclutter, the bar is waybar, lock/idle is swaylock+swayidle, and the
+# X-only autostarts (snixembed/picom/xsettingsd/xset/redshift) are gone.
+# See sway(5) for the full reference.
+
+set $mod Mod4
+
+# Font for window titles / fallbacks.
+font pango:JetBrainsMono Nerd Font 10
+
+### Session environment ------------------------------------------------------
+# Push the Wayland session env into the systemd user + dbus activation
+# environment, THEN bring up graphical-session.target via sway-session.target.
+# Ordering matters (hence one chained exec): the env must be in place before the
+# target starts, or xdg-desktop-portal fails to activate ("dependency failed"),
+# which breaks live GTK3/Qt theme switching, screen-share, and the SNI tray.
+# XDG_CURRENT_DESKTOP (sway:wlroots, set from sway.desktop) is the portal's
+# backend selector and is load-bearing for live GTK3/Qt recolour.
+exec systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE SWAYSOCK && \
+     dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && \
+     systemctl --user start sway-session.target
+
+### Input / output / seat ----------------------------------------------------
+# libinput replaces the X input config. Tap-to-click + disable-while-typing on
+# the touchpad; explicit us layout (X used the default).
+input "type:touchpad" {
+    tap enabled
+    natural_scroll enabled
+    dwt enabled
+}
+input "type:keyboard" {
+    xkb_layout us
+}
+
+# Output left at scale 1.0 (the bar and UI are sized right there). The only
+# thing that was too small was alacritty, whose tiny 6.5pt was leaning on X11's
+# high panel DPI — fixed by bumping its own font size instead of scaling the
+# whole desktop. Add `output <name> { ... }` here only if a display needs a
+# mode/scale/position.
+
+# Wallpaper: awww-daemon (a swww fork) owns the background (started in Autostart
+# below); theme-render sets the per-theme image with a cross-fade. swaybg can't
+# fade (draws once and exits, flashing black on swap), so awww replaces it.
+
+# Hide the pointer after 3s idle (replaces unclutter --timeout 3).
+seat * hide_cursor 3000
+
+### Autostart ----------------------------------------------------------------
+# XDG autostart .desktop files (1Password, Ferdium, etc.).
+exec dex --autostart --environment sway
+
+# Wallpaper daemon — owns the background and cross-fades between images. Started
+# once (exec, not exec_always, so it survives reloads); theme-render sets the
+# actual image once the daemon is up.
+exec awww-daemon
+
+# Wallpaper image + per-tool colors for the active theme (renders configs and
+# fades to the wallpaper via awww without reloading sway, so it's safe inside
+# exec_always).
+exec_always ~/.local/bin/theme-render --no-reload
+
+# Status bar.
+exec_always ~/.config/waybar/launch.sh
+
+# Notifications.
+exec dunst
+
+# Clipboard-copy notifications + history capture (wl-clipboard).
+exec ~/.local/bin/clip-notify
+
+# Night-time colour temperature (Wayland; replaces redshift).
+exec gammastep
+
+# Polkit authentication agent (GUI auth prompts for gparted, etc.).
+exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+
+# Thunar daemon — required for thunar-volman to auto-mount removable media.
+exec thunar --daemon
+
+# Lock + idle: swayidle owns idle-dim/lock, before-sleep lock, and the logind
+# lock signal (so loginctl lock-session / $mod+Shift+x route through it too).
+exec_always ~/.config/sway/idle.sh
+
+### Theme toggle -------------------------------------------------------------
+bindsym $mod+Shift+t exec ~/.local/bin/theme-switch toggle
+
+### Hardware keys ------------------------------------------------------------
+# Volume
+bindsym XF86AudioRaiseVolume exec ~/.local/bin/volume-notify up
+bindsym XF86AudioLowerVolume exec ~/.local/bin/volume-notify down
+bindsym XF86AudioMute exec ~/.local/bin/volume-notify mute
+bindsym XF86AudioMicMute exec ~/.local/bin/toggle-mic-mute
+
+# Brightness
+bindsym XF86MonBrightnessUp exec ~/.local/bin/brightness-notify up
+bindsym XF86MonBrightnessDown exec ~/.local/bin/brightness-notify down
+
+# Media keys
+bindsym XF86AudioPlay exec playerctl play-pause
+bindsym XF86AudioNext exec playerctl next
+bindsym XF86AudioPrev exec playerctl previous
+
+### Window management --------------------------------------------------------
+# Use Mouse+$mod to drag floating windows to their wanted position
+floating_modifier $mod
+
+# move tiling windows via drag & drop by left-clicking into the title bar,
+# or left-clicking anywhere into the window while holding the floating modifier.
+# (sway's tiling_drag takes one arg, unlike i3's `modifier titlebar`; `enable`
+# gives both titlebar-drag and floating-modifier-drag.)
+tiling_drag enable
+
+# start a terminal
+bindsym $mod+Return exec alacritty
+
+# kill focused window
+bindsym $mod+Shift+q kill
+
+# Application launcher
+bindsym $mod+d exec ~/.config/rofi/launch.sh -show drun
+
+# Clipboard history (entries recorded by clip-notify)
+bindsym $mod+c exec ~/.config/rofi/launch.sh -show clipboard
+
+# Window switcher (fuzzel) and CPU power-profile picker. These were tab-only in
+# the rofi launcher; fuzzel has no mode-switcher, so they get their own binds.
+# $mod+w (was "layout tabbed") is the window switcher's mnemonic home.
+bindsym $mod+w exec ~/.config/rofi/launch.sh -show window
+bindsym $mod+p exec ~/.config/rofi/launch.sh -show profile
+
+# Wi-Fi (nmtui) and Bluetooth (bluetuith) in a floating terminal — replaced the
+# rofi wifi/bluetooth script-modi (see for_window rules below).
+bindsym $mod+n exec alacritty --app-id netmenu-float -e nmtui
+bindsym $mod+b exec alacritty --app-id btmenu-float -e bluetuith
+
+# Power menu (lock / logout / suspend / reboot / shutdown)
+bindsym $mod+Escape exec ~/.config/rofi/launch.sh -show power-menu
+
+# Float + centre the network/bluetooth TUI terminals so they read like the old
+# pop-up menus rather than tiling into the layout.
+for_window [app_id="netmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
+for_window [app_id="btmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
+
+# Screenshots (grim + slurp + satty)
+bindsym Print exec ~/.local/bin/screenshot region
+bindsym Shift+Print exec ~/.local/bin/screenshot full
+bindsym Ctrl+Print exec ~/.local/bin/screenshot output
+
+# Lock now (routes through logind -> swayidle's lock handler, themed)
+bindsym $mod+Shift+x exec loginctl lock-session
+
+# change focus
+bindsym $mod+j focus left
+bindsym $mod+k focus down
+bindsym $mod+l focus up
+bindsym $mod+semicolon focus right
+
+# alternatively, you can use the cursor keys:
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+# move focused window
+bindsym $mod+Shift+j move left
+bindsym $mod+Shift+k move down
+bindsym $mod+Shift+l move up
+bindsym $mod+Shift+semicolon move right
+
+# alternatively, you can use the cursor keys:
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+# split in horizontal orientation
+bindsym $mod+h split h
+
+# split in vertical orientation
+bindsym $mod+v split v
+
+# enter fullscreen mode for the focused container
+bindsym $mod+f fullscreen toggle
+
+# change container layout (stacked, toggle split). $mod+w used to be "layout
+# tabbed" but is now the fuzzel window switcher; toggle tabbed via $mod+e cycling
+# or "layout tabbed" on demand if ever needed.
+bindsym $mod+s layout stacking
+bindsym $mod+e layout toggle split
+
+# toggle tiling / floating
+bindsym $mod+Shift+space floating toggle
+
+# change focus between tiling / floating windows
+bindsym $mod+space focus mode_toggle
+
+# focus the parent container
+bindsym $mod+a focus parent
+
+### Workspaces ---------------------------------------------------------------
+set $ws1 "1"
+set $ws2 "2"
+set $ws3 "3"
+set $ws4 "4"
+set $ws5 "5"
+set $ws6 "6"
+set $ws7 "7"
+set $ws8 "8"
+set $ws9 "9"
+set $ws10 "10"
+
+# switch to workspace
+bindsym $mod+1 workspace number $ws1
+bindsym $mod+2 workspace number $ws2
+bindsym $mod+3 workspace number $ws3
+bindsym $mod+4 workspace number $ws4
+bindsym $mod+5 workspace number $ws5
+bindsym $mod+6 workspace number $ws6
+bindsym $mod+7 workspace number $ws7
+bindsym $mod+8 workspace number $ws8
+bindsym $mod+9 workspace number $ws9
+bindsym $mod+0 workspace number $ws10
+
+# move focused container to workspace
+bindsym $mod+Shift+1 move container to workspace number $ws1
+bindsym $mod+Shift+2 move container to workspace number $ws2
+bindsym $mod+Shift+3 move container to workspace number $ws3
+bindsym $mod+Shift+4 move container to workspace number $ws4
+bindsym $mod+Shift+5 move container to workspace number $ws5
+bindsym $mod+Shift+6 move container to workspace number $ws6
+bindsym $mod+Shift+7 move container to workspace number $ws7
+bindsym $mod+Shift+8 move container to workspace number $ws8
+bindsym $mod+Shift+9 move container to workspace number $ws9
+bindsym $mod+Shift+0 move container to workspace number $ws10
+
+### Session control ----------------------------------------------------------
+# reload the configuration file
+bindsym $mod+Shift+c reload
+# restart sway in place (preserves layout/session)
+bindsym $mod+Shift+r restart
+# exit sway (ends the Wayland session)
+bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+
+### Resize -------------------------------------------------------------------
+mode "resize" {
+        bindsym j resize shrink width 10 px or 10 ppt
+        bindsym k resize grow height 10 px or 10 ppt
+        bindsym l resize shrink height 10 px or 10 ppt
+        bindsym semicolon resize grow width 10 px or 10 ppt
+
+        bindsym Left resize shrink width 10 px or 10 ppt
+        bindsym Down resize grow height 10 px or 10 ppt
+        bindsym Up resize shrink height 10 px or 10 ppt
+        bindsym Right resize grow width 10 px or 10 ppt
+
+        bindsym Return mode "default"
+        bindsym Escape mode "default"
+        bindsym $mod+r mode "default"
+}
+bindsym $mod+r mode "resize"
+
+### Gaps / borders -----------------------------------------------------------
+gaps inner 10
+gaps outer 0
+smart_gaps on
+smart_borders on
+
+default_border pixel 2
+default_floating_border pixel 2
+
+# class colours (focused/unfocused/urgent…) — rendered per-theme by theme-render.
+include ~/.config/sway/colors.conf

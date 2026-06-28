@@ -1,0 +1,91 @@
+#!/bin/bash
+# Show a dunst notification whenever the clipboard changes, and record the text
+# into a history store that the `clip-menu` rofi modi browses.
+#
+# Works under both sessions (side-by-side migration): on Wayland it watches with
+# `wl-paste --watch`, on X11 it loops on `clipnotify` + `xclip`. The store format
+# + notification are identical either way.
+#   Wayland requires: wl-clipboard.   X11 requires: clipnotify, xclip.
+
+PREVIEW_MAX=80
+
+# Clipboard history: one file per clip named by its sha1, plus an `index` of
+# `hash<TAB>one-line-preview` lines, most-recent first. clip-menu is the reader.
+STORE="${XDG_CACHE_HOME:-$HOME/.cache}/clipboard"
+HIST_MAX=200
+LASTFILE="$STORE/.last"
+mkdir -p "$STORE"
+
+# store_clip <content> <hash>: save full content, prepend a deduped index line,
+# cap the index, then drop clip files no longer referenced by it.
+store_clip() {
+    local content="$1" hash="$2" disp tmp="$STORE/.index.tmp"
+    printf '%s' "$content" > "$STORE/$hash"
+
+    disp=$(printf '%s' "$content" | tr '\n\t' '  ' | tr -s ' ')
+    disp=${disp# }
+    [ "${#disp}" -gt 120 ] && disp="${disp:0:120}…"
+
+    { printf '%s\t%s\n' "$hash" "$disp"
+      [ -f "$STORE/index" ] && grep -v "^$hash	" "$STORE/index"
+    } | head -n "$HIST_MAX" > "$tmp"
+    mv "$tmp" "$STORE/index"
+
+    awk -F'\t' 'NF{print $1}' "$STORE/index" > "$STORE/.keep"
+    for f in "$STORE"/*; do
+        case "${f##*/}" in index | .index.tmp | .keep | .last) continue ;; esac
+        grep -qxF "${f##*/}" "$STORE/.keep" || rm -f "$f"
+    done
+}
+
+# handle <content>: dedup against the last seen clip (persisted to a file so the
+# Wayland per-event subprocesses share it), store, and notify.
+handle() {
+    local content="$1" hash last_hash="" chars lines preview summary
+    [ -z "$content" ] && return
+
+    hash=$(printf '%s' "$content" | sha1sum | cut -d' ' -f1)
+    [ -r "$LASTFILE" ] && IFS= read -r last_hash < "$LASTFILE"
+    [ "$hash" = "$last_hash" ] && return
+    printf '%s\n' "$hash" > "$LASTFILE"
+
+    store_clip "$content" "$hash"
+
+    chars=$(printf '%s' "$content" | wc -m)
+    lines=$(printf '%s\n' "$content" | wc -l)
+
+    preview=$(printf '%s' "$content" | tr '\n\t' '  ')
+    [ "$chars" -gt "$PREVIEW_MAX" ] && preview="${preview:0:$PREVIEW_MAX}…"
+
+    if [ "$lines" -gt 1 ]; then
+        summary="Copied · ${chars} chars · ${lines} lines"
+    else
+        summary="Copied · ${chars} chars"
+    fi
+
+    notify-send -h string:x-canonical-private-synchronous:clipboard "$summary" "$preview"
+}
+
+# Internal: invoked by `wl-paste --watch` with the new clipboard text on stdin.
+if [ "${1:-}" = "__wl_handle" ]; then
+    handle "$(cat)"
+    exit 0
+fi
+
+# Single-instance lock — silently exit if another copy is already running.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/clip-notify.lock"
+flock -n 9 || exit 0
+
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    # Wayland: fire on every text clipboard offer; wl-paste pipes the content in.
+    exec wl-paste --type text --watch "$0" __wl_handle
+fi
+
+# X11 fallback.
+while clipnotify; do
+    # Skip non-text clipboard contents (images, files, etc.)
+    xclip -selection clipboard -t TARGETS -o 2>/dev/null \
+        | grep -qE 'UTF8_STRING|text/plain' || continue
+    content=$(xclip -selection clipboard -o 2>/dev/null) || continue
+    handle "$content"
+done
