@@ -158,3 +158,6 @@ alias lt='eza --tree --level=2 --group-directories-first'
 # bat: cat replacement
 alias cat='bat --paging=never'
 export BAT_THEME='base16'
+
+# Rust/Cargo binaries (rustlings, etc.)
+export PATH="$HOME/.cargo/bin:$PATH"
