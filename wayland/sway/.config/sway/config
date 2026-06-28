@@ -114,6 +114,10 @@ tiling_drag enable
 # start a terminal
 bindsym $mod+Return exec alacritty
 
+# Browser (chromium) and file manager (thunar)
+bindsym $mod+Shift+Return exec chromium
+bindsym $mod+Shift+f exec thunar
+
 # kill focused window
 bindsym $mod+Shift+q kill
 
