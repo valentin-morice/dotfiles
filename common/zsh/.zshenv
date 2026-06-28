@@ -41,3 +41,7 @@ export QT_STYLE_OVERRIDE=Fusion
 # Qt auto-detects Wayland when WAYLAND_DISPLAY is set, so no QT_QPA_PLATFORM here.
 export MOZ_ENABLE_WAYLAND=1
 export ELECTRON_OZONE_PLATFORM_HINT=auto
+
+# Default browser for terminal apps that honour $BROWSER (xdg-open already
+# resolves chromium via mimeapps.list). Keeps CLI tools off any stale fallback.
+export BROWSER=chromium
