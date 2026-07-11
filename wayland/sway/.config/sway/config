@@ -146,6 +146,15 @@ bindsym $mod+Escape exec ~/.config/rofi/launch.sh -show power-menu
 for_window [app_id="netmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
 for_window [app_id="btmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
 
+# Keep the screen awake for fullscreen video (movies). Browsers only request
+# the Wayland idle-inhibit protocol unreliably, so pin it to fullscreen state
+# instead: no dim at 9min / lock at 10min (see idle.sh) while a browser window
+# is fullscreen. Covers both Wayland-native (app_id) and XWayland (class).
+for_window [app_id="firefox"] inhibit_idle fullscreen
+for_window [app_id="chromium"] inhibit_idle fullscreen
+for_window [class="firefox"] inhibit_idle fullscreen
+for_window [class="Chromium"] inhibit_idle fullscreen
+
 # Screenshots (grim + slurp + satty)
 bindsym Print exec ~/.local/bin/screenshot region
 bindsym Shift+Print exec ~/.local/bin/screenshot full
