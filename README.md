@@ -18,7 +18,7 @@ Personal configuration for an **Arch Linux + sway (Wayland)** desktop, managed w
 | Mail alert | waybar `custom/mail` (Go IMAP helper) | conky |
 | Lock / idle | swaylock + swayidle | i3lock-color + xss-lock + xidlehook |
 | Screenshots | grim + slurp + satty | flameshot |
-| Clipboard | wl-clipboard | xclip + clipnotify |
+| Clipboard | wl-clipboard + cliphist (text & images) | xclip + clipnotify |
 | Color temperature | gammastep | redshift |
 | System info | fastfetch | — |
 | Shell | zsh + Oh My Zsh | — |
@@ -91,7 +91,7 @@ Stow one package with `stow -d <group> <name>`, remove one with `stow -d <group>
 
 ### Dependencies
 
-Wayland core: `sway swaybg swayidle swaylock-effects waybar gammastep grim slurp satty jq wl-clipboard rofi xorg-xwayland xdg-desktop-portal-wlr` (`satty`, `swaylock-effects` are AUR; `rofi` 2.0+ from the repo has native Wayland, replacing the old `rofi-wayland` fork)
+Wayland core: `sway swaybg swayidle swaylock-effects waybar gammastep grim slurp satty jq wl-clipboard cliphist wtype rofi xorg-xwayland xdg-desktop-portal-wlr` (`satty`, `swaylock-effects` are AUR; `rofi` 2.0+ from the repo has native Wayland, replacing the old `rofi-wayland` fork; `cliphist` is the Wayland clipboard history, `wtype` lets the emoji picker type its pick)
 X11 fallback core: `i3-wm polybar picom conky redshift feh xss-lock i3lock-color xidlehook xorg-xset` (`i3lock-color`, `xidlehook` are AUR)
 WM-neutral: `alacritty dunst fastfetch zsh tmux stow`
 Hardware keys: `playerctl` (media) · `brightnessctl` (brightness, also used by the idle-dim) · a PulseAudio-compatible server for `pactl` volume control (e.g. `pipewire-pulse`)

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# waybar custom/dnd module — prints a DND label (frozen muted) while dunst is
+# paused, and nothing otherwise (empty → module hidden). Refreshed by the DND
+# keybind, which sends `pkill -RTMIN+9 waybar`.
+# shellcheck disable=SC1091
+. "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_muted_fixed="#808488"
+THEME_muted_fixed="${THEME_muted_fixed:-#808488}"
+
+if [ "$(dunstctl is-paused 2>/dev/null)" = "true" ]; then
+    printf '<span foreground="%s">DND</span>\n' "$THEME_muted_fixed"
+fi

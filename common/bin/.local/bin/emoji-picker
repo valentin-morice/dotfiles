@@ -1,0 +1,98 @@
+#!/bin/bash
+# Emoji picker: fuzzel over a curated list. Copies the pick to the clipboard and
+# also types it if wtype is installed (else copy-only — paste with your usual
+# bind). Bound to $mod+period. Extend the list below to taste.
+set -eu
+
+sel=$(fuzzel --dmenu --prompt 'emoji ❯ ' <<'EOF'
+😀 grinning face
+😁 beaming smile
+😂 tears of joy
+🤣 rolling on the floor
+😊 smiling
+😍 heart eyes
+😎 cool sunglasses
+🥳 party
+😉 wink
+🙃 upside down
+😴 sleeping
+🤔 thinking
+🤨 raised eyebrow
+😐 neutral
+😑 expressionless
+🙄 eye roll
+😤 triumph huff
+😢 crying
+😭 sobbing
+😱 screaming
+😳 flushed
+🥵 hot
+🥶 cold
+🤯 mind blown
+😇 innocent halo
+🤗 hugging
+🤫 shushing
+🤐 zipper mouth
+😬 grimacing
+🙈 see no evil
+👍 thumbs up
+👎 thumbs down
+👌 ok hand
+🤌 pinched fingers
+👏 clap
+🙏 pray thanks
+🤝 handshake
+💪 muscle
+🫡 salute
+🫶 heart hands
+✌️ victory
+🤟 love you
+👀 eyes
+🧠 brain
+🔥 fire
+✨ sparkles
+🎉 tada
+🎊 confetti
+💯 hundred
+✅ check
+❌ cross
+⚠️ warning
+❓ question
+❗ exclamation
+💡 idea bulb
+🚀 rocket
+⭐ star
+❤️ red heart
+🧡 orange heart
+💛 yellow heart
+💚 green heart
+💙 blue heart
+💜 purple heart
+🖤 black heart
+🤍 white heart
+💔 broken heart
+🎯 direct hit
+🐛 bug
+🔧 wrench
+🛠️ tools
+⚙️ gear
+📦 package
+📌 pushpin
+📎 paperclip
+🔒 lock
+🔑 key
+💻 laptop
+🖥️ desktop
+⌨️ keyboard
+🖱️ mouse
+☕ coffee
+🍺 beer
+🍕 pizza
+👋 wave
+EOF
+) || exit 0
+[ -n "$sel" ] || exit 0
+
+emoji=${sel%% *}
+printf '%s' "$emoji" | wl-copy
+command -v wtype >/dev/null 2>&1 && wtype "$emoji" || true

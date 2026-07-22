@@ -18,6 +18,10 @@ esac
 # shellcheck disable=SC1090
 . "$THEME_DIR/load.sh"
 
+# Expose $HOME to templates as ${THEME_home} for the few places that need an
+# absolute path (e.g. dunst's dmenu command, which isn't ~-expanded/PATH-searched).
+export THEME_home="$HOME"
+
 # Build SHELL-FORMAT arg for envsubst: only $THEME_* names get substituted, so
 # polybar's ${colors.x}, i3's $mod, conky's ${color1} pass through untouched.
 vars=$(compgen -A export | grep '^THEME_' | sed 's/^/$/' | paste -sd ' ')
@@ -31,6 +35,7 @@ render() {
 # sway/Wayland (active) — and i3/X11 (kept rendered for the side-by-side
 # fallback; harmless to write even when sway is the running session).
 render sway.colors.conf.tmpl          "$HOME/.config/sway/colors.conf"
+render swaynag.config.tmpl            "$HOME/.config/swaynag/config"
 render waybar.config.jsonc.tmpl       "$HOME/.config/waybar/config"
 render waybar.style.css.tmpl          "$HOME/.config/waybar/style.css"
 render i3.colors.conf.tmpl            "$HOME/.config/i3/colors.conf"
@@ -114,6 +119,9 @@ if command -v gsettings >/dev/null; then
     gsettings set "$gi" color-scheme "$THEME_gtk_color_scheme" 2>/dev/null || true
     gsettings set "$gi" gtk-theme    "$THEME_gtk_theme"        2>/dev/null || true
     gsettings set "$gi" icon-theme   "$THEME_gtk_icon"         2>/dev/null || true
+    # Theme-independent, but set here (idempotent) so GTK apps that show code use
+    # JetBrainsMono like the terminals instead of the Adwaita Mono default.
+    gsettings set "$gi" monospace-font-name 'JetBrainsMono Nerd Font 11' 2>/dev/null || true
 fi
 
 # Qt — apps use QT_QPA_PLATFORMTHEME=xdgdesktopportal (.zshenv) and follow the
@@ -125,9 +133,13 @@ fi
 if [ "$reload" -eq 1 ]; then
     # Reload daemons that don't auto-reload. alacritty live-reloads its import;
     # rofi, flameshot, fastfetch, and VSCode read/watch on their own. dunst is
-    # common to both sessions.
-    killall dunst 2>/dev/null || true
-    setsid dunst >/dev/null 2>&1 &
+    # common to both sessions — reload in place (dunst 1.13+) so visible
+    # notifications and the 20-entry history survive a theme switch (a restart
+    # wiped them). Fall back to a restart if dunst isn't up / lacks dunstctl.
+    if ! { command -v dunstctl >/dev/null && dunstctl reload 2>/dev/null; }; then
+        killall dunst 2>/dev/null || true
+        setsid dunst >/dev/null 2>&1 &
+    fi
 
     # zathura (PDF reader, both sessions) reads zathurarc only at startup and
     # doesn't watch the file — but its D-Bus interface re-sources it live, so

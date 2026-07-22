@@ -8,12 +8,27 @@
 # Hibernate entry: swap is zram (RAM-backed), so hibernate can't work here.
 set -e
 
+# Confirm a machine-level destructive action, then run it. The nag bar's button
+# runs the command directly; Escape / dismiss cancels. Session-appropriate:
+# swaynag under sway (themed via templates/swaynag.config.tmpl), i3-nagbar under
+# i3. Matches the $mod+Shift+e exit-sway confirm — shutdown/reboot shouldn't be a
+# single fuzzy keystroke.
+confirm_run() {
+    if [ -n "${SWAYSOCK:-}" ]; then
+        exec swaynag -t warning -m "$1?" -B "$1" "$2"
+    elif command -v i3-nagbar >/dev/null 2>&1; then
+        exec i3-nagbar -t warning -m "$1?" -b "$1" "$2"
+    else
+        exec sh -c "$2"
+    fi
+}
+
 case "$1" in
     lock)     exec loginctl lock-session ;;
     logout)   if [ -n "${SWAYSOCK:-}" ]; then exec swaymsg exit; else exec i3-msg exit; fi ;;
     suspend)  exec systemctl suspend ;;
-    reboot)   exec systemctl reboot ;;
-    shutdown) exec systemctl poweroff ;;
+    reboot)   confirm_run 'Reboot' 'systemctl reboot' ;;
+    shutdown) confirm_run 'Shutdown' 'systemctl poweroff' ;;
     "")
         printf '\0prompt\x1fpower\n'
         printf 'lock\nlogout\nsuspend\nreboot\nshutdown\n'

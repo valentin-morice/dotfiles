@@ -27,6 +27,12 @@ export THEME_urgent=#ff5555
 # reload_style_on_change with no reset. Mid-blue / mid-grey read on both grounds.
 export THEME_accent_fixed=#3a7bc8
 export THEME_muted_fixed=#808488
+# Frozen secondary (gold) counterpart to accent_fixed — a deep gold that reads
+# on both grounds (bright on near-black, dark enough on near-white).
+export THEME_secondary_fixed=#c0851f
+# Frozen red — the REC recording label. One value for both grounds (bright enough
+# on near-black, dark enough on near-white), like the other *_fixed prefixes.
+export THEME_urgent_fixed=#d63b30
 
 # Terminal ANSI 16-color palette (consumed by alacritty.colors.toml.tmpl).
 # black stays dark and white stays light in BOTH themes so palette-driven TUIs

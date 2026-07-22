@@ -5,14 +5,25 @@
 #   screenshot region   region select, then open in satty to annotate  (Print)
 #   screenshot full      whole output(s) straight to a file            (Shift+Print)
 #   screenshot output    the focused output straight to a file         (Ctrl+Print)
+#   screenshot window    the focused window straight to a file         ($mod+Shift+Print)
 #
-# Requires: grim, slurp, satty, jq (output mode), wl-clipboard (satty copy).
+# region opens satty (which copies on save). full/output/window skip the editor,
+# so they copy to the clipboard and toast a confirmation themselves — otherwise
+# they'd be silent and you couldn't tell they fired.
+#
+# Requires: grim, slurp, satty, jq, wl-clipboard, libnotify (notify-send).
 set -euo pipefail
 
 dir="$HOME/Pictures/Screenshots"
 mkdir -p "$dir"
 ts=$(date +%Y-%m-%d_%H-%M-%S)
 out="$dir/screenshot_$ts.png"
+
+# Copy the just-saved file to the clipboard and toast it (thumbnail via -i).
+notify_saved() {
+    wl-copy < "$out"
+    notify-send -t 2000 -i "$out" "Screenshot saved" "${out/#$HOME/~}"
+}
 
 case "${1:-region}" in
     region)
@@ -21,13 +32,22 @@ case "${1:-region}" in
         ;;
     full)
         grim "$out"
+        notify_saved
         ;;
     output)
         name=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
         grim -o "$name" "$out"
+        notify_saved
+        ;;
+    window)
+        # Focused view's geometry from the tree (borders included).
+        geom=$(swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | "\(.rect.x),\(.rect.y) \(.rect.width)x\(.rect.height)"' | head -n1)
+        [ -n "$geom" ] || exit 0
+        grim -g "$geom" "$out"
+        notify_saved
         ;;
     *)
-        echo "usage: screenshot [region|full|output]" >&2
+        echo "usage: screenshot [region|full|output|window]" >&2
         exit 2
         ;;
 esac

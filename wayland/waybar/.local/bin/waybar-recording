@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# waybar custom/recording module — prints a REC label (frozen red) while
+# wf-recorder is running, and nothing otherwise (empty output → waybar hides the
+# module, so it adds no gap when idle). Refreshed on demand by screenrecord,
+# which sends `pkill -RTMIN+8 waybar` on start and stop.
+#
+# The frozen red (THEME_urgent_fixed, equal across themes) keeps this label
+# theme-invariant, like the bar's other *_fixed prefixes.
+# shellcheck disable=SC1091
+. "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_urgent_fixed="#d63b30"
+THEME_urgent_fixed="${THEME_urgent_fixed:-#d63b30}"
+
+if pgrep -x wf-recorder >/dev/null 2>&1; then
+    printf '<span foreground="%s">REC</span>\n' "$THEME_urgent_fixed"
+fi

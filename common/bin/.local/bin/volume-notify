@@ -11,7 +11,11 @@ WIDTH=30
 
 case "$1" in
     up)   pactl set-sink-mute "$sink" 0
-          pactl set-sink-volume "$sink" +5% ;;
+          pactl set-sink-volume "$sink" +5%
+          # Clamp at 100%: pactl's +5% otherwise climbs into PipeWire's >100%
+          # soft-boost range (a sudden loudness/distortion jump).
+          cur=$(pactl get-sink-volume "$sink" | grep -oP '\d+(?=%)' | head -n1)
+          [ "${cur:-0}" -gt 100 ] && pactl set-sink-volume "$sink" 100% ;;
     down) pactl set-sink-mute "$sink" 0
           pactl set-sink-volume "$sink" -5% ;;
     mute) pactl set-sink-mute "$sink" toggle
@@ -42,6 +46,7 @@ fi
 left="$icon Volume"
 title=$(printf '%-*s%s' $((WIDTH - ${#right})) "$left" "$right")
 
-notify-send -h string:x-canonical-private-synchronous:volume \
+notify-send -t 1500 \
+            -h string:x-canonical-private-synchronous:volume \
             -h int:value:"$bar" \
             "$title"

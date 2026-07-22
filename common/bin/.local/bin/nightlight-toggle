@@ -1,0 +1,20 @@
+#!/bin/bash
+# Toggle gammastep's colour-temperature shift on/off (SIGUSR1 flips it), record
+# the state in a flag file the waybar module reads, refresh the bar, and toast
+# the result. Bound to $mod+Shift+g.
+set -eu
+
+flag="${XDG_RUNTIME_DIR:-/tmp}/nightlight.off"
+
+pkill -USR1 -x gammastep 2>/dev/null || true
+
+if [ -e "$flag" ]; then
+    rm -f "$flag"
+    msg="Night-light on"
+else
+    : > "$flag"
+    msg="Night-light off"
+fi
+
+pkill -RTMIN+10 waybar 2>/dev/null || true
+notify-send -t 1500 -h string:x-canonical-private-synchronous:nightlight "$msg"

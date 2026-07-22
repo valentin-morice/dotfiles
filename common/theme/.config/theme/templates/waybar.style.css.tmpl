@@ -21,14 +21,16 @@ window#waybar {
     transition: background-color 500ms ease, color 500ms ease;
 }
 
-/* Workspaces — flat blocks, accent fill on the focused one (label-focused). */
+/* Workspaces — flat blocks. Inactive ones carry a very light gray fill so the
+ * workspace group reads as a distinct region (with the AWAKE label sitting on
+ * the bar bg just after it); the focused one gets the accent fill. */
 #workspaces button {
     padding: 0 11px;
     margin: 0;
     border: none;
     border-radius: 0;
     color: ${THEME_muted};
-    background-color: transparent;
+    background-color: ${THEME_bg_alt};
 }
 #workspaces button:hover {
     background-color: ${THEME_bg_alt2};
@@ -55,6 +57,10 @@ window#waybar {
 /* Center + right modules (module-margin spacing, padding-right 2 on the bar). */
 #clock,
 #custom-mail,
+#custom-recording,
+#custom-dnd,
+#custom-nightlight,
+#idle_inhibitor,
 #pulseaudio,
 #network,
 #bluetooth,
@@ -64,6 +70,16 @@ window#waybar {
 }
 #tray {
     padding-right: 14px;
+}
+
+/* Battery states — urgent-tinted text at 20%, urgent block below 10%
+ * (mirrors the urgent-workspace treatment). */
+#battery.warning {
+    color: ${THEME_urgent};
+}
+#battery.critical:not(.charging) {
+    color: ${THEME_bg};
+    background-color: ${THEME_urgent};
 }
 
 tooltip {

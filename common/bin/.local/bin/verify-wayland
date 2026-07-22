@@ -38,12 +38,12 @@ seatcfg=$(swaymsg -t get_seats 2>/dev/null | jq -r '.[0].name' 2>/dev/null)
 [ -n "$seatcfg" ] && P "seat present ($seatcfg) — hide_cursor active" || W "could not read seat"
 out=$(swaymsg -t get_outputs 2>/dev/null | jq -r '.[] | select(.active) | .name' 2>/dev/null | head -1)
 [ -n "$out" ] && P "active output: $out" || W "no active output reported"
-# sway doesn't report runtime-set bg in get_outputs, so check the swaybg process
-# theme-render spawns instead.
-if pgrep -x swaybg >/dev/null 2>&1; then
-    P "swaybg running (wallpaper set: $(pgrep -ax swaybg | grep -oE '[^ /]+\.(jpg|jpeg|png)' | head -1))"
+# theme-render drives the wallpaper via awww (a swww fork) with a cross-fade now,
+# not swaybg — so check the awww daemon instead.
+if pgrep -x awww-daemon >/dev/null 2>&1; then
+    P "awww-daemon running (wallpaper daemon)"
 else
-    W "swaybg not running — no wallpaper (theme-render sets it via swaymsg output bg)"
+    W "awww-daemon not running — no wallpaper (theme-render falls back to swaybg)"
 fi
 
 H "Bar: waybar (plan §2)"
@@ -58,21 +58,15 @@ else
     F "waybar config missing at $cfg"
 fi
 
-H "Launcher + menus: rofi-wayland (plan §3)"
-have rofi && P "rofi present ($(rofi -version 2>/dev/null | head -1))" || F "rofi missing"
-rv=$(rofi -version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1)
-if rofi -version 2>/dev/null | grep -qi wayland; then
-    P "rofi has explicit wayland support (lbonn fork)"
-elif [ -n "$rv" ] && [ "${rv%%.*}" -ge 2 ]; then
-    P "rofi $rv — mainline ≥2.0 (native Wayland merged upstream; rofi-wayland now redundant)"
-else
-    W "rofi $rv — pre-2.0 mainline is X11-only; runs via XWayland (menus still work)"
-fi
-[ -x "$HOME/.config/rofi/launch.sh" ] && P "rofi launch.sh present" || F "rofi launch.sh missing"
-W "manual: Super+d (drun), Super+c (clipboard), Super+n (wifi — test a SECURED network password prompt), Super+b (bt), Super+Escape (power)"
+H "Launcher + menus: fuzzel (plan §3)"
+have fuzzel && P "fuzzel present ($(fuzzel --version 2>/dev/null | head -1))" || F "fuzzel missing (Wayland launcher)"
+have rofi && P "rofi present (X11 fallback launcher)" || W "rofi missing (only needed for the i3/X11 session)"
+[ -x "$HOME/.config/rofi/launch.sh" ] && P "launcher dispatcher (rofi/launch.sh → fuzzel on Wayland) present" || F "launcher dispatcher missing"
+W "manual: Super+d (drun), Super+c (clipboard), Super+w (window), Super+p (profile), Super+Escape (power)"
 
-H "Clipboard: wl-clipboard (plan §4)"
+H "Clipboard: wl-clipboard + cliphist (plan §4)"
 have wl-copy && have wl-paste && P "wl-clipboard present" || F "wl-clipboard (wl-copy/wl-paste) missing"
+have cliphist && P "cliphist present (text + image history; skips password-manager clips)" || F "cliphist missing (Super+c history won't populate)"
 if have wl-copy && have wl-paste; then
     tok="wl-verify-$$-$(date +%s)"
     printf '%s' "$tok" | wl-copy 2>/dev/null
@@ -118,6 +112,20 @@ scheme=$(busctl --user call org.freedesktop.portal.Desktop /org/freedesktop/port
 [ -n "$scheme" ] && P "portal exposes appearance color-scheme ($scheme)" || W "could not read appearance color-scheme from portal"
 have Xwayland && P "Xwayland present (1Password/Electron under XWayland)" || W "Xwayland missing (X11-only apps won't run)"
 W "manual: Super+Shift+t toggles theme — GTK + Qt apps should recolour live"
+
+H "UX polish (media routing, bar modules, lock-screen keys)"
+have playerctl && P "playerctl present" || W "playerctl missing (media keys won't work)"
+running playerctld && P "playerctld running (media keys hit the active player)" || W "playerctld not running (media keys hit the first-registered player)"
+for m in waybar-recording waybar-dnd waybar-nightlight; do
+    if [ -x "$HOME/.local/bin/$m" ]; then
+        "$HOME/.local/bin/$m" >/dev/null 2>&1 && P "$m runs cleanly" || W "$m errored"
+    else
+        F "$m missing (re-stow the waybar package)"
+    fi
+done
+grep -q -- 'bindsym --locked XF86' "$HOME/.config/sway/config" \
+    && P "hardware keys are --locked (work at the lock screen)" || W "no --locked XF86 binds found"
+have wtype && P "wtype present (emoji picker types the pick)" || W "wtype missing (emoji picker copies only)"
 
 printf '\n\033[1mSummary:\033[0m %d pass, %d warn, %d fail\n' "$pass" "$warn" "$fail"
 [ "$fail" -eq 0 ] && echo "No hard failures. Resolve any WARNs by eye." || echo "Hard failures above — see FAIL lines."

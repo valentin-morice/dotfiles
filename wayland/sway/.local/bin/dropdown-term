@@ -1,0 +1,24 @@
+#!/bin/sh
+# Toggle the drop-down scratchpad terminal, respawning it first if it was ever
+# closed (Ctrl-D / crash) so $mod+grave never becomes a dead key. The sway
+# config's `for_window [app_id="dropdown-term"] … move scratchpad` rule floats
+# and stashes any fresh instance, so a new spawn lands in the scratchpad and the
+# `scratchpad show` below reveals it.
+set -eu
+
+exists() {
+    swaymsg -t get_tree \
+        | jq -e '[.. | select(.app_id? == "dropdown-term")] | length > 0' >/dev/null 2>&1
+}
+
+if ! exists; then
+    alacritty --app-id dropdown-term >/dev/null 2>&1 &
+    # Wait for the window to map and the for_window rule to stash it.
+    i=0
+    while ! exists; do
+        i=$((i + 1)); [ "$i" -ge 40 ] && break; sleep 0.05
+    done
+    sleep 0.1
+fi
+
+exec swaymsg '[app_id="dropdown-term"] scratchpad show, move position center'

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Toggle a region screen recording (wf-recorder). First run: slurp a region and
+# record; run again ($mod+Print) to stop. Esc during slurp cancels.
+set -euo pipefail
+
+pathfile="${XDG_RUNTIME_DIR:-/tmp}/screenrecord.path"
+
+if pgrep -x wf-recorder >/dev/null; then
+    pkill -INT -x wf-recorder
+    # Wait for wf-recorder to finish flushing the file before refreshing the bar,
+    # so the REC label clears cleanly instead of lingering during shutdown.
+    for _ in $(seq 20); do pgrep -x wf-recorder >/dev/null || break; sleep 0.1; done
+    pkill -RTMIN+8 waybar
+    dunstify -u low "Recording saved" "$(cat "$pathfile" 2>/dev/null || echo done)"
+    exit 0
+fi
+
+out="$HOME/Videos/rec-$(date +%Y%m%d-%H%M%S).mp4"
+mkdir -p "$HOME/Videos"
+printf '%s\n' "$out" > "$pathfile"
+
+geom="$(slurp)" || exit 0
+dunstify -u low "Recording started" "Press the bind again to stop."
+# Refresh the REC bar module once wf-recorder is up (subshell survives the exec).
+( sleep 0.3; pkill -RTMIN+8 waybar ) &
+exec wf-recorder -g "$geom" -f "$out"

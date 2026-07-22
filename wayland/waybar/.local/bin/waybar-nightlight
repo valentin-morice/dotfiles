@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# waybar custom/nightlight module — reminds you when gammastep's colour-temp
+# shift has been turned OFF (the flag file nightlight-toggle sets); prints
+# nothing while night-light is in its normal enabled state (empty → module
+# hidden). Refreshed by nightlight-toggle, which sends `pkill -RTMIN+10 waybar`.
+# shellcheck disable=SC1091
+. "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_muted_fixed="#808488"
+THEME_muted_fixed="${THEME_muted_fixed:-#808488}"
+
+flag="${XDG_RUNTIME_DIR:-/tmp}/nightlight.off"
+if [ -e "$flag" ]; then
+    printf '<span foreground="%s">NIGHT OFF</span>\n' "$THEME_muted_fixed"
+fi

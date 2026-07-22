@@ -14,13 +14,22 @@
     "layer": "top",
     "position": "bottom",
     "height": 29,
-    "modules-left": ["sway/workspaces", "sway/mode"],
+    "modules-left": ["sway/workspaces", "idle_inhibitor", "sway/mode"],
     "modules-center": ["clock"],
-    "modules-right": ["custom/mail", "pulseaudio", "network", "bluetooth", "battery", "tray"],
+    "modules-right": ["custom/recording", "custom/dnd", "custom/nightlight", "custom/mail", "pulseaudio", "network", "bluetooth", "battery", "tray"],
 
     "sway/workspaces": {
         "disable-scroll": true,
-        "format": "{name}"
+        "format": "{name}",
+        // Always render 1–4 (even when empty) so the workspace block is a fixed
+        // width and the bar never layout-shifts. sway is capped at 4 workspaces
+        // to match (see the config), so nothing beyond 4 can ever appear.
+        "persistent-workspaces": {
+            "1": [],
+            "2": [],
+            "3": [],
+            "4": []
+        }
     },
 
     // Binding-mode indicator (e.g. "resize"); auto-hidden in the default mode,
@@ -43,9 +52,50 @@
         "return-type": "json"
     },
 
+    // Signal-driven status labels — each prints a frozen-colour span when active
+    // and nothing (module hidden) when not, so they add no gap when idle and the
+    // rendered config stays theme-invariant. Refreshed on demand: screenrecord
+    // sends RTMIN+8, the DND bind RTMIN+9, nightlight-toggle RTMIN+10.
+    "custom/recording": {
+        "exec": "$HOME/.local/bin/waybar-recording",
+        "interval": "once",
+        "signal": 8,
+        "tooltip": false
+    },
+    "custom/dnd": {
+        "exec": "$HOME/.local/bin/waybar-dnd",
+        "interval": "once",
+        "signal": 9,
+        "tooltip": false
+    },
+    "custom/nightlight": {
+        "exec": "$HOME/.local/bin/waybar-nightlight",
+        "interval": "once",
+        "signal": 10,
+        "tooltip": false
+    },
+
+    // Click-to-caffeinate: inhibits the swayidle timers while activated.
+    // Both states use frozen colours (accent on, muted off), so the rendered
+    // config stays byte-identical across themes.
+    "idle_inhibitor": {
+        "format": "{icon}",
+        "format-icons": {
+            "activated": "<span foreground='${THEME_secondary_fixed}'>AWAKE</span>",
+            "deactivated": "<span foreground='${THEME_muted_fixed}'>AWAKE</span>"
+        },
+        "tooltip-format-activated": "idle inhibited",
+        "tooltip-format-deactivated": "idle timers active"
+    },
+
     "pulseaudio": {
         "format": "<span foreground='${THEME_accent_fixed}'>VOL</span> {volume}%",
-        "format-muted": "<span foreground='${THEME_accent_fixed}'>VOL</span> <span foreground='${THEME_muted_fixed}'>MUTED</span>"
+        "format-muted": "<span foreground='${THEME_accent_fixed}'>VOL</span> <span foreground='${THEME_muted_fixed}'>MUTED</span>",
+        // Scroll to change volume, click to mute — reuse the same helpers the
+        // XF86Audio keys use (so the OSD toast + 100% clamp behave identically).
+        "on-scroll-up": "$HOME/.local/bin/volume-notify up",
+        "on-scroll-down": "$HOME/.local/bin/volume-notify down",
+        "on-click": "$HOME/.local/bin/toggle-audio-mute"
     },
 
     "network": {
@@ -56,7 +106,7 @@
         "tooltip-format-wifi": "{essid} ({signalStrength}%)",
         "tooltip-format-ethernet": "{ifname}",
         "tooltip-format-disconnected": "disconnected",
-        "on-click": "alacritty -e nmtui"
+        "on-click": "alacritty --app-id netmenu-float -e nmtui"
     },
 
     "bluetooth": {
@@ -65,13 +115,16 @@
         "format-disabled": "<span foreground='${THEME_accent_fixed}'>BT</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
         "format-connected": "<span foreground='${THEME_accent_fixed}'>BT</span> {device_alias}",
         "tooltip-format-connected": "{device_alias}",
-        "on-click": "alacritty -e bluetuith"
+        "on-click": "alacritty --app-id btmenu-float -e bluetuith"
     },
 
     "battery": {
         "bat": "BAT0",
         "adapter": "AC",
         "interval": 5,
+        // States only stamp CSS classes (warning/critical); the colour lives
+        // in style.css like everything else theme-varying.
+        "states": { "warning": 20, "critical": 10 },
         "format": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%",
         "format-charging": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%+",
         "format-full": "<span foreground='${THEME_accent_fixed}'>BAT</span> <span foreground='${THEME_muted_fixed}'>FULL</span>"

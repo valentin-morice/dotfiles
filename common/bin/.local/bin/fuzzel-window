@@ -6,14 +6,19 @@
 # --index), since fuzzel has no hidden per-row data.
 set -eu
 
-# id<TAB>app   title, for every leaf view (tiled or floating).
+# id<TAB>[workspace] app   title, for every leaf view (tiled or floating). The
+# workspace is carried by walking workspace nodes first, then their descendants
+# (recurse loses parent context, so we bind $ws before descending).
 list=$(swaymsg -t get_tree | jq -r '
-    [recurse(.nodes[]?, .floating_nodes[]?)
-     | select((.type == "con" or .type == "floating_con")
-              and .name != null
-              and (.nodes | length) == 0
-              and (.floating_nodes | length) == 0)]
-    | .[] | "\(.id)\t\((.app_id // .window_properties.class) // "?")   \(.name)"')
+    [recurse(.nodes[]?) | select(.type == "workspace")]
+    | .[]
+    | .name as $ws
+    | [recurse(.nodes[]?, .floating_nodes[]?)
+       | select((.type == "con" or .type == "floating_con")
+                and .name != null
+                and (.nodes | length) == 0
+                and (.floating_nodes | length) == 0)]
+    | .[] | "\(.id)\t[\($ws)] \((.app_id // .window_properties.class) // "?")   \(.name)"')
 [ -n "$list" ] || exit 0
 
 idx=$(printf '%s\n' "$list" | cut -f2- | fuzzel --dmenu --index --prompt 'window ❯ ') || exit 0

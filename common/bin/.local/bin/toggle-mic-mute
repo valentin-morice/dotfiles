@@ -13,4 +13,4 @@ fi
 left="$icon Microphone"
 title=$(printf '%-*s%s' $((WIDTH - ${#right})) "$left" "$right")
 
-notify-send -h string:x-canonical-private-synchronous:micmute "$title"
+notify-send -t 1500 -h string:x-canonical-private-synchronous:micmute "$title"

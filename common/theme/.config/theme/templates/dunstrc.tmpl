@@ -41,11 +41,15 @@
     icon_position = left
     min_icon_size = 32
     max_icon_size = 40
+    # Resolve app-sent icon *names* (not just paths) against the themed icon set,
+    # searching subdirs — otherwise name-only icons render as blank space.
+    icon_theme = "${THEME_gtk_icon}"
+    enable_recursive_icon_lookup = true
 
     sticky_history = yes
     history_length = 20
 
-    dmenu = /usr/bin/dmenu -p dunst:
+    dmenu = ${THEME_home}/.local/bin/dunst-dmenu
     browser = /usr/bin/xdg-open
     always_run_script = true
     title = Dunst

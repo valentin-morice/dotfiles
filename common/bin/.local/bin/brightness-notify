@@ -7,7 +7,14 @@ WIDTH=30
 
 case "$1" in
     up)   brightnessctl set +5% >/dev/null ;;
-    down) brightnessctl set 5%- >/dev/null ;;
+    down) # Floor at 5% so repeated presses can't walk the backlight to 0 (a
+          # black panel you then have to blind-fix).
+          cur=$(brightnessctl -m | awk -F, '{print $4}' | tr -d '%')
+          if [ "${cur:-100}" -le 10 ]; then
+              brightnessctl set 5% >/dev/null
+          else
+              brightnessctl set 5%- >/dev/null
+          fi ;;
     *)    echo "usage: $0 up|down" >&2; exit 2 ;;
 esac
 
@@ -17,6 +24,7 @@ right="${pct}%"
 
 title=$(printf '%-*s%s' $((WIDTH - ${#right})) "$left" "$right")
 
-notify-send -h string:x-canonical-private-synchronous:brightness \
+notify-send -t 1500 \
+            -h string:x-canonical-private-synchronous:brightness \
             -h int:value:"$pct" \
             "$title"

@@ -31,6 +31,9 @@ input "type:touchpad" {
 }
 input "type:keyboard" {
     xkb_layout us
+    # sway's default 600ms/25Hz is sluggish for terminal/vim work.
+    repeat_delay 250
+    repeat_rate 35
 }
 
 # Output left at scale 1.0 (the bar and UI are sized right there). The only
@@ -45,6 +48,11 @@ input "type:keyboard" {
 
 # Hide the pointer after 3s idle (replaces unclutter --timeout 3).
 seat * hide_cursor 3000
+
+# Pin the cursor theme so the compositor pointer (over the wallpaper, during
+# drags/resizes) and XWayland apps match GTK's Adwaita instead of falling back
+# to the default. sway also exports XCURSOR_THEME/XCURSOR_SIZE from this.
+seat * xcursor_theme Adwaita 24
 
 ### Autostart ----------------------------------------------------------------
 # XDG autostart .desktop files (1Password, Ferdium, etc.).
@@ -72,34 +80,73 @@ exec ~/.local/bin/clip-notify
 # Night-time colour temperature (Wayland; replaces redshift).
 exec gammastep
 
+# MPRIS proxy: routes media keys / playerctl to the most-recently-active player
+# (see the XF86Audio binds). Started once; harmless if already running.
+exec playerctld daemon
+
 # Polkit authentication agent (GUI auth prompts for gparted, etc.).
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 
-# Thunar daemon — required for thunar-volman to auto-mount removable media.
-exec thunar --daemon
+# Thunar daemon (needed for thunar-volman to auto-mount removable media) is NOT
+# started here: an `exec` races xdg-desktop-portal and the daemon loses its theme
+# for the whole session. It's a systemd unit ordered after the portal instead —
+# see common/systemd/.config/systemd/user/thunar.service.d/theme-ordering.conf.
+# sway-session.target (started above) pulls it in.
 
 # Lock + idle: swayidle owns idle-dim/lock, before-sleep lock, and the logind
 # lock signal (so loginctl lock-session / $mod+Shift+x route through it too).
 exec_always ~/.config/sway/idle.sh
 
+# Inhibit idle while any audio stream plays (restores xidlehook's
+# --not-when-audio; covers podcasts/music without a fullscreen window).
+exec sway-audio-idle-inhibit
+
+# Output profile switcher (per-profile layouts once an external display
+# exists; see ~/.config/kanshi/config).
+exec kanshi
+
+# Lid-switch handling — ONLY enable once a dock/external display exists (fill in
+# the kanshi `docked` profile too). Left commented on purpose: with no external
+# output, closing the lid should suspend (logind's default) rather than just
+# blanking eDP-1, so activating this undocked would fight logind.
+#   bindswitch --locked --reload lid:on  output eDP-1 disable
+#   bindswitch --locked --reload lid:off output eDP-1 enable
+
 ### Theme toggle -------------------------------------------------------------
 bindsym $mod+Shift+t exec ~/.local/bin/theme-switch toggle
 
+### Notifications & utilities ------------------------------------------------
+# Do-Not-Disturb toggle (pauses dunst); the RTMIN+9 signal refreshes the DND bar
+# module immediately instead of waiting for its poll.
+bindsym $mod+Shift+d exec dunstctl set-paused toggle && pkill -RTMIN+9 waybar
+# Dismiss all visible notifications; pop the most recent one back from history.
+bindsym $mod+Shift+BackSpace exec dunstctl close-all
+bindsym $mod+Shift+grave exec dunstctl history-pop
+# Night-light (gammastep) toggle + emoji picker.
+bindsym $mod+Shift+g exec ~/.local/bin/nightlight-toggle
+bindsym $mod+period exec ~/.local/bin/emoji-picker
+
 ### Hardware keys ------------------------------------------------------------
+# --locked so these keep working on the lock screen (swaylock holds the seat;
+# a plain bind is swallowed). Restores i3lock's --pass-media-keys/--pass-volume-keys.
 # Volume
-bindsym XF86AudioRaiseVolume exec ~/.local/bin/volume-notify up
-bindsym XF86AudioLowerVolume exec ~/.local/bin/volume-notify down
-bindsym XF86AudioMute exec ~/.local/bin/volume-notify mute
-bindsym XF86AudioMicMute exec ~/.local/bin/toggle-mic-mute
+bindsym --locked XF86AudioRaiseVolume exec ~/.local/bin/volume-notify up
+bindsym --locked XF86AudioLowerVolume exec ~/.local/bin/volume-notify down
+bindsym --locked XF86AudioMute exec ~/.local/bin/volume-notify mute
+bindsym --locked XF86AudioMicMute exec ~/.local/bin/toggle-mic-mute
 
 # Brightness
-bindsym XF86MonBrightnessUp exec ~/.local/bin/brightness-notify up
-bindsym XF86MonBrightnessDown exec ~/.local/bin/brightness-notify down
+bindsym --locked XF86MonBrightnessUp exec ~/.local/bin/brightness-notify up
+bindsym --locked XF86MonBrightnessDown exec ~/.local/bin/brightness-notify down
 
-# Media keys
-bindsym XF86AudioPlay exec playerctl play-pause
-bindsym XF86AudioNext exec playerctl next
-bindsym XF86AudioPrev exec playerctl previous
+# Media keys — routed through playerctld (started in Autostart) so the key hits
+# the most-recently-active player (Spotify vs a browser tab), not whichever
+# registered on MPRIS first.
+bindsym --locked XF86AudioPlay exec playerctl --player=playerctld play-pause
+bindsym --locked XF86AudioNext exec playerctl --player=playerctld next
+bindsym --locked XF86AudioPrev exec playerctl --player=playerctld previous
+# Convenience alias for the mic toggle (some keyboards lack XF86AudioMicMute).
+bindsym $mod+m exec ~/.local/bin/toggle-mic-mute
 
 ### Window management --------------------------------------------------------
 # Use Mouse+$mod to drag floating windows to their wanted position
@@ -111,12 +158,20 @@ floating_modifier $mod
 # gives both titlebar-drag and floating-modifier-drag.)
 tiling_drag enable
 
+# Touchpad gestures — 3-finger horizontal swipe cycles workspaces (the sway
+# laptop feature X11/i3 never had).
+bindgesture swipe:3:right workspace prev
+bindgesture swipe:3:left workspace next
+
 # start a terminal
 bindsym $mod+Return exec alacritty
 
 # Browser (chromium) and file manager (thunar)
 bindsym $mod+Shift+Return exec chromium
 bindsym $mod+Shift+f exec thunar
+
+# Editor (vscodium)
+bindsym $mod+Shift+v exec codium
 
 # kill focused window
 bindsym $mod+Shift+q kill
@@ -155,10 +210,44 @@ for_window [app_id="chromium"] inhibit_idle fullscreen
 for_window [class="firefox"] inhibit_idle fullscreen
 for_window [class="Chromium"] inhibit_idle fullscreen
 
+# Picture-in-Picture: float it and make it sticky so a video pop-out follows you
+# across workspaces instead of tiling into the layout. Covers Wayland-native
+# (app_id) and XWayland (class); Chromium/Firefox title the window differently.
+for_window [app_id="firefox" title="Picture-in-Picture"] floating enable, sticky enable
+for_window [class="firefox" title="Picture-in-Picture"] floating enable, sticky enable
+for_window [app_id="chromium" title="^Picture[- ]in[- ]picture"] floating enable, sticky enable
+for_window [class="Chromium" title="^Picture[- ]in[- ]picture"] floating enable, sticky enable
+
+# Float transient XWayland windows — dialogs, pop-ups, splash screens — so they
+# pop over the layout instead of tiling in. window_type/window_role are X11-only
+# criteria, so these match ONLY XWayland windows (1Password, GIMP/Java dialogs,
+# etc.) and never touch the Wayland-native majority (which has no such property).
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="bubble"] floating enable
+for_window [window_type="dialog"] floating enable
+for_window [window_type="splash"] floating enable
+
+# GNOME polkit auth prompt (the password dialog for gparted etc.). Runs
+# Wayland-native here, so it's matched by app_id (window_type wouldn't apply).
+for_window [app_id="polkit-gnome-authentication-agent-1"] floating enable, move position center
+
+# Portal-rendered GTK dialogs — the file chooser (Open/Save) used by browsers,
+# Electron apps, and Flatpaks — tile by default. Float + centre them. The app_id
+# is stable and locale-independent, so no fragile title matching is needed.
+for_window [app_id="xdg-desktop-portal-gtk"] floating enable, move position center
+
 # Screenshots (grim + slurp + satty)
 bindsym Print exec ~/.local/bin/screenshot region
 bindsym Shift+Print exec ~/.local/bin/screenshot full
 bindsym Ctrl+Print exec ~/.local/bin/screenshot output
+bindsym $mod+Shift+Print exec ~/.local/bin/screenshot window
+
+# The satty annotation editor (opened by `screenshot region`) floats + centres
+# so it pops over the layout instead of tiling in and reflowing your windows.
+for_window [app_id="com.gabm.satty"] floating enable, move position center
+
+# Screen recording toggle (wf-recorder; region via slurp)
+bindsym $mod+Print exec ~/.local/bin/screenrecord
 
 # Lock now (routes through logind -> swayidle's lock handler, themed)
 bindsym $mod+Shift+x exec loginctl lock-session
@@ -211,47 +300,50 @@ bindsym $mod+space focus mode_toggle
 # focus the parent container
 bindsym $mod+a focus parent
 
+### Scratchpad ----------------------------------------------------------------
+# Stash the focused window / cycle stashed windows back.
+bindsym $mod+Shift+minus move scratchpad
+bindsym $mod+minus scratchpad show
+
+# Drop-down terminal: pre-spawned into the scratchpad, toggled with $mod+grave.
+# The bind goes through a helper that respawns the terminal if it was ever
+# closed (Ctrl-D / crash), so $mod+grave never turns into a dead key.
+exec alacritty --app-id dropdown-term
+for_window [app_id="dropdown-term"] floating enable, resize set width 1600 px height 700 px, move scratchpad
+bindsym $mod+grave exec ~/.local/bin/dropdown-term
+
 ### Workspaces ---------------------------------------------------------------
+# Capped at 4 workspaces so the waybar row is a fixed width and never layout-
+# shifts (waybar renders 1–4 persistently; see persistent-workspaces there). To
+# go back to 10, restore $ws5–$ws10 and the 5–0 binds below.
 set $ws1 "1"
 set $ws2 "2"
 set $ws3 "3"
 set $ws4 "4"
-set $ws5 "5"
-set $ws6 "6"
-set $ws7 "7"
-set $ws8 "8"
-set $ws9 "9"
-set $ws10 "10"
 
 # switch to workspace
 bindsym $mod+1 workspace number $ws1
 bindsym $mod+2 workspace number $ws2
 bindsym $mod+3 workspace number $ws3
 bindsym $mod+4 workspace number $ws4
-bindsym $mod+5 workspace number $ws5
-bindsym $mod+6 workspace number $ws6
-bindsym $mod+7 workspace number $ws7
-bindsym $mod+8 workspace number $ws8
-bindsym $mod+9 workspace number $ws9
-bindsym $mod+0 workspace number $ws10
 
 # move focused container to workspace
 bindsym $mod+Shift+1 move container to workspace number $ws1
 bindsym $mod+Shift+2 move container to workspace number $ws2
 bindsym $mod+Shift+3 move container to workspace number $ws3
 bindsym $mod+Shift+4 move container to workspace number $ws4
-bindsym $mod+Shift+5 move container to workspace number $ws5
-bindsym $mod+Shift+6 move container to workspace number $ws6
-bindsym $mod+Shift+7 move container to workspace number $ws7
-bindsym $mod+Shift+8 move container to workspace number $ws8
-bindsym $mod+Shift+9 move container to workspace number $ws9
-bindsym $mod+Shift+0 move container to workspace number $ws10
+
+# Bounce between the two most recent workspaces; pressing the current
+# workspace's own $mod+N does the same (auto_back_and_forth).
+bindsym $mod+Tab workspace back_and_forth
+workspace_auto_back_and_forth yes
 
 ### Session control ----------------------------------------------------------
 # reload the configuration file
 bindsym $mod+Shift+c reload
-# restart sway in place (preserves layout/session)
-bindsym $mod+Shift+r restart
+# sway has no i3-style `restart`; reload is the only in-place refresh, so this
+# is a muscle-memory alias for $mod+Shift+c.
+bindsym $mod+Shift+r reload
 # exit sway (ends the Wayland session)
 bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
 
@@ -272,6 +364,18 @@ mode "resize" {
         bindsym $mod+r mode "default"
 }
 bindsym $mod+r mode "resize"
+
+### Gaps mode ----------------------------------------------------------------
+# Adjust inner gaps live: +/- to grow/shrink, 0 to reset, Esc/Return to exit.
+mode "gaps" {
+        bindsym plus  gaps inner all plus 5
+        bindsym minus gaps inner all minus 5
+        bindsym 0     gaps inner all set 10
+        bindsym Return mode "default"
+        bindsym Escape mode "default"
+        bindsym $mod+g mode "default"
+}
+bindsym $mod+g mode "gaps"
 
 ### Gaps / borders -----------------------------------------------------------
 gaps inner 10

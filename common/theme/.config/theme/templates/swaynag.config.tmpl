@@ -1,0 +1,32 @@
+# swaynag theme — RENDERED by theme-render from the active palette into
+# ~/.config/swaynag/config (swaynag reads this path by default). Themes the two
+# swaynag surfaces — the sway exit dialog (-t warning) and the config-error bar
+# (-t error) — which otherwise render in stock beige, the last unthemed surface.
+# Colours are RRGGBBAA WITHOUT '#', so the palette's *_bare forms feed straight
+# in (an "ff"/"f2" alpha byte is appended per key).
+
+[warning]
+background=${THEME_bg_bare}f2
+text=${THEME_fg_bare}ff
+border=${THEME_border_bare}ff
+border-bottom=${THEME_accent_bare}ff
+border-bottom-size=2
+button-background=${THEME_bg_sel_bare}ff
+button-text=${THEME_fg_bare}ff
+button-border-size=1
+message-padding=12
+button-padding=8
+font=JetBrainsMono Nerd Font 11
+
+[error]
+background=${THEME_bg_bare}f2
+text=${THEME_fg_bare}ff
+border=${THEME_border_bare}ff
+border-bottom=${THEME_urgent_bare}ff
+border-bottom-size=2
+button-background=${THEME_bg_sel_bare}ff
+button-text=${THEME_fg_bare}ff
+button-border-size=1
+message-padding=12
+button-padding=8
+font=JetBrainsMono Nerd Font 11

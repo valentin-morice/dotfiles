@@ -1,20 +1,29 @@
 #!/bin/bash
-# Show a dunst notification whenever the clipboard changes, and record the text
-# into a history store that the `clip-menu` rofi modi browses.
+# Show a dunst notification whenever the clipboard changes.
 #
-# Works under both sessions (side-by-side migration): on Wayland it watches with
-# `wl-paste --watch`, on X11 it loops on `clipnotify` + `xclip`. The store format
-# + notification are identical either way.
-#   Wayland requires: wl-clipboard.   X11 requires: clipnotify, xclip.
+# History storage differs by session:
+#   Wayland -> cliphist (started below): captures text AND images, and skips
+#              clips marked sensitive by password managers
+#              (x-kde-passwordManagerHint), so 1Password copies never persist.
+#              fuzzel-clip is the reader ($mod+c).
+#   X11     -> the bespoke sha1 store below (text only), read by clip-menu.
+# The notification (the "Copied · N chars" toast) is identical either way.
+#   Wayland requires: wl-clipboard, cliphist.   X11 requires: clipnotify, xclip.
 
 PREVIEW_MAX=80
 
-# Clipboard history: one file per clip named by its sha1, plus an `index` of
+# Restrict everything this script writes (the X11 bespoke store) to the user —
+# clipboard history can hold secrets.
+umask 077
+
+# Clipboard history — X11 path ONLY (Wayland uses cliphist, see the launch block
+# at the bottom). One file per clip named by its sha1, plus an `index` of
 # `hash<TAB>one-line-preview` lines, most-recent first. clip-menu is the reader.
 STORE="${XDG_CACHE_HOME:-$HOME/.cache}/clipboard"
 HIST_MAX=200
 LASTFILE="$STORE/.last"
-mkdir -p "$STORE"
+mkdir -m 700 -p "$STORE"
+chmod 700 "$STORE" 2>/dev/null || true   # tighten a pre-existing 0755 store
 
 # store_clip <content> <hash>: save full content, prepend a deduped index line,
 # cap the index, then drop clip files no longer referenced by it.
@@ -49,7 +58,8 @@ handle() {
     [ "$hash" = "$last_hash" ] && return
     printf '%s\n' "$hash" > "$LASTFILE"
 
-    store_clip "$content" "$hash"
+    # Persist only on X11; on Wayland cliphist owns storage (see launch block).
+    [ -z "${WAYLAND_DISPLAY:-}" ] && store_clip "$content" "$hash"
 
     chars=$(printf '%s' "$content" | wc -m)
     lines=$(printf '%s\n' "$content" | wc -l)
@@ -63,7 +73,7 @@ handle() {
         summary="Copied · ${chars} chars"
     fi
 
-    notify-send -h string:x-canonical-private-synchronous:clipboard "$summary" "$preview"
+    notify-send -t 2000 -h string:x-canonical-private-synchronous:clipboard "$summary" "$preview"
 }
 
 # Internal: invoked by `wl-paste --watch` with the new clipboard text on stdin.
@@ -77,15 +87,23 @@ exec 9>"${XDG_RUNTIME_DIR:-/tmp}/clip-notify.lock"
 flock -n 9 || exit 0
 
 if [ -n "${WAYLAND_DISPLAY:-}" ]; then
-    # Wayland: fire on every text clipboard offer; wl-paste pipes the content in.
+    # Wayland history: cliphist stores text and images (and skips password-manager
+    # clips on its own). One watcher per type, per cliphist's documented setup.
+    command -v cliphist >/dev/null 2>&1 && {
+        wl-paste --type text  --watch cliphist store &
+        wl-paste --type image --watch cliphist store &
+    }
+    # Toast only (the bespoke store is retired on Wayland; handle() skips storing).
     exec wl-paste --type text --watch "$0" __wl_handle
 fi
 
 # X11 fallback.
 while clipnotify; do
     # Skip non-text clipboard contents (images, files, etc.)
-    xclip -selection clipboard -t TARGETS -o 2>/dev/null \
-        | grep -qE 'UTF8_STRING|text/plain' || continue
+    targets=$(xclip -selection clipboard -t TARGETS -o 2>/dev/null)
+    printf '%s' "$targets" | grep -qE 'UTF8_STRING|text/plain' || continue
+    # Skip clips a password manager marked sensitive.
+    printf '%s' "$targets" | grep -qi 'passwordManagerHint' && continue
     content=$(xclip -selection clipboard -o 2>/dev/null) || continue
     handle "$content"
 done
