@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Screenshot wrapper (grim + slurp + satty) — the Wayland replacement for the
+# Screenshot wrapper (grim + slurp) — the Wayland replacement for the
 # flameshot bindings. Saves into ~/Pictures/Screenshots with a timestamp name.
 #
-#   screenshot region   region select, then open in satty to annotate  (Print)
+#   screenshot region   region select straight to a file              (Print)
 #   screenshot full      whole output(s) straight to a file            (Shift+Print)
 #   screenshot output    the focused output straight to a file         (Ctrl+Print)
 #   screenshot window    the focused window straight to a file         ($mod+Shift+Print)
 #
-# region opens satty (which copies on save). full/output/window skip the editor,
-# so they copy to the clipboard and toast a confirmation themselves — otherwise
-# they'd be silent and you couldn't tell they fired.
+# Every mode saves the file, copies it to the clipboard, and toasts a
+# confirmation — otherwise they'd be silent and you couldn't tell they fired.
 #
-# Requires: grim, slurp, satty, jq, wl-clipboard, libnotify (notify-send).
+# Requires: grim, slurp, jq, wl-clipboard, libnotify (notify-send).
 set -euo pipefail
 
 dir="$HOME/Pictures/Screenshots"
@@ -20,33 +19,36 @@ ts=$(date +%Y-%m-%d_%H-%M-%S)
 out="$dir/screenshot_$ts.png"
 
 # Copy the just-saved file to the clipboard and toast it (thumbnail via -i).
+# $1 names the capture mode so the toast says exactly what fired; the body
+# spells out that it's on the clipboard as well as saved to disk.
 notify_saved() {
     wl-copy < "$out"
-    notify-send -t 2000 -i "$out" "Screenshot saved" "${out/#$HOME/~}"
+    notify-send -t 2000 -i "$out" "Screenshot · $1" \
+        "Saved + copied to clipboard
+${out/#$HOME/~}"
 }
 
 case "${1:-region}" in
     region)
         geom=$(slurp) || exit 0   # Esc / no selection -> cancel cleanly
-        # Absolute path to the wrapper (~/.local/bin/satty) so its local icon
-        # overrides (G_RESOURCE_OVERLAYS) apply regardless of the session PATH.
-        grim -g "$geom" - | "$HOME/.local/bin/satty" --filename - --output-filename "$out" --copy-command wl-copy
+        grim -g "$geom" "$out"
+        notify_saved "Region"
         ;;
     full)
         grim "$out"
-        notify_saved
+        notify_saved "Full screen"
         ;;
     output)
         name=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
         grim -o "$name" "$out"
-        notify_saved
+        notify_saved "Monitor ($name)"
         ;;
     window)
         # Focused view's geometry from the tree (borders included).
         geom=$(swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | "\(.rect.x),\(.rect.y) \(.rect.width)x\(.rect.height)"' | head -n1)
         [ -n "$geom" ] || exit 0
         grim -g "$geom" "$out"
-        notify_saved
+        notify_saved "Window"
         ;;
     *)
         echo "usage: screenshot [region|full|output|window]" >&2

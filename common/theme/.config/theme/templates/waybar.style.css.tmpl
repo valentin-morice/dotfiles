@@ -4,7 +4,7 @@
 
 * {
     font-family: "JetBrainsMono Nerd Font";
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     min-height: 0;
 }
@@ -68,8 +68,19 @@ window#waybar {
 #tray {
     padding: 0 9px;
 }
-#tray {
+/* Battery is the right-most module now (tray moved to the left of volume), so it
+ * carries the extra right-edge breathing room the tray used to hold. */
+#battery {
     padding-right: 14px;
+}
+
+/* System tray — same light-gray fill as the inactive workspace blocks so a
+ * populated tray reads as its own region. It sits left of volume in
+ * modules-right (see config), so a newly-added icon grows the tray leftward
+ * into the mostly-hidden signal labels instead of shifting volume/network/
+ * bt/battery. */
+#tray {
+    background-color: ${THEME_bg_alt};
 }
 
 /* Battery states — urgent-tinted text at 20%, urgent block below 10%

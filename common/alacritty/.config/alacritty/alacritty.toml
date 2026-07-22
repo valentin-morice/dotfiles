@@ -1,8 +1,10 @@
 [font]
-# 11 suits Wayland/sway at output scale 1.0. (The old 6.5 only looked right
-# under X11, which rendered it at the panel's native ~170 DPI; Wayland at scale
-# 1.0 is ~96 DPI, so the same 6.5pt came out tiny.)
-size = 11
+# 11.5 on the ~165 DPI panel at scale 1.0 — tuned by eye (11 read slightly
+# small, 12 a touch big). The desktop stays unscaled/crisp, so type is sized
+# per-app rather than via output scale; fractional sizes render fine. (The old
+# X11 6.5 only looked right because X rendered at the panel's native DPI;
+# Wayland at scale 1.0 is logical ~96 DPI.)
+size = 11.5
 normal = { family = "JetBrainsMono Nerd Font", style = "Regular" }
 bold = { family = "JetBrainsMono Nerd Font", style = "Bold" }
 italic = { family = "JetBrainsMono Nerd Font", style = "Italic" }
