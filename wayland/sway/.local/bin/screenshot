@@ -28,7 +28,9 @@ notify_saved() {
 case "${1:-region}" in
     region)
         geom=$(slurp) || exit 0   # Esc / no selection -> cancel cleanly
-        grim -g "$geom" - | satty --filename - --output-filename "$out" --copy-command wl-copy
+        # Absolute path to the wrapper (~/.local/bin/satty) so its local icon
+        # overrides (G_RESOURCE_OVERLAYS) apply regardless of the session PATH.
+        grim -g "$geom" - | "$HOME/.local/bin/satty" --filename - --output-filename "$out" --copy-command wl-copy
         ;;
     full)
         grim "$out"
