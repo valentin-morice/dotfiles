@@ -12,7 +12,7 @@ exists() {
 }
 
 if ! exists; then
-    alacritty --app-id dropdown-term >/dev/null 2>&1 &
+    alacritty --class dropdown-term >/dev/null 2>&1 &
     # Wait for the window to map and the for_window rule to stash it.
     i=0
     while ! exists; do

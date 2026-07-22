@@ -49,8 +49,11 @@ window#waybar {
     background-color: ${THEME_urgent};
 }
 
-/* Binding-mode indicator — same horizontal padding as a workspace block. */
-#mode {
+/* Binding-mode indicator and the AWAKE (idle_inhibitor) toggle — both sit in
+ * modules-left next to the workspaces, so they carry the same horizontal
+ * padding as a workspace block rather than the 9px the center/right modules use. */
+#mode,
+#idle_inhibitor {
     padding: 0 11px;
 }
 
@@ -60,7 +63,6 @@ window#waybar {
 #custom-recording,
 #custom-dnd,
 #custom-nightlight,
-#idle_inhibitor,
 #pulseaudio,
 #network,
 #bluetooth,

@@ -31,6 +31,11 @@ input "type:touchpad" {
 }
 input "type:keyboard" {
     xkb_layout us
+    # Euro sign (€) on AltGr+5 — the € printed on the 5 key. eurosign:5 places it
+    # at level 3 of that key; lv3:ralt_switch makes Right Alt the level-3 (AltGr)
+    # selector, which the base "us" layout otherwise lacks. Trade-off: Right Alt
+    # stops acting as a plain Alt (Left Alt is unaffected).
+    xkb_options eurosign:5,lv3:ralt_switch
     # sway's default 600ms/25Hz is sluggish for terminal/vim work.
     repeat_delay 250
     repeat_rate 35
@@ -190,16 +195,26 @@ bindsym $mod+p exec ~/.local/bin/fuzzel-profile
 
 # Wi-Fi (nmtui) and Bluetooth (bluetuith) in a floating terminal — replaced the
 # rofi wifi/bluetooth script-modi (see for_window rules below).
-bindsym $mod+n exec alacritty --app-id netmenu-float -e nmtui
-bindsym $mod+b exec alacritty --app-id btmenu-float -e bluetuith
+bindsym $mod+n exec alacritty --class netmenu-float -e nmtui
+bindsym $mod+b exec alacritty --class btmenu-float -e bluetuith
 
 # Power menu (lock / logout / suspend / reboot / shutdown)
 bindsym $mod+Escape exec ~/.local/bin/fuzzel-power
+
+# Keybinding cheat sheet — toggles a floating terminal listing every bind
+# (the helper kills its own window on a second press; see the for_window rule
+# below and ~/.local/bin/keybind-help). $mod+Shift+slash is "$mod+?" on the us
+# layout, the conventional help mnemonic.
+bindsym $mod+Shift+slash exec ~/.local/bin/keybind-help
 
 # Float + centre the network/bluetooth TUI terminals so they read like the old
 # pop-up menus rather than tiling into the layout.
 for_window [app_id="netmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
 for_window [app_id="btmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
+
+# Keybinding cheat sheet ($mod+?) — float + centre it like the pop-up menus,
+# sized to fit the two-column sheet without scrolling.
+for_window [app_id="keybind-help"] floating enable, resize set width 1000 px height 820 px, move position center
 
 # Keep the screen awake for fullscreen video (movies). Browsers only request
 # the Wayland idle-inhibit protocol unreliably, so pin it to fullscreen state
@@ -304,7 +319,7 @@ bindsym $mod+minus scratchpad show
 # Drop-down terminal: pre-spawned into the scratchpad, toggled with $mod+grave.
 # The bind goes through a helper that respawns the terminal if it was ever
 # closed (Ctrl-D / crash), so $mod+grave never turns into a dead key.
-exec alacritty --app-id dropdown-term
+exec alacritty --class dropdown-term
 for_window [app_id="dropdown-term"] floating enable, resize set width 1600 px height 700 px, move scratchpad
 bindsym $mod+grave exec ~/.local/bin/dropdown-term
 

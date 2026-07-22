@@ -1,0 +1,115 @@
+#!/bin/sh
+# keybind-help — on-screen sway keybinding cheat sheet.
+#
+# Curated by hand (NOT auto-generated from the config): grouped by task and
+# ordered by how often each bind gets reached for, so it reads like a cheat
+# sheet rather than a config dump. Keep in sync with ~/.config/sway/config when
+# binds change — the sections below mirror that file's own section comments.
+#
+# Bound to $mod+? ($mod+Shift+slash). Toggle model mirrors dropdown-term: a bare invocation opens
+# the sheet in a floating alacritty (app_id keybind-help, floated + centred by a
+# for_window rule) or closes it if already open; the `--show` re-entry is what
+# runs *inside* that terminal and pages the sheet through less (q to close).
+set -eu
+
+# --- inner mode: render + page the sheet (runs inside the popup terminal) -----
+if [ "${1:-}" = "--show" ]; then
+    b=$(printf '\033[1m'); dim=$(printf '\033[2m'); r=$(printf '\033[0m')
+
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+
+    # Left and right columns as independent single-column blocks; `pr -m` lays
+    # them side by side. No ANSI inside these blocks — pr counts escape bytes as
+    # width and the columns would drift.
+    cat >"$tmp/l" <<'EOF'
+WINDOWS & APPS
+  Mod+Return         terminal
+  Mod+Shift+Return   browser (chromium)
+  Mod+Shift+f        file manager (thunar)
+  Mod+Shift+v        editor (codium)
+  Mod+d              app launcher (fuzzel)
+  Mod+w              window switcher
+  Mod+c              clipboard history
+  Mod+p              CPU power-profile
+  Mod+n              Wi-Fi menu (nmtui)
+  Mod+b              Bluetooth (bluetuith)
+  Mod+grave          drop-down terminal
+  Mod+Shift+q        close window
+
+FOCUS & MOVE
+  Mod+j k l ;        focus L / D / U / R
+  Mod+Shift+j k l ;  move window
+  Mod+arrows         focus (Shift = move)
+  Mod+a              focus parent
+  Mod+space          tiling/floating jump
+  Mod+drag           move floating window
+
+LAYOUT
+  Mod+h              split horizontal
+  Mod+v              split vertical
+  Mod+f              fullscreen toggle
+  Mod+s              stacking layout
+  Mod+e              toggle split layout
+  Mod+Shift+space    floating toggle
+  Mod+r              resize mode
+  Mod+g              gaps mode
+EOF
+
+    cat >"$tmp/rr" <<'EOF'
+WORKSPACES
+  Mod+1 .. 4         switch to workspace
+  Mod+Shift+1 .. 4   move window to ws
+  Mod+Tab            last workspace
+
+SCRATCHPAD
+  Mod+Shift+minus    stash window
+  Mod+minus          show / cycle back
+
+SCREENSHOTS & REC
+  Print              region shot
+  Shift+Print        whole screen
+  Ctrl+Print         active monitor
+  Mod+Shift+Print    focused window
+  Mod+Print          screen-record toggle
+
+NOTIFY / THEME / HW
+  Mod+Shift+t        theme light/dark
+  Mod+Shift+g        night light
+  Mod+Shift+d        do-not-disturb
+  Mod+Shift+Bksp     clear notifications
+  Mod+Shift+grave    restore last notif
+  Mod+period         emoji picker
+  Mod+m              mic mute
+  Fn row             vol/bright/media*
+
+SESSION
+  Mod+Escape         power menu
+  Mod+Shift+x        lock screen
+  Mod+Shift+c or r   reload config
+  Mod+Shift+e        exit sway
+EOF
+
+    {
+        printf '%s  sway keybindings%s   %sMod = Super%s\n' "$b" "$r" "$dim" "$r"
+        printf '\n'
+        pr -m -t -T -w 96 "$tmp/l" "$tmp/rr" | expand
+        printf '\n%sMODES%s  resize (Mod+r): j k l ; or arrows  ·  Return / Esc to exit\n' "$b" "$r"
+        printf '         gaps (Mod+g): +/- adjust  ·  0 reset  ·  Return / Esc to exit\n'
+        printf '%s  * hardware keys keep working on the lock screen.%s\n' "$dim" "$r"
+        printf '%s  press q to close.%s\n' "$dim" "$r"
+    } | less -R
+    exit 0
+fi
+
+# --- outer mode: toggle the popup terminal -----------------------------------
+exists() {
+    swaymsg -t get_tree \
+        | jq -e '[.. | select(.app_id? == "keybind-help")] | length > 0' >/dev/null 2>&1
+}
+
+if exists; then
+    exec swaymsg '[app_id="keybind-help"] kill'
+fi
+
+exec alacritty --class keybind-help -e "$0" --show
