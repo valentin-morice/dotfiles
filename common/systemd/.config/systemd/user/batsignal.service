@@ -1,0 +1,15 @@
+[Unit]
+Description=Battery level notifier (dunst warnings at 20/10, suspend at 5)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+# Warning 20%, critical 10%, danger 5% -> suspend before upower's 2% cutoff
+# (upower's own CriticalPowerAction stays as the backstop).
+ExecStart=/usr/bin/batsignal -w 20 -c 10 -d 5 -D "systemctl suspend"
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=sway-session.target

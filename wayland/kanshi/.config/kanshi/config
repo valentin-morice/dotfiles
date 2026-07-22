@@ -1,0 +1,12 @@
+# kanshi — per-profile output layouts (applied automatically on hotplug).
+# Harmless with only the laptop profile; fill in `docked` when an external
+# display exists (get make/model/serial from `swaymsg -t get_outputs`).
+
+profile laptop {
+    output eDP-1 enable mode 1920x1200@60Hz position 0,0
+}
+
+# profile docked {
+#     output eDP-1 disable
+#     output "<make model serial>" enable position 0,0
+# }

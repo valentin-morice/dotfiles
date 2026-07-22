@@ -61,7 +61,10 @@ exec --no-startup-id unclutter --timeout 3 --jitter 5 --ignore-scrolling
 # Polkit authentication agent (GUI auth prompts for gparted, etc.)
 exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 
-# Thunar daemon — required for thunar-volman to auto-mount removable media
+# Thunar daemon — required for thunar-volman to auto-mount removable media.
+# Unlike sway (see the systemd drop-in), this exec is fine: X11's XSETTINGS is a
+# live protocol, so GTK tracks the manager selection and picks up xsettingsd
+# whenever it claims it — no startup race to lose.
 exec --no-startup-id thunar --daemon
 
 # The combination of xss-lock, nm-applet and pactl is a popular choice, so
@@ -106,6 +109,9 @@ bindsym $mod+Return exec alacritty
 # Browser (chromium) and file manager (thunar)
 bindsym $mod+Shift+Return exec --no-startup-id chromium
 bindsym $mod+Shift+f exec --no-startup-id thunar
+
+# Editor (vscodium)
+bindsym $mod+Shift+v exec --no-startup-id codium
 
 # kill focused window
 bindsym $mod+Shift+q kill
