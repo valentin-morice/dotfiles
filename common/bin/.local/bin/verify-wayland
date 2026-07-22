@@ -77,10 +77,10 @@ fi
 running clip-notify || pgrep -f 'bin/clip-notify' >/dev/null 2>&1 \
     && P "clip-notify watcher running" || W "clip-notify not detected (Super+c history won't populate)"
 
-H "Screenshots: grim/slurp/satty (plan §5)"
-for b in grim slurp satty; do have "$b" && P "$b present" || F "$b missing"; done
+H "Screenshots: grim/slurp (plan §5)"
+for b in grim slurp; do have "$b" && P "$b present" || F "$b missing"; done
 [ -x "$HOME/.local/bin/screenshot" ] && P "screenshot wrapper present" || F "screenshot wrapper missing"
-W "manual: Print (region→satty), Shift+Print (full), Ctrl+Print (focused output)"
+W "manual: Print (region), Shift+Print (full), Ctrl+Print (focused output)"
 
 H "Mail alert: waybar custom/mail (plan §6)"
 state="/tmp/imap-$USER.txt"
