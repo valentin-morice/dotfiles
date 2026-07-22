@@ -2,7 +2,7 @@
 # Safe to source from any shell (including under `set -e`); defaults to the
 # "dark" theme when no theme has been selected or the selection is invalid.
 #
-# Sourced by theme-render and by the polybar scripts.
+# Sourced by theme-render and the lock script.
 
 __theme_dir="${XDG_CONFIG_HOME:-$HOME/.config}/theme"
 __theme_state="${XDG_CACHE_HOME:-$HOME/.cache}/theme/current"

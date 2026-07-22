@@ -23,7 +23,7 @@ esac
 export THEME_home="$HOME"
 
 # Build SHELL-FORMAT arg for envsubst: only $THEME_* names get substituted, so
-# polybar's ${colors.x}, i3's $mod, conky's ${color1} pass through untouched.
+# other tools' ${...} config syntax passes through untouched.
 vars=$(compgen -A export | grep '^THEME_' | sed 's/^/$/' | paste -sd ' ')
 
 render() {
@@ -32,25 +32,17 @@ render() {
     envsubst "$vars" < "$src" > "$dst"
 }
 
-# sway/Wayland (active) — and i3/X11 (kept rendered for the side-by-side
-# fallback; harmless to write even when sway is the running session).
 render sway.colors.conf.tmpl          "$HOME/.config/sway/colors.conf"
 render swaynag.config.tmpl            "$HOME/.config/swaynag/config"
 render waybar.config.jsonc.tmpl       "$HOME/.config/waybar/config"
 render waybar.style.css.tmpl          "$HOME/.config/waybar/style.css"
-render i3.colors.conf.tmpl            "$HOME/.config/i3/colors.conf"
-render polybar.colors.ini.tmpl        "$HOME/.config/polybar/colors.ini"
 render alacritty.colors.toml.tmpl     "$HOME/.config/alacritty/colors.toml"
-render rofi.colors.rasi.tmpl          "$HOME/.config/rofi/colors.rasi"
 render fuzzel.ini.tmpl                "$HOME/.config/fuzzel/fuzzel.ini"
 render zathurarc.tmpl                 "$HOME/.config/zathura/zathurarc"
-render conky.colors.lua.tmpl          "$HOME/.config/conky/colors.lua"
 render dunstrc.tmpl                   "$HOME/.config/dunst/dunstrc"
 render fastfetch.config.jsonc.tmpl    "$HOME/.config/fastfetch/config.jsonc"
-render picom.conf.tmpl                "$HOME/.config/picom/picom.conf"
 render gtk3.settings.ini.tmpl         "$HOME/.config/gtk-3.0/settings.ini"
 render gtk4.settings.ini.tmpl         "$HOME/.config/gtk-4.0/settings.ini"
-render xsettingsd.conf.tmpl           "$HOME/.config/xsettingsd/xsettingsd.conf"
 
 # bluetuith (Bluetooth TUI). Rendered as a whole file rather than patched in
 # place (cf. VSCodium below): it renders via tcell in truecolor, so named colors
@@ -61,15 +53,6 @@ render xsettingsd.conf.tmpl           "$HOME/.config/xsettingsd/xsettingsd.conf"
 # subset of HJSON). It has no live theme reload, so colors apply on next launch.
 render bluetuith.conf.tmpl            "$HOME/.config/bluetuith/bluetuith.conf"
 
-# flameshot.ini is GUI-rewritten; edit the two color keys in place.
-flameshot_ini="$HOME/.config/flameshot/flameshot.ini"
-if [ -f "$flameshot_ini" ]; then
-    sed -i -E \
-        -e "s|^(uiColor=).*|\1${THEME_accent}|" \
-        -e "s|^(contrastUiColor=).*|\1${THEME_accent}|" \
-        "$flameshot_ini"
-fi
-
 # Wallpaper — applied even with --no-reload (the WM calls this at startup).
 # Wayland: awww (a swww fork) owns the background via a persistent daemon, so the
 # image swaps with no black frame even with an instant transition — swaybg can't
@@ -79,7 +62,7 @@ fi
 # sway config; we also ensure it here (first install / not yet ready). awww has
 # no `query` subcommand, so we detect readiness by retrying `awww img` until the
 # daemon's socket answers (~2s cap). If awww isn't installed, fall back to
-# swaybg via swaymsg. X11: feh.
+# swaybg via swaymsg.
 if [ -n "${THEME_wallpaper:-}" ]; then
     if [ -n "${SWAYSOCK:-}" ] && command -v awww >/dev/null 2>&1; then
         if ! pgrep -x awww-daemon >/dev/null 2>&1; then
@@ -91,8 +74,6 @@ if [ -n "${THEME_wallpaper:-}" ]; then
         done
     elif [ -n "${SWAYSOCK:-}" ] && command -v swaymsg >/dev/null; then
         swaymsg output '*' bg "$THEME_wallpaper" fill >/dev/null 2>&1 || true
-    elif command -v feh >/dev/null; then
-        feh --no-fehbg --bg-fill "$THEME_wallpaper"
     fi
 fi
 
@@ -111,9 +92,8 @@ fi
 # GTK theme via gsettings — libadwaita/GTK4 apps follow color-scheme live. This
 # is also what xdg-desktop-portal-gtk exposes as the freedesktop appearance
 # color-scheme that Qt reads (see Qt note below). GTK3 apps recolor live via the
-# xdg settings portal on Wayland (xdg-desktop-portal-gtk emits SettingChanged),
-# and via xsettingsd (SIGHUP'd in the reload branch) on X11; the rendered
-# settings.ini files are the startup fallback. Harmless without dconf.
+# xdg settings portal (xdg-desktop-portal-gtk emits SettingChanged); the
+# rendered settings.ini files are the startup fallback. Harmless without dconf.
 if command -v gsettings >/dev/null; then
     gi="org.gnome.desktop.interface"
     gsettings set "$gi" color-scheme "$THEME_gtk_color_scheme" 2>/dev/null || true
@@ -132,10 +112,10 @@ fi
 
 if [ "$reload" -eq 1 ]; then
     # Reload daemons that don't auto-reload. alacritty live-reloads its import;
-    # rofi, flameshot, fastfetch, and VSCode read/watch on their own. dunst is
-    # common to both sessions — reload in place (dunst 1.13+) so visible
-    # notifications and the 20-entry history survive a theme switch (a restart
-    # wiped them). Fall back to a restart if dunst isn't up / lacks dunstctl.
+    # fastfetch and VSCode read/watch on their own. dunst reloads in place
+    # (dunst 1.13+) so visible notifications and the 20-entry history survive a
+    # theme switch (a restart wiped them). Fall back to a restart if dunst isn't
+    # up / lacks dunstctl.
     if ! { command -v dunstctl >/dev/null && dunstctl reload 2>/dev/null; }; then
         killall dunst 2>/dev/null || true
         setsid dunst >/dev/null 2>&1 &
@@ -155,7 +135,7 @@ if [ "$reload" -eq 1 ]; then
     fi
 
     if [ -n "${SWAYSOCK:-}" ]; then
-        # Wayland session. Apply the per-theme border colours LIVE via swaymsg
+        # Apply the per-theme border colours LIVE via swaymsg
         # (client.* are runtime-settable, taking effect on all current/future
         # windows) instead of `swaymsg reload`. Reload would re-read the config —
         # but it also cycles swaybg, blanking the wallpaper to black for ~250ms,
@@ -167,25 +147,5 @@ if [ "$reload" -eq 1 ]; then
         # the gsettings call above.)
         swaymsg "$(grep -E '^[[:space:]]*client\.' "$HOME/.config/sway/colors.conf" | paste -sd ';')" >/dev/null 2>&1 || true
         "$HOME/.config/waybar/launch.sh"
-    else
-        # X11 session.
-        i3-msg reload >/dev/null
-        "$HOME/.config/polybar/launch.sh"
-        "$HOME/.config/conky/launch.sh"
-        killall picom 2>/dev/null || true
-        setsid picom >/dev/null 2>&1 &
-        # GTK apps recolor live via xsettingsd (no restart): SIGHUP makes it
-        # re-read the freshly rendered config and push it to every client.
-        if pgrep -x xsettingsd >/dev/null; then
-            pkill -HUP xsettingsd
-        else
-            setsid xsettingsd >/dev/null 2>&1 &
-        fi
-    fi
-else
-    # Startup. On X11, ensure picom is running with the rendered config; on
-    # Wayland sway composites itself (no picom).
-    if [ -z "${SWAYSOCK:-}" ]; then
-        pgrep -x picom >/dev/null || setsid picom >/dev/null 2>&1 &
     fi
 fi

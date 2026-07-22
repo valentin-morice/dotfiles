@@ -1,8 +1,7 @@
 #!/bin/sh
-# Fuzzel front-end for switching the power-profiles-daemon profile (Wayland/sway
-# path; the i3/X11 path uses profile-select as a rofi script-modus). The active
-# profile is marked '* ' like the rofi version; fuzzel can't tint a single row,
-# so the accent tint is dropped (the marker remains).
+# Fuzzel front-end for switching the power-profiles-daemon profile. The active
+# profile is marked '* '; fuzzel can't tint a single row, so the marker alone
+# flags it.
 set -eu
 
 cur=$(powerprofilesctl get 2>/dev/null || true)

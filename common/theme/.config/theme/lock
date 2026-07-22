@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
-# Lock the screen, themed from the active palette. Picks the locker by session:
-#   Wayland -> swaylock(-effects)   X11 -> i3lock-color
-# (the migration runs sway and i3 side-by-side, so this stays dual until i3 is
-# retired). Sources the live theme (load.sh) at lock time, so the lock screen
-# always matches the current theme — nothing to re-render on theme-switch (both
-# lockers take colours as CLI flags, so a runtime source is the right fit).
+# Lock the screen with swaylock(-effects), themed from the active palette.
+# Sources the live theme (load.sh) at lock time, so the lock screen always
+# matches the current theme — nothing to re-render on theme-switch (swaylock
+# takes colours as CLI flags, so a runtime source is the right fit).
 #
 # Usage: lock            # lock now (blocks until unlocked)
 #        lock --fork     # detach instead of blocking
-# The idle/suspend handlers (swayidle / xss-lock) invoke this; the before-sleep
-# path needs --fork so the locker daemonises and the caller returns.
+# The idle/suspend handlers (swayidle) invoke this; the before-sleep path needs
+# --fork so the locker daemonises and the caller returns.
 
 set -euo pipefail
 
@@ -17,113 +15,72 @@ THEME_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/theme"
 # shellcheck disable=SC1090
 . "$THEME_DIR/load.sh"
 
-# Both lockers want RRGGBBAA (8 hex, no '#'); theme colors are '#rrggbb'.
+# swaylock wants RRGGBBAA (8 hex, no '#'); theme colors are '#rrggbb'.
 # c <#rrggbb> [aa] -> rrggbbaa (alpha defaults to ff/opaque).
 c() { local h=${1#\#}; printf '%s%s' "$h" "${2:-ff}"; }
 
 font="JetBrainsMono Nerd Font"
 
-if [ -n "${WAYLAND_DISPLAY:-}" ]; then
-    # ---- Wayland: swaylock(-effects) ----
-    fork_args=()
-    [ "${1:-}" = "--fork" ] && fork_args=(--daemonize)
+fork_args=()
+[ "${1:-}" = "--fork" ] && fork_args=(--daemonize)
 
-    # Background: frost the wallpaper itself (--image), not a screenshot of the
-    # live desktop — so the lock never flashes whatever was on screen, and the
-    # blur has no dependence on swaybg paint timing. Fall back to --screenshots
-    # only if the palette's wallpaper is somehow missing/unreadable.
-    bg_args=(--screenshots)
-    [ -n "${THEME_wallpaper:-}" ] && [ -r "$THEME_wallpaper" ] && bg_args=(--image "$THEME_wallpaper")
+# Background: frost the wallpaper itself (--image), not a screenshot of the
+# live desktop — so the lock never flashes whatever was on screen, and the
+# blur has no dependence on swaybg paint timing. Fall back to --screenshots
+# only if the palette's wallpaper is somehow missing/unreadable.
+bg_args=(--screenshots)
+[ -n "${THEME_wallpaper:-}" ] && [ -r "$THEME_wallpaper" ] && bg_args=(--image "$THEME_wallpaper")
 
-    # Frosted-glass lock. swaylock-effects blurs the wallpaper with a
-    # soft edge vignette to draw the eye inward; the indicator is a single
-    # translucent accent ring that *solidifies* as you type — the base ring sits
-    # at ~50% alpha and key presses paint it in full-opacity accent, so typing
-    # reads as the ring "charging" rather than a scatter of colours. Backspace
-    # fades to neutral grey (it's not an error), and hue is spent only where it
-    # carries meaning: amber for Caps Lock, red for a wrong password. The disc
-    # behind the clock is a 60%-alpha scrim so the blurred wallpaper shows
-    # through while keeping the text crisp. All colours are theme-sourced, so
-    # light and dark both stay coherent. Colours are RRGGBBAA — c()'s 2nd arg is
-    # the alpha byte (00 transparent … ff opaque).
-    exec swaylock \
-        "${fork_args[@]}" \
-        --ignore-empty-password \
-        --show-failed-attempts \
-        --grace 2 --grace-no-mouse \
-        "${bg_args[@]}" \
-        --effect-blur 7x5 \
-        --effect-vignette 0.5:0.5 \
-        --fade-in 0.2 \
-        --clock \
-        --indicator \
-        --indicator-caps-lock \
-        --timestr "%H:%M" \
-        --datestr "%A %e %B" \
-        --font "$font" \
-        --font-size 24 \
-        --indicator-radius 120 \
-        --indicator-thickness 8 \
-        --color "$(c "$THEME_bg")" \
-        --line-uses-ring \
-        --separator-color "$(c "$THEME_bg" 00)" \
-        --inside-color "$(c "$THEME_bg" 99)" \
-        --ring-color "$(c "$THEME_accent" 80)" \
-        --key-hl-color "$(c "$THEME_accent")" \
-        --bs-hl-color "$(c "$THEME_muted" 99)" \
-        --inside-ver-color "$(c "$THEME_bg" 99)" \
-        --ring-ver-color "$(c "$THEME_accent")" \
-        --inside-wrong-color "$(c "$THEME_bg" 99)" \
-        --ring-wrong-color "$(c "$THEME_urgent")" \
-        --inside-clear-color "$(c "$THEME_bg" 99)" \
-        --ring-clear-color "$(c "$THEME_muted" 80)" \
-        --inside-caps-lock-color "$(c "$THEME_bg" 99)" \
-        --ring-caps-lock-color "$(c "$THEME_secondary")" \
-        --caps-lock-key-hl-color "$(c "$THEME_secondary")" \
-        --caps-lock-bs-hl-color "$(c "$THEME_muted" 99)" \
-        --text-color "$(c "$THEME_fg")" \
-        --text-clear-color "$(c "$THEME_fg")" \
-        --text-ver-color "$(c "$THEME_accent")" \
-        --text-wrong-color "$(c "$THEME_urgent")" \
-        --text-caps-lock-color "$(c "$THEME_secondary")" \
-        --layout-text-color "$(c "$THEME_fg")" \
-        --layout-bg-color "$(c "$THEME_bg" 99)"
-fi
-
-# ---- X11: i3lock-color ----
-fork_flag=--nofork
-[ "${1:-}" = "--fork" ] && fork_flag=
-
-exec i3lock \
-    ${fork_flag:+$fork_flag} \
+# Frosted-glass lock. swaylock-effects blurs the wallpaper with a
+# soft edge vignette to draw the eye inward; the indicator is a single
+# translucent accent ring that *solidifies* as you type — the base ring sits
+# at ~50% alpha and key presses paint it in full-opacity accent, so typing
+# reads as the ring "charging" rather than a scatter of colours. Backspace
+# fades to neutral grey (it's not an error), and hue is spent only where it
+# carries meaning: amber for Caps Lock, red for a wrong password. The disc
+# behind the clock is a 60%-alpha scrim so the blurred wallpaper shows
+# through while keeping the text crisp. All colours are theme-sourced, so
+# light and dark both stay coherent. Colours are RRGGBBAA — c()'s 2nd arg is
+# the alpha byte (00 transparent … ff opaque).
+exec swaylock \
+    "${fork_args[@]}" \
     --ignore-empty-password \
     --show-failed-attempts \
-    --pass-media-keys --pass-volume-keys \
-    --color="$(c "$THEME_bg")" \
+    --grace 2 --grace-no-mouse \
+    "${bg_args[@]}" \
+    --effect-blur 7x5 \
+    --effect-vignette 0.5:0.5 \
+    --fade-in 0.2 \
     --clock \
     --indicator \
-    --time-str="%H:%M" \
-    --date-str="%A %e %B" \
-    --time-font="$font" --date-font="$font" \
-    --verif-font="$font" --wrong-font="$font" \
-    --layout-font="$font" --greeter-font="$font" \
-    --time-size=34 --date-size=15 \
-    --verif-size=24 --wrong-size=24 --modif-size=24 \
-    --radius=120 --ring-width=8 \
-    --inside-color="$(c "$THEME_bg_alt2")" \
-    --ring-color="$(c "$THEME_accent" 80)" \
-    --insidever-color="$(c "$THEME_bg_alt2")" \
-    --ringver-color="$(c "$THEME_accent")" \
-    --insidewrong-color="$(c "$THEME_bg_alt2")" \
-    --ringwrong-color="$(c "$THEME_urgent")" \
+    --indicator-caps-lock \
+    --timestr "%H:%M" \
+    --datestr "%A %e %B" \
+    --font "$font" \
+    --font-size 24 \
+    --indicator-radius 120 \
+    --indicator-thickness 8 \
+    --color "$(c "$THEME_bg")" \
     --line-uses-ring \
-    --separator-color="$(c "$THEME_bg" 00)" \
-    --keyhl-color="$(c "$THEME_accent")" \
-    --bshl-color="$(c "$THEME_muted" 99)" \
-    --time-color="$(c "$THEME_fg")" \
-    --date-color="$(c "$THEME_muted")" \
-    --verif-color="$(c "$THEME_accent")" \
-    --wrong-color="$(c "$THEME_urgent")" \
-    --modif-color="$(c "$THEME_secondary")" \
-    --layout-color="$(c "$THEME_muted")" \
-    --greeter-color="$(c "$THEME_fg_soft")"
+    --separator-color "$(c "$THEME_bg" 00)" \
+    --inside-color "$(c "$THEME_bg" 99)" \
+    --ring-color "$(c "$THEME_accent" 80)" \
+    --key-hl-color "$(c "$THEME_accent")" \
+    --bs-hl-color "$(c "$THEME_muted" 99)" \
+    --inside-ver-color "$(c "$THEME_bg" 99)" \
+    --ring-ver-color "$(c "$THEME_accent")" \
+    --inside-wrong-color "$(c "$THEME_bg" 99)" \
+    --ring-wrong-color "$(c "$THEME_urgent")" \
+    --inside-clear-color "$(c "$THEME_bg" 99)" \
+    --ring-clear-color "$(c "$THEME_muted" 80)" \
+    --inside-caps-lock-color "$(c "$THEME_bg" 99)" \
+    --ring-caps-lock-color "$(c "$THEME_secondary")" \
+    --caps-lock-key-hl-color "$(c "$THEME_secondary")" \
+    --caps-lock-bs-hl-color "$(c "$THEME_muted" 99)" \
+    --text-color "$(c "$THEME_fg")" \
+    --text-clear-color "$(c "$THEME_fg")" \
+    --text-ver-color "$(c "$THEME_accent")" \
+    --text-wrong-color "$(c "$THEME_urgent")" \
+    --text-caps-lock-color "$(c "$THEME_secondary")" \
+    --layout-text-color "$(c "$THEME_fg")" \
+    --layout-bg-color "$(c "$THEME_bg" 99)"

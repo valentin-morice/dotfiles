@@ -1,23 +1,20 @@
 #!/bin/bash
-# Rofi script-mode helper for session power actions.
-# - With no args, prints the menu entries for rofi.
-# - With an entry as $1, performs that action.
+# Session power actions — the action backend for fuzzel-power, which passes the
+# picked entry as $1.
 #
 # Lock routes through `loginctl lock-session` (not the lock script directly) so
-# it goes via xss-lock and matches $mod+Shift+x — one themed lock path. No
-# Hibernate entry: swap is zram (RAM-backed), so hibernate can't work here.
+# it goes via swayidle's lock handler and matches $mod+Shift+x — one themed lock
+# path. No Hibernate entry: swap is zram (RAM-backed), so hibernate can't work
+# here.
 set -e
 
 # Confirm a machine-level destructive action, then run it. The nag bar's button
-# runs the command directly; Escape / dismiss cancels. Session-appropriate:
-# swaynag under sway (themed via templates/swaynag.config.tmpl), i3-nagbar under
-# i3. Matches the $mod+Shift+e exit-sway confirm — shutdown/reboot shouldn't be a
-# single fuzzy keystroke.
+# runs the command directly; Escape / dismiss cancels. swaynag is themed via
+# templates/swaynag.config.tmpl. Matches the $mod+Shift+e exit-sway confirm —
+# shutdown/reboot shouldn't be a single fuzzy keystroke.
 confirm_run() {
     if [ -n "${SWAYSOCK:-}" ]; then
         exec swaynag -t warning -m "$1?" -B "$1" "$2"
-    elif command -v i3-nagbar >/dev/null 2>&1; then
-        exec i3-nagbar -t warning -m "$1?" -b "$1" "$2"
     else
         exec sh -c "$2"
     fi
@@ -25,12 +22,8 @@ confirm_run() {
 
 case "$1" in
     lock)     exec loginctl lock-session ;;
-    logout)   if [ -n "${SWAYSOCK:-}" ]; then exec swaymsg exit; else exec i3-msg exit; fi ;;
+    logout)   exec swaymsg exit ;;
     suspend)  exec systemctl suspend ;;
     reboot)   confirm_run 'Reboot' 'systemctl reboot' ;;
     shutdown) confirm_run 'Shutdown' 'systemctl poweroff' ;;
-    "")
-        printf '\0prompt\x1fpower\n'
-        printf 'lock\nlogout\nsuspend\nreboot\nshutdown\n'
-        ;;
 esac

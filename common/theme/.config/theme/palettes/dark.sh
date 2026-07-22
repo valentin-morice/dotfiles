@@ -1,6 +1,6 @@
 # Dark theme palette. Sourced via load.sh and consumed by theme-render
-# (and the polybar scripts) through envsubst. To add a theme, copy this file
-# to palettes/<name>.sh, change the values, and run `theme-switch <name>`.
+# through envsubst. To add a theme, copy this file to palettes/<name>.sh,
+# change the values, and run `theme-switch <name>`.
 
 # Backgrounds / foregrounds
 export THEME_bg=#0d0d0d
@@ -62,7 +62,7 @@ export THEME_border_unfocused=#222222
 export THEME_border_med=#444444
 export THEME_urgent_dark=#900000
 
-# Bare (no #) forms for conky lua string fields and fuzzel's RRGGBBAA colours
+# Bare (no #) forms for fuzzel's RRGGBBAA colours
 # (fuzzel.ini.tmpl appends an "ff" alpha to each).
 export THEME_fg_bare=ffffff
 export THEME_bg_bare=0d0d0d
@@ -76,15 +76,6 @@ export THEME_fg_soft_bare=d4d4d4
 export THEME_muted_dim_bare=6e6e6e
 export THEME_border_bare=1f1f1f
 
-# RGB components for the conky cairo border (matches THEME_border_med)
-export THEME_border_r=0x44
-export THEME_border_g=0x44
-export THEME_border_b=0x44
-
-# Compositor shadow (picom)
-export THEME_shadow_color=#000000
-export THEME_shadow_opacity=0.35
-
 # GTK / Qt. GTK3 reloads reliably only on a theme-NAME change, so dark uses the
 # named Adwaita-dark (needs gnome-themes-extra) rather than the prefer-dark flag
 # alone; GTK4/libadwaita + Qt follow gsettings color-scheme / the portal.
@@ -96,5 +87,5 @@ export THEME_gtk_color_scheme=prefer-dark
 # VSCodium theme applied by theme-render (Claude Code follows the terminal via "auto")
 export THEME_vscode="Dark 2026"
 
-# Wallpaper (applied by theme-render via feh)
+# Wallpaper (applied by theme-render)
 export THEME_wallpaper="$HOME/Pictures/Wallpapers/harald-pliessnig-YSTegVN35Ss-unsplash.jpg"

@@ -1,8 +1,7 @@
 #!/bin/sh
-# Fuzzel front-end for the clipboard history (Wayland/sway path; the i3/X11 path
-# uses clip-menu as a rofi script-modus over the bespoke store). On Wayland
-# cliphist owns storage — text AND images, with password-manager clips skipped —
-# so this just pipes its list through fuzzel and copies the decoded pick.
+# Fuzzel front-end for the clipboard history. cliphist owns storage — text AND
+# images, with password-manager clips skipped — so this just pipes its list
+# through fuzzel and copies the decoded pick.
 #
 # cliphist list emits "<id>\t<preview>" lines; `cliphist decode` reads a whole
 # such line from stdin and recovers the full clip by its id (so identical

@@ -1,13 +1,5 @@
 #!/bin/sh
 # Menu backend for dunst actions (dunstrc: `dmenu = ~/.local/bin/dunst-dmenu`).
 # dunst pipes the action list on stdin and reads the pick on stdout — the same
-# contract as dmenu. Dispatch by session, mirroring rofi/launch.sh: fuzzel on
-# Wayland (dmenu is X11-only, so the old /usr/bin/dmenu silently failed under
-# sway), dmenu/rofi on X11.
-if [ -n "${WAYLAND_DISPLAY:-}" ]; then
-    exec fuzzel --dmenu --prompt 'dunst ❯ '
-elif command -v dmenu >/dev/null 2>&1; then
-    exec dmenu -p dunst:
-else
-    exec rofi -dmenu -p dunst
-fi
+# contract as dmenu; fuzzel's --dmenu mode speaks it natively.
+exec fuzzel --dmenu --prompt 'dunst ❯ '

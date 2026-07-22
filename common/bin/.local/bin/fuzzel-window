@@ -1,7 +1,6 @@
 #!/bin/sh
-# Fuzzel window switcher for sway (replaces rofi's built-in `window` modus on
-# the Wayland path). Lists leaf containers as "<app>   <title>" — mirroring the
-# rofi window-format "{c}   {t}" — and focuses the picked one. The con_id is
+# Fuzzel window switcher for sway. Lists leaf containers as "<app>   <title>"
+# and focuses the picked one. The con_id is
 # carried alongside the display text and recovered by line index (fuzzel
 # --index), since fuzzel has no hidden per-row data.
 set -eu

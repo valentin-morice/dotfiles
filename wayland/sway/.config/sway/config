@@ -176,17 +176,17 @@ bindsym $mod+Shift+v exec codium
 # kill focused window
 bindsym $mod+Shift+q kill
 
-# Application launcher
-bindsym $mod+d exec ~/.config/rofi/launch.sh -show drun
+# Application launcher (fuzzel's native drun mode)
+bindsym $mod+d exec fuzzel --prompt 'drun ❯ '
 
 # Clipboard history (entries recorded by clip-notify)
-bindsym $mod+c exec ~/.config/rofi/launch.sh -show clipboard
+bindsym $mod+c exec ~/.local/bin/fuzzel-clip
 
-# Window switcher (fuzzel) and CPU power-profile picker. These were tab-only in
-# the rofi launcher; fuzzel has no mode-switcher, so they get their own binds.
+# Window switcher and CPU power-profile picker. fuzzel has no mode-switcher,
+# so each gets its own bind + dmenu wrapper in ~/.local/bin.
 # $mod+w (was "layout tabbed") is the window switcher's mnemonic home.
-bindsym $mod+w exec ~/.config/rofi/launch.sh -show window
-bindsym $mod+p exec ~/.config/rofi/launch.sh -show profile
+bindsym $mod+w exec ~/.local/bin/fuzzel-window
+bindsym $mod+p exec ~/.local/bin/fuzzel-profile
 
 # Wi-Fi (nmtui) and Bluetooth (bluetuith) in a floating terminal — replaced the
 # rofi wifi/bluetooth script-modi (see for_window rules below).
@@ -194,7 +194,7 @@ bindsym $mod+n exec alacritty --app-id netmenu-float -e nmtui
 bindsym $mod+b exec alacritty --app-id btmenu-float -e bluetuith
 
 # Power menu (lock / logout / suspend / reboot / shutdown)
-bindsym $mod+Escape exec ~/.config/rofi/launch.sh -show power-menu
+bindsym $mod+Escape exec ~/.local/bin/fuzzel-power
 
 # Float + centre the network/bluetooth TUI terminals so they read like the old
 # pop-up menus rather than tiling into the layout.
@@ -236,15 +236,11 @@ for_window [app_id="polkit-gnome-authentication-agent-1"] floating enable, move 
 # is stable and locale-independent, so no fragile title matching is needed.
 for_window [app_id="xdg-desktop-portal-gtk"] floating enable, move position center
 
-# Screenshots (grim + slurp + satty)
+# Screenshots (grim + slurp)
 bindsym Print exec ~/.local/bin/screenshot region
 bindsym Shift+Print exec ~/.local/bin/screenshot full
 bindsym Ctrl+Print exec ~/.local/bin/screenshot output
 bindsym $mod+Shift+Print exec ~/.local/bin/screenshot window
-
-# The satty annotation editor (opened by `screenshot region`) floats + centres
-# so it pops over the layout instead of tiling in and reflowing your windows.
-for_window [app_id="com.gabm.satty"] floating enable, move position center
 
 # Screen recording toggle (wf-recorder; region via slurp)
 bindsym $mod+Print exec ~/.local/bin/screenrecord

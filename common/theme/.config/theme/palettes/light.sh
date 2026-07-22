@@ -1,7 +1,7 @@
 # Light theme palette — cool-neutral, designed to mirror the dark theme.
 # Same accent hues (blue + gold) deepened for legibility on a light ground;
 # surfaces carry a faint cool tint so they sit with the powder-blue wallpaper.
-# Sourced via load.sh; consumed by theme-render and the polybar scripts.
+# Sourced via load.sh; consumed by theme-render.
 
 # Backgrounds / foregrounds
 export THEME_bg=#f4f6f8
@@ -59,7 +59,7 @@ export THEME_border_unfocused=#dde2e7
 export THEME_border_med=#c2cad1
 export THEME_urgent_dark=#9e2820
 
-# Bare (no #) forms for conky lua string fields and fuzzel's RRGGBBAA colours
+# Bare (no #) forms for fuzzel's RRGGBBAA colours
 # (fuzzel.ini.tmpl appends an "ff" alpha to each).
 export THEME_fg_bare=1d2329
 export THEME_bg_bare=f4f6f8
@@ -73,15 +73,6 @@ export THEME_fg_soft_bare=333b42
 export THEME_muted_dim_bare=9aa4ad
 export THEME_border_bare=d3dae0
 
-# RGB components for the conky cairo border (matches THEME_border_med #c2cad1)
-export THEME_border_r=0xc2
-export THEME_border_g=0xca
-export THEME_border_b=0xd1
-
-# Compositor shadow (picom) — softer on the light ground so it doesn't read heavy
-export THEME_shadow_color=#000000
-export THEME_shadow_opacity=0.18
-
 # GTK / Qt. Light uses the plain (built-in) Adwaita name; dark uses Adwaita-dark
 # (see dark.sh) so GTK3 reloads on the name change. GTK4/libadwaita + Qt follow
 # gsettings color-scheme / the portal.
@@ -93,5 +84,5 @@ export THEME_gtk_color_scheme=prefer-light
 # VSCodium theme applied by theme-render (Claude Code follows the terminal via "auto")
 export THEME_vscode="Light 2026"
 
-# Wallpaper (applied by theme-render via feh)
+# Wallpaper (applied by theme-render)
 export THEME_wallpaper="$HOME/Pictures/Wallpapers/scott-webb-2X6nZA0jmvU-unsplash.jpg"

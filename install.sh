@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap this dotfiles repo on a fresh Arch machine (sway/Wayland primary,
-# i3/X11 kept as a side-by-side fallback).
+# Bootstrap this dotfiles repo on a fresh Arch machine (sway/Wayland).
 #
 #   ./install.sh
 #
@@ -33,8 +32,8 @@ info "Preflight checks"
 
 command -v pacman >/dev/null || die "pacman not found — this script targets Arch Linux."
 
-# An AUR helper is required: several packages (i3lock-color, xidlehook,
-# snixembed, lazydocker, 1password*) live in the AUR. paru/yay install repo
+# An AUR helper is required: several packages (swaylock-effects, bluetuith,
+# lazydocker, 1password*) live in the AUR. paru/yay install repo
 # and AUR packages alike, so we route everything through it.
 AUR=""
 for h in paru yay; do
@@ -52,34 +51,29 @@ ok "Using AUR helper: $AUR"
 # --- packages -------------------------------------------------------------
 # Repo + AUR mixed; the helper sorts them out. --needed makes this idempotent.
 PACKAGES=(
-    # Wayland / sway session  (satty, swaylock-effects are AUR)
-    # fuzzel is the sway launcher; rofi 2.0+ (repo, native Wayland) stays for the
-    # i3/X11 fallback — launch.sh dispatches between them by $WAYLAND_DISPLAY.
+    # Wayland / sway session  (swaylock-effects is AUR); fuzzel is the
+    # launcher and the dmenu backend for the ~/.local/bin/fuzzel-* menus.
     sway swaybg swayidle swaylock-effects waybar gammastep
-    grim slurp satty wl-clipboard jq fuzzel
+    grim slurp wl-clipboard jq fuzzel
     # cliphist: Wayland clipboard history (text + images; skips password-manager
     # clips). wtype: lets the emoji picker type its pick (optional).
     cliphist wtype
-    rofi xorg-xwayland xdg-desktop-portal-wlr
-    # Network / Bluetooth TUIs (replaced the rofi wifi/bluetooth menus; opened in
-    # a floating terminal from $mod+n / $mod+b). bluetuith is AUR.
+    xorg-xwayland xdg-desktop-portal-wlr
+    # Network / Bluetooth TUIs (opened in a floating terminal from $mod+n /
+    # $mod+b). bluetuith is AUR.
     networkmanager bluetuith
-    # X11 / i3 session — kept for the side-by-side fallback during migration
-    i3-wm polybar picom conky redshift feh
-    # WM-neutral desktop  (rofi-wayland above provides the rofi binary)
+    # Desktop
     alacritty dunst fastfetch
     # shell / CLI
     zsh tmux stow zoxide fzf fd eza bat git-delta
-    # TUIs / tray  (lazydocker, snixembed are AUR)
-    lazygit lazydocker flameshot snixembed
+    # TUIs  (lazydocker is AUR)
+    lazygit lazydocker
     # hardware keys
     playerctl brightnessctl
     # build / vcs
     go github-cli
     # theming
-    xsettingsd xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme
-    # lock / idle  (i3lock-color, xidlehook are AUR; X11 fallback path)
-    xss-lock i3lock-color xidlehook xorg-xset
+    xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme
     # secrets / signing  (both AUR)
     1password 1password-cli
 )
@@ -88,14 +82,13 @@ info "Installing ${#PACKAGES[@]} packages via $AUR (already-present ones are ski
 ok "Packages installed"
 
 # --- stow -----------------------------------------------------------------
-# Packages are grouped: common/ (both sessions), x11/ (i3), wayland/ (sway).
-# We deploy all three so either session is selectable at the ly login screen
-# (side-by-side). --restow re-links cleanly on a re-run; one package per dir.
+# Packages are grouped: common/ (WM-neutral) and wayland/ (sway session).
+# --restow re-links cleanly on a re-run; one package per dir.
 # `common/bin` (personal ~/.local/bin helpers) is tracked but deliberately NOT
 # deployed here — enable it by hand with `stow -d common bin`.
-info "Stowing packages into \$HOME (common + x11 + wayland)"
+info "Stowing packages into \$HOME (common + wayland)"
 cd "$REPO"
-for group in common x11 wayland; do
+for group in common wayland; do
     pkgs=()
     for d in "$group"/*/; do
         name="$(basename "$d")"
@@ -123,7 +116,7 @@ if [ -d "$REPO/.git" ]; then
     ok "git identity pinned to repo-local config"
 fi
 
-# --- conky mail helper: secret scaffold + build ---------------------------
+# --- mail helper: secret scaffold + build ---------------------------------
 imap_env="$HOME/.config/imap/imap.env"
 if [ ! -f "$imap_env" ]; then
     info "Scaffolding $imap_env (gitignored secret — edit it before use)"
@@ -142,9 +135,8 @@ imap_src="$HOME/.config/imap"
 if [ -d "$imap_src" ]; then
     info "Building imap-daemon (the shared mail backend)"
     # The Go module builds the daemon that writes /tmp/imap-$USER.txt; the
-    # waybar custom/mail module (waybar-mail) and conky's conky-mail-label /
-    # conky-mail-subject wrappers just read that file. The daemon is run via the
-    # imap.service user unit (systemd package).
+    # waybar custom/mail module (waybar-mail) just reads that file. The daemon
+    # is run via the imap.service user unit (systemd package).
     ( cd "$imap_src" && go build -o "$HOME/.local/bin/imap-daemon" )
     ok "imap-daemon built to ~/.local/bin/"
 fi
@@ -157,7 +149,7 @@ if command -v systemctl >/dev/null; then
 fi
 
 # --- generate the non-stowed (theme-rendered) configs ---------------------
-# dunst, picom, fastfetch, gtk, xsettingsd, etc. are produced by theme-render
+# dunst, fastfetch, gtk, waybar, etc. are produced by theme-render
 # from the active palette (defaults to dark). --no-reload just writes files —
 # it won't try to poke daemons that aren't running yet.
 info "Rendering theme configs (default palette: dark)"
@@ -179,16 +171,12 @@ ${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
   • IMAP creds  — edit ~/.config/imap/imap.env, then start the mail daemon:
                   systemctl --user enable --now imap.service
   • bin helpers — \`stow -d common bin\` to deploy the personal ~/.local/bin scripts
-                  (volume/mic/brightness notifiers, clipboard notifier +
-                  history browser, the rofi script-modi power-profile / power /
-                  clipboard pickers, and their fuzzel-* equivalents for sway).
-                  Conky's own helpers are already deployed with the conky
-                  package.
+                  (volume/mic/brightness notifiers, clipboard notifier, and the
+                  fuzzel-* clipboard / power-profile / power / window menus).
   • Audio       — pactl volume keys need a PulseAudio-compatible server
                   (e.g. pipewire-pulse); not auto-installed to avoid conflicts.
   • Optional    — nvm, bun, and Oh My Zsh each have their own installers.
-  • Session     — pick "sway" at the ly login screen for the Wayland session
-                  (or "i3" for the X11 fallback). Both are themed.
+  • Session     — pick "sway" at the ly login screen.
   • Log out/in  — so the Qt portal env (QT_QPA_PLATFORMTHEME) and the
                   xdg-desktop-portal autostarts take effect.
 EOF

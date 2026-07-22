@@ -36,8 +36,7 @@ export NVM_DIR="$HOME/.nvm"
 export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 export QT_STYLE_OVERRIDE=Fusion
 
-# Prefer native Wayland for Firefox and Electron apps under sway. Both gate on
-# WAYLAND_DISPLAY, so under the X11/i3 fallback these are no-ops (apps use X).
+# Prefer native Wayland for Firefox and Electron apps under sway.
 # Qt auto-detects Wayland when WAYLAND_DISPLAY is set, so no QT_QPA_PLATFORM here.
 export MOZ_ENABLE_WAYLAND=1
 export ELECTRON_OZONE_PLATFORM_HINT=auto

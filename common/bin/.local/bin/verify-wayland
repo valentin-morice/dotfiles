@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Runtime 1:1 verification for the sway/Wayland migration. Run this INSIDE a
+# Runtime health check for the sway/Wayland session. Run this INSIDE a
 # sway session (after ./install.sh + logging into "sway" at ly):
 #
 #     verify-wayland
 #
-# It mechanically checks each migrated feature against its i3/X11 counterpart
+# It mechanically checks each feature of the session
 # and prints PASS / WARN / FAIL. WARN = needs a human eyeball (e.g. tray icons);
 # FAIL = something is actually broken. Exit status is non-zero if anything FAILs.
 # Safe to re-run; the only side effect is a clipboard round-trip test.
@@ -60,8 +60,9 @@ fi
 
 H "Launcher + menus: fuzzel (plan §3)"
 have fuzzel && P "fuzzel present ($(fuzzel --version 2>/dev/null | head -1))" || F "fuzzel missing (Wayland launcher)"
-have rofi && P "rofi present (X11 fallback launcher)" || W "rofi missing (only needed for the i3/X11 session)"
-[ -x "$HOME/.config/rofi/launch.sh" ] && P "launcher dispatcher (rofi/launch.sh → fuzzel on Wayland) present" || F "launcher dispatcher missing"
+for b in fuzzel-clip fuzzel-window fuzzel-profile fuzzel-power; do
+    [ -x "$HOME/.local/bin/$b" ] && P "$b present" || F "$b missing (re-stow the bin package)"
+done
 W "manual: Super+d (drun), Super+c (clipboard), Super+w (window), Super+p (profile), Super+Escape (power)"
 
 H "Clipboard: wl-clipboard + cliphist (plan §4)"
