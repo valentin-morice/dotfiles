@@ -15,10 +15,11 @@
 
 configuration {
     font:                "JetBrainsMono Nerd Font 11.5";
-    /* show-icons stays off by default so the dmenu wrappers (clip/window/
-       profile) have no empty icon column; the drun bind flips it on with
-       -show-icons, since only .desktop entries carry icons. icon-theme follows
-       the palette's Papirus variant so app icons track light/dark. */
+    /* show-icons stays off by default so the clip/profile dmenu wrappers have
+       no empty icon column; the drun bind and rofi-window flip it on with
+       -show-icons (drun from .desktop icons, rofi-window from per-row app_id
+       icons). icon-theme follows the palette's Papirus variant so app icons
+       track light/dark. */
     show-icons:          false;
     icon-theme:          "${THEME_gtk_icon}";
     terminal:            "alacritty";
@@ -94,14 +95,15 @@ listview {
    metric fuzzel's line-height=26 was reverse-engineered from. */
 element {
     padding:          6px 10px;
-    spacing:          10px;   /* gap between icon and text (drun only) */
+    spacing:          10px;   /* gap between icon and text (drun + window) */
     border-radius:    0px;
     background-color: transparent;
     text-color:       @fg;
 }
 
-/* Only rendered when -show-icons is on (drun). Hidden for the dmenu wrappers,
-   so `spacing` above adds no leading gap there. */
+/* Only rendered when -show-icons is on (drun + rofi-window). Hidden for the
+   remaining dmenu wrappers (clip/profile), so `spacing` above adds no leading
+   gap there. */
 element-icon {
     size:             22px;
     vertical-align:   0.5;
