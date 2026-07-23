@@ -1,0 +1,106 @@
+#!/bin/bash
+# rofi power menu as a 2x2 card grid — four uniform actions: shutdown, lock,
+# reboot, logout. Each card is a big Nerd Font glyph + label — glyphs are TEXT,
+# so they take the palette text-color and adapt to light/dark automatically
+# (image icons carry baked-in colours that would break on theme-switch). The
+# grid + card styling is layered onto the base config.rasi via -theme-str, so the
+# drun/clip/window/profile launchers keep their plain vertical-list look.
+#
+# Selection maps back to the action by index (rofi -format i), since each row is
+# pango markup, not the bare action name. Delegates to power-menu so there's one
+# source of truth for what each entry does (like the old fuzzel-power did).
+set -euo pipefail
+
+# Cards are ordered by usage frequency and laid out so the 2x2 grid reads
+# most->least used left-to-right, top-to-bottom:
+#     Shutdown  Lock
+#     Reboot    Logout
+# rofi fills COLUMN-major, so the arrays below are that grid's column-major
+# traversal (col1 top->bottom, then col2): shutdown, reboot, lock, logout.
+# index 0 (shutdown, top-left) is the default-selected card — its poweroff still
+# routes through power-menu's swaynag confirm, so Enter is safe. (Suspend was
+# dropped: closing the laptop lid already suspends.)
+actions=(shutdown   reboot     lock       logout)
+labels=( Shutdown   Reboot     Lock       Logout)
+# Nerd Font glyphs — placeholders are substituted with the real codepoint bytes
+# by tooling so the multibyte chars survive edits (embedding them raw got them
+# stripped). Order matches actions above.
+glyphs=(
+    ""   # shutdown (U+F011 power-off)
+    ""     # reboot   (U+F021 refresh)
+    ""       # lock     (U+F023)
+    ""     # logout   (U+F08B sign-out)
+)
+
+# Shutdown is flagged "urgent" (rofi -u) so the theme can give just that card the
+# danger-red border + glyph + label, without touching the other three.
+urgent_idx=0
+for i in "${!actions[@]}"; do [ "${actions[i]}" = shutdown ] && urgent_idx=$i; done
+
+# Each row: glyph, a sized-space gap (so it doesn't inherit the big 21px icon
+# width), then the label lifted to the glyph's optical centre via rise (pango's
+# flex align-items: center). rise units are 1/1024pt.
+rows=""
+for i in "${!actions[@]}"; do
+    rows+="${glyphs[i]}<span size='60%'>  </span><span rise='4000' size='55%'>${labels[i]}</span>"$'\n'
+done
+
+# Grid overlay on top of config.rasi's palette (@bg-alt/@accent/@urgent/... resolve
+# from its * block). Notes on why it's spelled out this way:
+#  - Only [listview] in mainbox -> no input row; inputbar disabled + all default
+#    borders zeroed so rofi's built-in theme can't leak its dashed separator.
+#  - State-qualified selectors (normal.normal / selected.normal / *.urgent) are
+#    REQUIRED: the default theme defines those, and a bare `element selected` is
+#    less specific, so it silently loses. The *.urgent variants colour ONLY the
+#    shutdown card (flagged via -u) — danger-red border + text in every state.
+#  - element-text font is enlarged so the row box fits the glyph (no crop); the
+#    label rides along smaller via its 55% span above.
+#  - fixed-columns/fixed-height keep the 2x2 shape.
+theme='
+window    { width: 440px; border: 2px; border-color: @border-c; background-color: @bg; }
+mainbox   { children: [ listview ]; padding: 22px; background-color: transparent; border: 0; }
+inputbar  { enabled: false; }
+listview  { columns: 2; lines: 2; spacing: 14px; fixed-height: true; fixed-columns: true;
+            border: 0; background-color: transparent; scrollbar: false; }
+element {
+    padding:          22px 10px;
+    border:           1px;
+    border-radius:    12px;
+    background-color: @bg-alt;
+    border-color:     @border-med;
+    text-color:       @fg;
+}
+element normal.normal,
+element alternate.normal {
+    background-color: @bg-alt;
+    border-color:     @border-med;
+    text-color:       @fg;
+}
+element selected.normal {
+    background-color: @bg-sel;
+    border-color:     @accent;
+    text-color:       @accent;
+}
+element normal.urgent,
+element alternate.urgent {
+    background-color: @bg-alt;
+    border-color:     @urgent;
+    text-color:       @urgent;
+}
+element selected.urgent {
+    background-color: @bg-sel;
+    border-color:     @urgent;
+    text-color:       @urgent;
+}
+element-text {
+    font:             "JetBrainsMono Nerd Font 21";
+    horizontal-align: 0.5;
+    vertical-align:   0.5;
+    background-color: transparent;
+    text-color:       inherit;
+}
+'
+
+idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -u "$urgent_idx" -format i -theme-str "$theme") || exit 0
+[ -n "$idx" ] || exit 0
+exec "$HOME/.local/bin/power-menu" "${actions[idx]}"
