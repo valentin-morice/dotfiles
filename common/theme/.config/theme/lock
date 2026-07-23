@@ -4,49 +4,60 @@
 # matches the current theme — nothing to re-render on theme-switch (swaylock
 # takes colours as CLI flags, so a runtime source is the right fit).
 #
-# Usage: lock            # lock now (blocks until unlocked)
-#        lock --fork     # detach instead of blocking
-# The idle/suspend handlers (swayidle) invoke this; the before-sleep path needs
-# --fork so the locker daemonises and the caller returns.
-
-set -euo pipefail
+# Usage: lock [--fork] [--grace]
+#   --fork    detach instead of blocking (the before-sleep/idle paths need this)
+#   --grace   allow a short keypress-dismiss window (idle path ONLY — see below)
+#
+# SECURITY: this script must NEVER fail open. It is deliberately NOT `set -e`:
+# if the themed swaylock-effects invocation fails for any reason (palette
+# unreadable on a fresh stow, plain swaylock replacing the AUR -effects build and
+# rejecting its flags, a malformed colour), we fall through to a bare locker
+# rather than exit having locked nothing — otherwise before-sleep resumes
+# UNLOCKED. Palette sourcing is also made non-fatal for the same reason.
+set -o pipefail
 
 THEME_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/theme"
 # shellcheck disable=SC1090
-. "$THEME_DIR/load.sh"
+. "$THEME_DIR/load.sh" 2>/dev/null || true
 
 # swaylock wants RRGGBBAA (8 hex, no '#'); theme colors are '#rrggbb'.
-# c <#rrggbb> [aa] -> rrggbbaa (alpha defaults to ff/opaque).
+# c <#rrggbb> [aa] -> rrggbbaa (alpha defaults to ff/opaque). Empty input yields
+# a 2-hex string that swaylock rejects -> the fallback locker takes over.
 c() { local h=${1#\#}; printf '%s%s' "$h" "${2:-ff}"; }
 
 font="JetBrainsMono Nerd Font"
 
 fork_args=()
-[ "${1:-}" = "--fork" ] && fork_args=(--daemonize)
+grace_args=()
+for a in "$@"; do
+    case "$a" in
+        --fork)  fork_args=(--daemonize) ;;
+        # Grace lets ANY keypress dismiss the locker for N seconds. That window
+        # can survive a suspend (the timer doesn't elapse while suspended), so a
+        # resume could be dismissed WITHOUT a password. It is therefore accepted
+        # ONLY when the caller explicitly asks (the idle timer, where lock ->
+        # suspend is ~20 min away); before-sleep and $mod+Shift+x pass no --grace.
+        --grace) grace_args=(--grace 5 --grace-no-mouse --grace-no-touch) ;;
+    esac
+done
 
 # Background: frost the wallpaper itself (--image), not a screenshot of the
 # live desktop — so the lock never flashes whatever was on screen, and the
 # blur has no dependence on swaybg paint timing. Fall back to --screenshots
 # only if the palette's wallpaper is somehow missing/unreadable.
 bg_args=(--screenshots)
-[ -n "${THEME_wallpaper:-}" ] && [ -r "$THEME_wallpaper" ] && bg_args=(--image "$THEME_wallpaper")
+[ -n "${THEME_wallpaper:-}" ] && [ -r "${THEME_wallpaper:-}" ] && bg_args=(--image "$THEME_wallpaper")
 
-# Frosted-glass lock. swaylock-effects blurs the wallpaper with a
-# soft edge vignette to draw the eye inward; the indicator is a single
-# translucent accent ring that *solidifies* as you type — the base ring sits
-# at ~50% alpha and key presses paint it in full-opacity accent, so typing
-# reads as the ring "charging" rather than a scatter of colours. Backspace
-# fades to neutral grey (it's not an error), and hue is spent only where it
-# carries meaning: amber for Caps Lock, red for a wrong password. The disc
-# behind the clock is a 60%-alpha scrim so the blurred wallpaper shows
-# through while keeping the text crisp. All colours are theme-sourced, so
-# light and dark both stay coherent. Colours are RRGGBBAA — c()'s 2nd arg is
-# the alpha byte (00 transparent … ff opaque).
-exec swaylock \
+# Frosted-glass lock (swaylock-effects). Blurs the wallpaper with a soft edge
+# vignette; the indicator is a translucent accent ring that solidifies as you
+# type. Backspace fades to neutral grey; hue is spent only where it carries
+# meaning (amber Caps Lock, red wrong password). All colours are theme-sourced.
+# Run (not exec) so a failure reaches the fallback locker below.
+swaylock \
     "${fork_args[@]}" \
+    "${grace_args[@]}" \
     --ignore-empty-password \
     --show-failed-attempts \
-    --grace 2 --grace-no-mouse \
     "${bg_args[@]}" \
     --effect-blur 7x5 \
     --effect-vignette 0.5:0.5 \
@@ -60,27 +71,31 @@ exec swaylock \
     --font-size 24 \
     --indicator-radius 120 \
     --indicator-thickness 8 \
-    --color "$(c "$THEME_bg")" \
+    --color "$(c "${THEME_bg:-#1d2329}")" \
     --line-uses-ring \
-    --separator-color "$(c "$THEME_bg" 00)" \
-    --inside-color "$(c "$THEME_bg" 99)" \
-    --ring-color "$(c "$THEME_accent" 80)" \
-    --key-hl-color "$(c "$THEME_accent")" \
-    --bs-hl-color "$(c "$THEME_muted" 99)" \
-    --inside-ver-color "$(c "$THEME_bg" 99)" \
-    --ring-ver-color "$(c "$THEME_accent")" \
-    --inside-wrong-color "$(c "$THEME_bg" 99)" \
-    --ring-wrong-color "$(c "$THEME_urgent")" \
-    --inside-clear-color "$(c "$THEME_bg" 99)" \
-    --ring-clear-color "$(c "$THEME_muted" 80)" \
-    --inside-caps-lock-color "$(c "$THEME_bg" 99)" \
-    --ring-caps-lock-color "$(c "$THEME_secondary")" \
-    --caps-lock-key-hl-color "$(c "$THEME_secondary")" \
-    --caps-lock-bs-hl-color "$(c "$THEME_muted" 99)" \
-    --text-color "$(c "$THEME_fg")" \
-    --text-clear-color "$(c "$THEME_fg")" \
-    --text-ver-color "$(c "$THEME_accent")" \
-    --text-wrong-color "$(c "$THEME_urgent")" \
-    --text-caps-lock-color "$(c "$THEME_secondary")" \
-    --layout-text-color "$(c "$THEME_fg")" \
-    --layout-bg-color "$(c "$THEME_bg" 99)"
+    --separator-color "$(c "${THEME_bg:-#1d2329}" 00)" \
+    --inside-color "$(c "${THEME_bg:-#1d2329}" 99)" \
+    --ring-color "$(c "${THEME_accent:-#3a7bc8}" 80)" \
+    --key-hl-color "$(c "${THEME_accent:-#3a7bc8}")" \
+    --bs-hl-color "$(c "${THEME_muted:-#808488}" 99)" \
+    --inside-ver-color "$(c "${THEME_bg:-#1d2329}" 99)" \
+    --ring-ver-color "$(c "${THEME_accent:-#3a7bc8}")" \
+    --inside-wrong-color "$(c "${THEME_bg:-#1d2329}" 99)" \
+    --ring-wrong-color "$(c "${THEME_urgent:-#9e2820}")" \
+    --inside-clear-color "$(c "${THEME_bg:-#1d2329}" 99)" \
+    --ring-clear-color "$(c "${THEME_muted:-#808488}" 80)" \
+    --inside-caps-lock-color "$(c "${THEME_bg:-#1d2329}" 99)" \
+    --ring-caps-lock-color "$(c "${THEME_secondary:-#e0a552}")" \
+    --caps-lock-key-hl-color "$(c "${THEME_secondary:-#e0a552}")" \
+    --caps-lock-bs-hl-color "$(c "${THEME_muted:-#808488}" 99)" \
+    --text-color "$(c "${THEME_fg:-#f4f6f8}")" \
+    --text-clear-color "$(c "${THEME_fg:-#f4f6f8}")" \
+    --text-ver-color "$(c "${THEME_accent:-#3a7bc8}")" \
+    --text-wrong-color "$(c "${THEME_urgent:-#9e2820}")" \
+    --text-caps-lock-color "$(c "${THEME_secondary:-#e0a552}")" \
+    --layout-text-color "$(c "${THEME_fg:-#f4f6f8}")" \
+    --layout-bg-color "$(c "${THEME_bg:-#1d2329}" 99)" && exit 0
+
+# Fallback: the themed lock failed to even start. Lock with the bare, universally
+# accepted flags so the screen is NEVER left unlocked. Honours --fork; no grace.
+exec swaylock "${fork_args[@]}" --ignore-empty-password -c "$(c "${THEME_bg:-#1d2329}")"
