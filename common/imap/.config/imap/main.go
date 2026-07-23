@@ -4,8 +4,10 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -20,8 +22,9 @@ const (
 	idleTimeout  = 25 * time.Minute
 	retryBase    = 10 * time.Second
 	retryMax     = 5 * time.Minute
-	settledAfter = 1 * time.Minute // a session lasting this long resets the backoff
-	netTimeout   = 2 * time.Minute // connect/login/refresh watchdog (NOT the IDLE wait)
+	settledAfter = 1 * time.Minute  // a session lasting this long resets the backoff
+	netTimeout   = 2 * time.Minute  // connect/login/refresh watchdog (NOT the IDLE wait)
+	keepAlive    = 30 * time.Second // TCP keepalive idle period (see dialTLSKeepAlive)
 	subjectMax   = 36
 )
 
@@ -90,7 +93,7 @@ func session(user, pass, host, stateFile string) error {
 		},
 	}
 
-	c, err := imapclient.DialTLS(host, opts)
+	c, err := dialTLSKeepAlive(host, opts)
 	if err != nil {
 		return fmt.Errorf("dial %s: %w", host, err)
 	}
@@ -150,6 +153,28 @@ func session(user, pass, host, stateFile string) error {
 			return fmt.Errorf("idle wait: %w", err)
 		}
 	}
+}
+
+// dialTLSKeepAlive connects with implicit TLS like imapclient.DialTLS, but on a
+// dialer with TCP keepalive enabled. The IDLE wait below is deliberately left
+// unguarded by the AfterFunc watchdog (it legitimately blocks up to idleTimeout),
+// so a silently dropped socket mid-IDLE would otherwise go unnoticed until the
+// 25-minute ceiling. SO_KEEPALIVE makes the kernel probe the dead peer and fail
+// the blocked read within a couple of minutes, unblocking IDLE so the reconnect
+// loop runs. go-imap's own DialTLS uses a bare dialer with no keepalive, hence
+// this replacement rather than a plain option.
+func dialTLSKeepAlive(host string, opts *imapclient.Options) (*imapclient.Client, error) {
+	addr := host
+	if _, _, err := net.SplitHostPort(host); err != nil {
+		addr = net.JoinHostPort(host, "993") // default implicit-TLS IMAP port
+	}
+	dialer := &net.Dialer{Timeout: netTimeout, KeepAlive: keepAlive}
+	// nil-ServerName config: tls.DialWithDialer fills ServerName from addr's host.
+	conn, err := tls.DialWithDialer(dialer, "tcp", addr, &tls.Config{NextProtos: []string{"imap"}})
+	if err != nil {
+		return nil, err
+	}
+	return imapclient.New(conn, opts), nil
 }
 
 func refresh(c *imapclient.Client, stateFile string) error {
