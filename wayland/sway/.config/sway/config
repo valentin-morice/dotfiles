@@ -270,11 +270,12 @@ bindsym $mod+Print exec ~/.local/bin/screenrecord
 # Lock now (routes through logind -> swayidle's lock handler, themed)
 bindsym $mod+Shift+x exec loginctl lock-session
 
-# change focus
-bindsym $mod+j focus left
-bindsym $mod+k focus down
-bindsym $mod+l focus up
-bindsym $mod+semicolon focus right
+# change focus — true vim hjkl (h=left, j=down, k=up, l=right). This displaces
+# "split h" off $mod+h; it now lives on $mod+semicolon (see below).
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
 
 # alternatively, you can use the cursor keys:
 bindsym $mod+Left focus left
@@ -282,11 +283,11 @@ bindsym $mod+Down focus down
 bindsym $mod+Up focus up
 bindsym $mod+Right focus right
 
-# move focused window
-bindsym $mod+Shift+j move left
-bindsym $mod+Shift+k move down
-bindsym $mod+Shift+l move up
-bindsym $mod+Shift+semicolon move right
+# move focused window — hjkl to match the focus cluster above.
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
 
 # alternatively, you can use the cursor keys:
 bindsym $mod+Shift+Left move left
@@ -294,8 +295,10 @@ bindsym $mod+Shift+Down move down
 bindsym $mod+Shift+Up move up
 bindsym $mod+Shift+Right move right
 
-# split in horizontal orientation
-bindsym $mod+h split h
+# split in horizontal orientation. Moved off $mod+h (now "focus left" in the vim
+# hjkl cluster) to $mod+semicolon — the key that move freed up. It sits just right
+# of l, so the split pair ($mod+semicolon / $mod+v) stays next to the focus keys.
+bindsym $mod+semicolon split h
 
 # split in vertical orientation
 bindsym $mod+v split v
@@ -304,7 +307,7 @@ bindsym $mod+v split v
 bindsym $mod+f fullscreen toggle
 
 # change container layout. $mod+e cycles split -> tabbed -> stacking (the
-# orientation of a split is set explicitly with $mod+h / $mod+v); $mod+s jumps
+# orientation of a split is set explicitly with $mod+semicolon / $mod+v); $mod+s jumps
 # straight to stacking. ($mod+w used to be "layout tabbed" but is now the rofi
 # window switcher — hence cycling tabbed onto $mod+e so it stays reachable.)
 bindsym $mod+s layout stacking
@@ -368,10 +371,11 @@ bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. 
 
 ### Resize -------------------------------------------------------------------
 mode "resize" {
-        bindsym j resize shrink width 10 px or 10 ppt
-        bindsym k resize grow height 10 px or 10 ppt
-        bindsym l resize shrink height 10 px or 10 ppt
-        bindsym semicolon resize grow width 10 px or 10 ppt
+        # hjkl, matching the focus cluster: h/l shrink/grow width, j/k grow/shrink height.
+        bindsym h resize shrink width 10 px or 10 ppt
+        bindsym l resize grow width 10 px or 10 ppt
+        bindsym j resize grow height 10 px or 10 ppt
+        bindsym k resize shrink height 10 px or 10 ppt
 
         bindsym Left resize shrink width 10 px or 10 ppt
         bindsym Down resize grow height 10 px or 10 ppt
