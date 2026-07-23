@@ -25,6 +25,9 @@ handle() {
 
     preview=$(printf '%s' "$content" | tr '\n\t' '  ')
     [ "$chars" -gt "$PREVIEW_MAX" ] && preview="${preview:0:$PREVIEW_MAX}…"
+    # dunstrc sets markup=full, so escape pango entities or a clip containing
+    # &, <, or > (code, URLs) renders mangled or blank.
+    preview=$(printf '%s' "$preview" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
 
     if [ "$lines" -gt 1 ]; then
         summary="Copied · ${chars} chars · ${lines} lines"
@@ -37,6 +40,12 @@ handle() {
 
 # Internal: invoked by `wl-paste --watch` with the new clipboard text on stdin.
 if [ "${1:-}" = "__wl_handle" ]; then
+    # Never toast a password-manager clip: cliphist skips these for history, but
+    # a toast would flash the secret on screen AND persist it in dunst's poppable
+    # history. The hint MIME is on the current clipboard (this watch just fired).
+    if wl-paste --list-types 2>/dev/null | grep -qi 'x-kde-passwordManagerHint'; then
+        exit 0
+    fi
     handle "$(cat)"
     exit 0
 fi

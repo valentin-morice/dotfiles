@@ -1,12 +1,14 @@
 #!/bin/bash
+set -eu
+command -v pactl >/dev/null || { echo "toggle-mic-mute: pactl not found" >&2; exit 1; }
 WIDTH=30
 
 pactl set-source-mute @DEFAULT_SOURCE@ toggle
 if [ "$(pactl get-source-mute @DEFAULT_SOURCE@)" = "Mute: yes" ]; then
-    brightnessctl -d platform::micmute s 1 >/dev/null
+    brightnessctl -d platform::micmute s 1 >/dev/null 2>&1 || true  # mute LED is cosmetic
     icon="󰍭"; right="muted"
 else
-    brightnessctl -d platform::micmute s 0 >/dev/null
+    brightnessctl -d platform::micmute s 0 >/dev/null 2>&1 || true
     icon="󰍬"; right="on"
 fi
 

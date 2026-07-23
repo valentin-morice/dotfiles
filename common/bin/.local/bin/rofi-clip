@@ -23,7 +23,10 @@ mkdir -p "$CACHE"
 # (on stdin) to a <=128px thumbnail — plenty for the ~28px display slot.
 thumb_cmd() { if command -v magick >/dev/null 2>&1; then magick "$@"; else convert "$@"; fi; }
 
-list=$(cliphist list)
+# On a virgin history (fresh session, nothing copied yet) `cliphist list` errors
+# and set -e would kill us silently — toast instead of a dead $mod+c.
+list=$(cliphist list 2>/dev/null) || list=""
+[ -n "$list" ] || { notify-send -t 1500 "Clipboard" "History is empty"; exit 0; }
 
 # Prune thumbnails whose clipboard entry has aged out of history (cliphist caps
 # at max-items 750, after which the id — and thus the cache key — is gone).

@@ -1,7 +1,5 @@
 #!/bin/bash
-pactl set-sink-mute @DEFAULT_SINK@ toggle
-if [ "$(pactl get-sink-mute @DEFAULT_SINK@)" = "Mute: yes" ]; then
-    brightnessctl -d platform::mute s 1 >/dev/null
-else
-    brightnessctl -d platform::mute s 0 >/dev/null
-fi
+# Waybar VOL-click mute toggle. Delegates to volume-notify so the toast +
+# progress bar + mute-LED behaviour matches the XF86AudioMute key exactly (one
+# source of truth), instead of silently toggling the sink with no feedback.
+exec "$HOME/.local/bin/volume-notify" mute

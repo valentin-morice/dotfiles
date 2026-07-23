@@ -22,14 +22,13 @@ set -euo pipefail
 # dropped: closing the laptop lid already suspends.)
 actions=(shutdown   reboot     lock       logout)
 labels=( Shutdown   Reboot     Lock       Logout)
-# Nerd Font glyphs — placeholders are substituted with the real codepoint bytes
-# by tooling so the multibyte chars survive edits (embedding them raw got them
-# stripped). Order matches actions above.
+# Nerd Font glyphs as UTF-8 octal escapes (pure-ASCII source, unmanglable — same
+# technique as rofi-profile). Order matches actions above.
 glyphs=(
-    ""   # shutdown (U+F011 power-off)
-    ""     # reboot   (U+F021 refresh)
-    ""       # lock     (U+F023)
-    ""     # logout   (U+F08B sign-out)
+    "$(printf '\357\200\221')"   # shutdown  U+F011 power-off
+    "$(printf '\357\200\241')"   # reboot    U+F021 refresh
+    "$(printf '\357\200\243')"   # lock      U+F023
+    "$(printf '\357\202\213')"   # logout    U+F08B sign-out
 )
 
 # Each row: glyph, a sized-space gap (so it doesn't inherit the big 21px icon
@@ -40,49 +39,11 @@ for i in "${!actions[@]}"; do
     rows+="${glyphs[i]}<span size='60%'>  </span><span rise='4000' size='55%'>${labels[i]}</span>"$'\n'
 done
 
-# Grid overlay on top of config.rasi's palette (@bg-alt/@accent/@border-med/... resolve
-# from its * block). Notes on why it's spelled out this way:
-#  - Only [listview] in mainbox -> no input row; inputbar disabled + all default
-#    borders zeroed so rofi's built-in theme can't leak its dashed separator.
-#  - State-qualified selectors (normal.normal / alternate.normal / selected.normal)
-#    are REQUIRED: the default theme defines those, and a bare `element selected`
-#    is less specific, so it silently loses. All four cards share one look.
-#  - element-text font is enlarged so the row box fits the glyph (no crop); the
-#    label rides along smaller via its 55% span above.
-#  - fixed-columns/fixed-height keep the 2x2 shape.
-theme='
-window    { width: 440px; border: 2px; border-color: @border-c; background-color: @bg; }
-mainbox   { children: [ listview ]; padding: 22px; background-color: transparent; border: 0; }
-inputbar  { enabled: false; }
-listview  { columns: 2; lines: 2; spacing: 14px; fixed-height: true; fixed-columns: true;
-            border: 0; background-color: transparent; scrollbar: false; }
-element {
-    padding:          22px 10px;
-    border:           1px;
-    border-radius:    12px;
-    background-color: @bg-alt;
-    border-color:     @border-med;
-    text-color:       @fg;
-}
-element normal.normal,
-element alternate.normal {
-    background-color: @bg-alt;
-    border-color:     @border-med;
-    text-color:       @fg;
-}
-element selected.normal {
-    background-color: @bg-sel;
-    border-color:     @accent;
-    text-color:       @accent;
-}
-element-text {
-    font:             "JetBrainsMono Nerd Font 21";
-    horizontal-align: 0.5;
-    vertical-align:   0.5;
-    background-color: transparent;
-    text-color:       inherit;
-}
-'
+# 2x2 grid card theme (shared with rofi-profile — see rofi-card-theme.sh for the
+# per-card styling and why the state-qualified selectors are required).
+# shellcheck source=/dev/null
+. "$HOME/.local/bin/rofi-card-theme.sh"
+theme=$(rofi_card_theme 440px 2 2)
 
 idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -format i -theme-str "$theme") || exit 0
 [ -n "$idx" ] || exit 0

@@ -2,10 +2,12 @@
 # Adjust backlight brightness and show a dunst notification with a Nerd Font
 # icon, a right-aligned percentage, and a progress bar.
 # Usage: brightness-notify up|down
+set -eu
+command -v brightnessctl >/dev/null || { echo "brightness-notify: brightnessctl not found" >&2; exit 1; }
 
 WIDTH=30
 
-case "$1" in
+case "${1:-}" in
     up)   brightnessctl set +5% >/dev/null ;;
     down) # Floor at 5% so repeated presses can't walk the backlight to 0 (a
           # black panel you then have to blind-fix).

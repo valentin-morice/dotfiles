@@ -26,4 +26,5 @@ case "$1" in
     suspend)  exec systemctl suspend ;;
     reboot)   confirm_run 'Reboot' 'systemctl reboot' ;;
     shutdown) confirm_run 'Shutdown' 'systemctl poweroff' ;;
+    *)        echo "power-menu: unknown action '${1:-}' (lock|logout|suspend|reboot|shutdown)" >&2; exit 2 ;;
 esac

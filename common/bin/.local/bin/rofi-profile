@@ -41,40 +41,11 @@ for i in "${!profiles[@]}"; do
     [ "$p" = "$cur" ] && sel_row=$i
 done
 
-# Same card styling as rofi-power, but a single row of three (columns:3, lines:1).
-theme='
-window    { width: 640px; border: 2px; border-color: @border-c; background-color: @bg; }
-mainbox   { children: [ listview ]; padding: 22px; background-color: transparent; border: 0; }
-inputbar  { enabled: false; }
-listview  { columns: 3; lines: 1; spacing: 14px; fixed-height: true; fixed-columns: true;
-            border: 0; background-color: transparent; scrollbar: false; }
-element {
-    padding:          22px 10px;
-    border:           1px;
-    border-radius:    12px;
-    background-color: @bg-alt;
-    border-color:     @border-med;
-    text-color:       @fg;
-}
-element normal.normal,
-element alternate.normal {
-    background-color: @bg-alt;
-    border-color:     @border-med;
-    text-color:       @fg;
-}
-element selected.normal {
-    background-color: @bg-sel;
-    border-color:     @accent;
-    text-color:       @accent;
-}
-element-text {
-    font:             "JetBrainsMono Nerd Font 21";
-    horizontal-align: 0.5;
-    vertical-align:   0.5;
-    background-color: transparent;
-    text-color:       inherit;
-}
-'
+# Same card styling as rofi-power (shared via rofi-card-theme.sh), but a single
+# row of three (columns:3, lines:1) and a wider window.
+# shellcheck source=/dev/null
+. "$HOME/.local/bin/rofi-card-theme.sh"
+theme=$(rofi_card_theme 640px 3 1)
 
 idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -selected-row "$sel_row" -format i -theme-str "$theme") || exit 0
 [ -n "$idx" ] || exit 0

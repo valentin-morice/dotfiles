@@ -6,6 +6,14 @@ set -eu
 
 flag="${XDG_RUNTIME_DIR:-/tmp}/nightlight.off"
 
+# gammastep is a bare `exec` in the sway config with no supervision; if it isn't
+# running the toggle is meaningless, so surface that instead of lying "on".
+if ! pgrep -x gammastep >/dev/null 2>&1; then
+    notify-send -t 1500 -h string:x-canonical-private-synchronous:nightlight \
+        "Night-light unavailable" "gammastep is not running"
+    exit 0
+fi
+
 pkill -USR1 -x gammastep 2>/dev/null || true
 
 if [ -e "$flag" ]; then

@@ -12,7 +12,7 @@ set -eu
 # workspace is carried by walking workspace nodes first, then their descendants
 # (recurse loses parent context, so we bind $ws before descending).
 list=$(swaymsg -t get_tree | jq -r '
-    [recurse(.nodes[]?) | select(.type == "workspace")]
+    [recurse(.nodes[]?) | select(.type == "workspace" and .name != "__i3_scratch")]
     | .[]
     | .name as $ws
     | [recurse(.nodes[]?, .floating_nodes[]?)

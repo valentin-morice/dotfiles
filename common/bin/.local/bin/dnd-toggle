@@ -1,0 +1,12 @@
+#!/bin/sh
+# Toggle Do-Not-Disturb using dunst pause LEVELS rather than set-paused, so that
+# urgency_critical notifications still punch through: batsignal's 10%/5% battery
+# warnings and idle.sh's "Locking in 1 minute" toast carry override_pause_level
+# 100 in the rendered dunstrc, above the level-50 DND set here. Refreshes the
+# waybar custom/dnd module (which keys off `dunstctl is-paused`, true at level>0).
+if [ "$(dunstctl is-paused 2>/dev/null)" = "true" ]; then
+    dunstctl set-pause-level 0
+else
+    dunstctl set-pause-level 50
+fi
+pkill -RTMIN+9 waybar 2>/dev/null || true
