@@ -20,10 +20,18 @@ _nvmrc_autoload() {
   while [ "$dir" != "/" ]; do
     if [ -f "$dir/.nvmrc" ]; then
       nvm use --silent
+      _nvmrc_active=1
       return
     fi
     dir="${dir:h}"
   done
+  # No .nvmrc in the tree: revert to the default node ONCE, and only if an
+  # .nvmrc actually switched us earlier — not on every cd (that would pay an
+  # `nvm use` subcall per directory change for the rest of the session).
+  if [[ -n ${_nvmrc_active:-} ]]; then
+    unset _nvmrc_active
+    [[ -n $NVM_BIN ]] && nvm use default --silent
+  fi
 }
 autoload -U add-zsh-hook
 add-zsh-hook chpwd _nvmrc_autoload
@@ -36,7 +44,12 @@ export ZSH="$HOME/.oh-my-zsh"
 # load a random theme each time Oh My Zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="match"
+# The prompt lives in a TRACKED file (~/.config/zsh/match.zsh-theme, sourced
+# after OMZ below) rather than ~/.oh-my-zsh/custom/themes — so it's version-
+# controlled/reproducible, and stow never pre-creates ~/.oh-my-zsh (which would
+# break the Oh My Zsh installer's git clone on a fresh machine). Empty ZSH_THEME
+# means OMZ loads no theme (and prints no "theme not found" warning).
+ZSH_THEME=""
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -102,6 +115,9 @@ plugins=(git)
 
 source $ZSH/oh-my-zsh.sh
 
+# Tracked prompt (see the ZSH_THEME note above) — sourced after OMZ so it wins.
+[ -r "$HOME/.config/zsh/match.zsh-theme" ] && source "$HOME/.config/zsh/match.zsh-theme"
+
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"
@@ -131,9 +147,6 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-# 1Password SSH agent — used for SSH auth and commit signing (op-ssh-sign)
-export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
-
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
@@ -145,19 +158,30 @@ command -v zoxide >/dev/null && eval "$(zoxide init zsh)"
 # fzf: keybindings (Ctrl-R history, Ctrl-T file, Alt-C cd) + completion
 [ -f /usr/share/fzf/key-bindings.zsh ] && source /usr/share/fzf/key-bindings.zsh
 [ -f /usr/share/fzf/completion.zsh ]   && source /usr/share/fzf/completion.zsh
-export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
-export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+# fd powers the file/dir sources when present; otherwise fzf falls back to its
+# built-in walker, so guard these like the other modern tools.
+if command -v fd >/dev/null; then
+  export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
+  export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+  export FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
+fi
+# Previews: bat for Ctrl-T files, eza tree for Alt-C dirs (only if installed).
+command -v bat >/dev/null && \
+  export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=numbers --line-range=:200 {}'"
+command -v eza >/dev/null && \
+  export FZF_ALT_C_OPTS="--preview 'eza --tree --level=2 --color=always {}'"
 
-# eza: ls replacement
-alias ls='eza --group-directories-first'
-alias ll='eza -lh --group-directories-first --git'
-alias la='eza -lah --group-directories-first --git'
-alias lt='eza --tree --level=2 --group-directories-first'
+# eza: ls replacement (guarded — fall back to coreutils ls if eza is absent).
+if command -v eza >/dev/null; then
+  alias ls='eza --group-directories-first'
+  alias ll='eza -lh --group-directories-first --git'
+  alias la='eza -lah --group-directories-first --git'
+  alias lt='eza --tree --level=2 --group-directories-first'
+fi
 
-# bat: cat replacement
-alias cat='bat --paging=never'
-export BAT_THEME='base16'
-
-# Rust/Cargo binaries (rustlings, etc.)
-export PATH="$HOME/.cargo/bin:$PATH"
+# bat: cat replacement (guarded — keep real cat if bat is absent).
+if command -v bat >/dev/null; then
+  alias cat='bat --paging=never'
+  export BAT_THEME='base16'
+fi

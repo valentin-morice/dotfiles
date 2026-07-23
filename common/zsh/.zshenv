@@ -11,6 +11,11 @@ export PATH="$HOME/.local/bin:$PATH"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
+# Rust/Cargo binaries (rustlings, cargo-installed tools). In .zshenv (not .zshrc)
+# so they're on PATH for GUI-launched and non-interactive contexts too — matters
+# for building/running the Rust GUI projects from a launcher-spawned terminal.
+export PATH="$HOME/.cargo/bin:$PATH"
+
 # nvm default node on PATH for EVERY shell (incl. non-interactive & scripts),
 # so node/npm/npx are real binaries that child processes inherit — agents and
 # `sh -c 'node ...'` no longer fall through to the system node. This only
@@ -27,6 +32,21 @@ export NVM_DIR="$HOME/.nvm"
   [[ $target == v[0-9]* && -d $NVM_DIR/versions/node/$target/bin ]] &&
     path=("$NVM_DIR/versions/node/$target/bin" $path)
 }
+
+# 1Password SSH agent — SSH auth + commit signing (op-ssh-sign). In .zshenv (not
+# .zshrc) so non-interactive git-over-SSH, scripts, and GUI-launched git tools
+# reach the agent too — the same reason PATH lives here.
+export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+
+# Preferred editor, exported here so git commit / lazygit / sudoedit inherit it
+# in every shell and GUI-launched context. nvim if present, else vim, else vi.
+if (( $+commands[nvim] )); then
+  export EDITOR=nvim VISUAL=nvim
+elif (( $+commands[vim] )); then
+  export EDITOR=vim VISUAL=vim
+else
+  export EDITOR=vi VISUAL=vi
+fi
 
 # Qt apps follow the freedesktop appearance color-scheme via the xdg-desktop-
 # portal theme plugin, so they flip light/dark live on theme-switch (Qt 6.8+,
