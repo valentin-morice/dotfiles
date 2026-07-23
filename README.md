@@ -1,6 +1,8 @@
 # dotfiles
 
-Personal configuration for an **Arch Linux + sway (Wayland)** desktop, managed with [GNU Stow](https://www.gnu.org/software/stow/). Commits are SSH-signed.
+[![ci](https://github.com/valentin-morice/dotfiles/actions/workflows/ci.yml/badge.svg)](https://github.com/valentin-morice/dotfiles/actions/workflows/ci.yml)
+
+Personal configuration for an **Arch Linux + sway (Wayland)** desktop, managed with [GNU Stow](https://www.gnu.org/software/stow/). Commits are SSH-signed. CI lints every shell script (shellcheck), vets + builds the Go mail daemon, and enforces light/dark palette parity.
 
 <!-- Optional: drop a screenshot of the rice here -->
 <!-- ![desktop](docs/screenshot.png) -->

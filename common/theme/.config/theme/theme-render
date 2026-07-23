@@ -2,6 +2,12 @@
 # Render every tool's color config from the active theme's palette
 # (resolved by load.sh; see theme-switch to change it).
 # Reloads daemons that don't auto-reload, unless --no-reload is passed.
+#
+# shellcheck disable=SC2154
+# ^ Every THEME_* var this script reads is exported by the palette sourced via
+#   `. "$THEME_DIR/load.sh"` below; the source path is a variable so shellcheck
+#   can't follow it (SC1090) and thus sees those vars as "never assigned"
+#   (SC2154). Both are expected here, not bugs — disabled file-wide.
 
 set -euo pipefail
 

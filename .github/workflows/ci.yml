@@ -1,0 +1,68 @@
+# Lightweight CI for the dotfiles: lints every shell script, vets + builds the
+# Go IMAP daemon, and enforces the light/dark palette-parity invariant the theme
+# engine depends on. Deliberately does NOT run `sway --validate`: the sway config
+# `include`s ~/.config/sway/colors.conf (a theme-rendered file that doesn't exist
+# in a bare checkout), so a headless validate can't parse it meaningfully.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint shell scripts
+        shell: bash
+        run: |
+          # Every file with a bash/sh shebang (zsh files excluded — shellcheck
+          # can't lint zsh). -S warning: the repo intentionally uses the
+          # `A && B || C` idiom (SC2015, info) in verify-wayland etc.
+          mapfile -t files < <(grep -rlE '^#!.*\b(bash|sh)\b' --exclude-dir=.git . | grep -viE '/\.?zsh')
+          printf 'linting %d scripts\n' "${#files[@]}"
+          shellcheck -S warning "${files[@]}"
+
+  go:
+    name: go (imap-daemon)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: common/imap/.config/imap
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: common/imap/.config/imap/go.mod
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"; echo "$unformatted"; exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go build
+        run: go build -o /dev/null .
+
+  palette-parity:
+    name: palette parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: dark.sh and light.sh must export identical THEME_ keys
+        shell: bash
+        run: |
+          # theme-render assumes every palette defines the same key set; a key
+          # present in one theme but not the other renders an empty value (or an
+          # envsubst error) only when that theme is selected. Catch it here.
+          d="$(grep -oE '^export THEME_[A-Za-z0-9_]+' common/theme/.config/theme/palettes/dark.sh | sort -u)"
+          l="$(grep -oE '^export THEME_[A-Za-z0-9_]+' common/theme/.config/theme/palettes/light.sh | sort -u)"
+          if ! diff <(echo "$d") <(echo "$l"); then
+            echo "palette key mismatch between dark.sh and light.sh (see diff above)"; exit 1
+          fi
+          printf 'palettes agree on %d keys\n' "$(echo "$d" | wc -l)"
