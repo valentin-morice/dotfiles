@@ -84,24 +84,24 @@
     // targets to turn the thing back off (helpers already exist).
     "custom/recording": {
         "exec": "$HOME/.local/bin/waybar-recording",
+        "return-type": "json",
         "interval": "once",
         "signal": 8,
-        "on-click": "$HOME/.local/bin/screenrecord",
-        "tooltip": false
+        "on-click": "$HOME/.local/bin/screenrecord"
     },
     "custom/dnd": {
         "exec": "$HOME/.local/bin/waybar-dnd",
+        "return-type": "json",
         "interval": "once",
         "signal": 9,
-        "on-click": "$HOME/.local/bin/dnd-toggle",
-        "tooltip": false
+        "on-click": "$HOME/.local/bin/dnd-toggle"
     },
     "custom/nightlight": {
         "exec": "$HOME/.local/bin/waybar-nightlight",
+        "return-type": "json",
         "interval": "once",
         "signal": 10,
-        "on-click": "$HOME/.local/bin/nightlight-toggle",
-        "tooltip": false
+        "on-click": "$HOME/.local/bin/nightlight-toggle"
     },
 
     // Click-to-caffeinate: inhibits the swayidle timers while activated.
