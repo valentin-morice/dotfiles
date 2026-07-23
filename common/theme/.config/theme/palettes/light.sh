@@ -65,6 +65,10 @@ export THEME_urgent_dark=#9e2820
 # Text on the urgent (dark-red) titlebar — near-white for ~7:1 on the red, vs
 # THEME_fg (near-black) which was ~2.1:1. See dark.sh for the rationale.
 export THEME_urgent_text=#f4f6f8
+# Text on the FOCUSED (accent-fill) titlebar. The light theme's accent is a
+# deeper blue, so here near-white reads best (~4.9:1) where near-black (THEME_fg)
+# was only ~3:1. Opposite polarity to dark's accent_text by design. See dark.sh.
+export THEME_accent_text=#f4f6f8
 
 # Bare (no #) RRGGBBAA forms — swaynag.config.tmpl appends an alpha byte to each.
 export THEME_fg_bare=1d2329

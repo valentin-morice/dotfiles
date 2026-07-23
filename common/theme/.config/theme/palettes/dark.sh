@@ -69,6 +69,11 @@ export THEME_urgent_dark=#900000
 # Text on the urgent (dark-red) titlebar. A dedicated key, not THEME_fg, so it
 # stays legible on both palettes (fg is near-black on the light theme -> ~2:1).
 export THEME_urgent_text=#ffffff
+# Text on the FOCUSED (accent-fill) titlebar. Not THEME_fg: white-on-accent was
+# only ~3.1:1 (dark accent is a light-ish blue), so the window title read weakly.
+# The near-black bg colour on that lighter blue is ~6:1 — the same bg-on-accent
+# trick waybar uses for its active workspace pill.
+export THEME_accent_text=#0d0d0d
 
 # Bare (no #) RRGGBBAA forms — swaynag.config.tmpl appends an alpha byte to each.
 export THEME_fg_bare=ffffff
