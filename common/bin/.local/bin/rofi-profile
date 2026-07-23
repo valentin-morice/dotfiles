@@ -11,7 +11,7 @@ set -euo pipefail
 # Nerd Font glyphs as UTF-8 octal escapes (pure-ASCII source, unmanglable).
 glyph_for() {
     case "$1" in
-        performance) printf '\357\204\265' ;;  # U+F135 rocket
+        performance) printf '\357\201\216' ;;  # U+F04E fast-forward
         balanced)    printf '\357\201\202' ;;  # U+F042 adjust (half circle)
         power-saver) printf '\357\201\254' ;;  # U+F06C leaf
         *)           printf '\357\203\244' ;;  # U+F0E4 gauge (fallback)

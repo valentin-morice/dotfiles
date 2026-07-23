@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # waybar custom/powerprofile module — shows one glyph for the active
-# power-profiles-daemon profile (rocket=performance, adjust=balanced, leaf=saver),
+# power-profiles-daemon profile (fast-forward=performance, adjust=balanced, leaf=saver),
 # matching the rofi-profile card glyphs. This is the single glyph in the bar, a
 # deliberate exception to the text-label rule. Click opens the rofi-profile card
 # panel (on-click in the waybar config).
@@ -14,7 +14,7 @@ set -eu
 
 p=$(powerprofilesctl get 2>/dev/null || echo balanced)
 case "$p" in
-    performance) g=$(printf '\357\204\265'); name=Performance  ;;  # U+F135 rocket
+    performance) g=$(printf '\357\201\216'); name=Performance  ;;  # U+F04E fast-forward
     balanced)    g=$(printf '\357\201\202'); name=Balanced     ;;  # U+F042 adjust (half circle)
     power-saver) g=$(printf '\357\201\254'); name='Power Saver' ;; # U+F06C leaf
     *)           g=$(printf '\357\203\244'); name=$p           ;;  # U+F0E4 gauge (fallback)
