@@ -15,6 +15,25 @@ case "${1:-}" in
     *) echo "usage: theme-render [--no-reload]" >&2; exit 2 ;;
 esac
 
+# Serialize renders. The WM's startup render can race a manual theme-switch, and
+# a double-fired toggle keybind runs two renders at once; without a lock their
+# reload signals interleave. Re-exec once under flock on a lock in the state dir;
+# THEME_LOCK_HELD marks the re-exec'd instance so it doesn't recurse.
+#
+# -o (--close) is ESSENTIAL: it keeps the lock on the flock parent instead of an
+# inherited fd. Without it, daemons backgrounded during the render (awww-daemon,
+# the dunst fallback respawn, waybar) inherit the lock fd and hold the lock for
+# their lifetime — permanently wedging every later theme switch. -w 15 turns any
+# residual pathological wait into a loud failure instead of a silent hang.
+if [ -z "${THEME_LOCK_HELD:-}" ] && command -v flock >/dev/null 2>&1; then
+    LOCK="${XDG_CACHE_HOME:-$HOME/.cache}/theme/render.lock"
+    mkdir -p "$(dirname "$LOCK")"
+    exec env THEME_LOCK_HELD=1 flock -o -w 15 "$LOCK" "$0" "$@"
+fi
+# Don't leak the re-exec marker into daemons spawned below: a theme-switch or
+# theme-render ever run as their descendant would see it and skip locking.
+unset THEME_LOCK_HELD
+
 # shellcheck disable=SC1090
 . "$THEME_DIR/load.sh"
 
@@ -26,10 +45,36 @@ export THEME_home="$HOME"
 # other tools' ${...} config syntax passes through untouched.
 vars=$(compgen -A export | grep '^THEME_' | sed 's/^/$/' | paste -sd ' ')
 
+# Fail loudly if a template references a THEME_* var no palette defines. With the
+# auto-generated SHELL-FORMAT list an unknown ${THEME_x} would otherwise pass
+# through as literal text and silently emit a broken config (palette key-parity
+# is easy to break); catch it before writing anything.
+defined=$(compgen -A export | grep '^THEME_' | sort -u)
+missing=""
+while read -r name; do
+    printf '%s\n' "$defined" | grep -qxF "$name" || missing="$missing $name"
+done < <(grep -rhoE 'THEME_[A-Za-z0-9_]+' "$TMPL" | sort -u)
+if [ -n "$missing" ]; then
+    echo "theme-render: templates reference undefined palette var(s):$missing" >&2
+    exit 1
+fi
+
 render() {
-    local src="$TMPL/$1" dst="$2"
-    mkdir -p "$(dirname "$dst")"
-    envsubst "$vars" < "$src" > "$dst"
+    local src="$TMPL/$1" dst="$2" real tmp
+    # Resolve a symlinked target so we replace the real file, not the stow
+    # symlink itself (stow may link individual files rather than folding a dir).
+    real="$(readlink -f "$dst" 2>/dev/null || printf '%s' "$dst")"
+    mkdir -p "$(dirname "$real")"
+    # Atomic: render to a temp on the same filesystem, then rename over the
+    # target. A crash / Ctrl-C / full disk can then never leave a half-written
+    # config (these land inside the stow tree via the config symlinks).
+    tmp="$(mktemp "$real.tmp-theme.XXXXXX")"
+    if envsubst "$vars" < "$src" > "$tmp"; then
+        mv -f "$tmp" "$real"
+    else
+        rm -f "$tmp"
+        return 1
+    fi
 }
 
 render sway.colors.conf.tmpl          "$HOME/.config/sway/colors.conf"
@@ -43,6 +88,7 @@ render dunstrc.tmpl                   "$HOME/.config/dunst/dunstrc"
 render fastfetch.config.jsonc.tmpl    "$HOME/.config/fastfetch/config.jsonc"
 render gtk3.settings.ini.tmpl         "$HOME/.config/gtk-3.0/settings.ini"
 render gtk4.settings.ini.tmpl         "$HOME/.config/gtk-4.0/settings.ini"
+render delta.gitconfig.tmpl           "$HOME/.config/git/delta-theme.gitconfig"
 
 # bluetuith (Bluetooth TUI). Rendered as a whole file rather than patched in
 # place (cf. VSCodium below): it renders via tcell in truecolor, so named colors
@@ -118,6 +164,10 @@ if [ "$reload" -eq 1 ]; then
     # up / lacks dunstctl.
     if ! { command -v dunstctl >/dev/null && dunstctl reload 2>/dev/null; }; then
         killall dunst 2>/dev/null || true
+        # Wait for the old instance to release the org.freedesktop.Notifications
+        # bus name before respawning; otherwise the new dunst can lose the race
+        # to reacquire it and come up unable to receive notifications.
+        for _ in $(seq 20); do pgrep -x dunst >/dev/null 2>&1 || break; sleep 0.05; done
         setsid dunst >/dev/null 2>&1 &
     fi
 

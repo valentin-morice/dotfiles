@@ -14,6 +14,15 @@ STATE="${XDG_CACHE_HOME:-$HOME/.cache}/theme/current"
 
 usage() { echo "usage: theme-switch <name|toggle|current|list>" >&2; exit 2; }
 
+# Concurrency note: no lock here, deliberately. Serialization lives in
+# theme-render (flock -o on the render lock); every render re-reads the pointer
+# at its start, so however concurrent switches interleave, the last render to
+# run reflects the final pointer. Holding a lock across set_theme from THIS
+# process was tried and reverted: the fd leaked into daemons the render spawns,
+# which then held the lock forever. The pointer write itself is atomic (mv), so
+# a torn pointer can't happen either — worst case two rapid toggles collapse
+# into one visible flip, which is fine for a double-tapped key.
+
 list() {
     local f
     for f in "$PALETTES"/*.sh; do
@@ -29,13 +38,16 @@ current() {
 }
 
 set_theme() {
-    local name="$1"
+    local name="$1" tmp
     if [ ! -r "$PALETTES/$name.sh" ]; then
         echo "theme-switch: unknown theme '$name' (try: $(list | paste -sd, -))" >&2
         exit 1
     fi
     mkdir -p "$(dirname "$STATE")"
-    printf '%s\n' "$name" > "$STATE"
+    # Atomic pointer write — a torn write would silently fall back to dark.
+    tmp="$(mktemp "$STATE.XXXXXX")"
+    printf '%s\n' "$name" > "$tmp"
+    mv -f "$tmp" "$STATE"
     "$THEME_DIR/theme-render"
 }
 
