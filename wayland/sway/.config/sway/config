@@ -181,8 +181,10 @@ bindsym $mod+Shift+v exec codium
 # kill focused window
 bindsym $mod+Shift+q kill
 
-# Application launcher (rofi's native drun mode)
-bindsym $mod+d exec rofi -show drun -p 'drun ❯'
+# Application launcher (rofi's native drun mode; -show-icons adds app icons,
+# kept off for the dmenu wrappers. The "drun ❯" prompt comes from display-drun
+# in config.rasi — drun mode ignores -p.)
+bindsym $mod+d exec rofi -show drun -show-icons
 
 # Clipboard history (entries recorded by clip-notify)
 bindsym $mod+c exec ~/.local/bin/rofi-clip

@@ -1,22 +1,83 @@
-#!/bin/sh
-# rofi front-end for switching the power-profiles-daemon profile. The active
-# profile is marked '* '; rofi can't tint a single row, so the marker alone
-# flags it.
-set -eu
+#!/bin/bash
+# rofi power-profiles-daemon switcher as a one-row card grid (performance /
+# balanced / power-saver), matching the rofi-power grid style. Each card is a big
+# Nerd Font glyph + label; the ACTIVE profile is pre-selected (accent highlight)
+# via -selected-row, and picking a card sets that profile — instant, no confirm.
+#
+# Cards are built from `powerprofilesctl list`, so the menu adapts if a profile
+# is unavailable; glyph + display label are mapped per known profile name.
+set -euo pipefail
+
+# Nerd Font glyphs as UTF-8 octal escapes (pure-ASCII source, unmanglable).
+glyph_for() {
+    case "$1" in
+        performance) printf '\357\203\247' ;;  # U+F0E7 bolt
+        balanced)    printf '\357\211\216' ;;  # U+F24E balance-scale
+        power-saver) printf '\357\201\254' ;;  # U+F06C leaf
+        *)           printf '\357\203\244' ;;  # U+F0E4 gauge (fallback)
+    esac
+}
+label_for() {
+    case "$1" in
+        performance) echo Performance ;;
+        balanced)    echo Balanced ;;
+        power-saver) echo 'Power Saver' ;;
+        *)           echo "$1" ;;
+    esac
+}
 
 cur=$(powerprofilesctl get 2>/dev/null || true)
+# profile names in the daemon's order (stanzas like "* balanced:" / "  performance:")
+mapfile -t profiles < <(powerprofilesctl list | awk '
+    /^[[:space:]]*\*?[[:space:]]*[a-z-]+:$/ { n=$0; gsub(/[*:[:space:]]/,"",n); print n }')
+[ "${#profiles[@]}" -gt 0 ] || exit 0
 
-# powerprofilesctl list prints stanzas like "* performance:" / "  balanced:".
-profiles=$(powerprofilesctl list | awk '
-    /^[[:space:]]*\*?[[:space:]]*[a-z-]+:$/ {
-        name = $0; gsub(/[*:[:space:]]/, "", name); print name
-    }')
+# One row per profile: glyph, a sized-space gap, then the label lifted to the
+# glyph's optical centre via rise (see rofi-power for the reasoning behind these).
+rows=""; sel_row=0
+for i in "${!profiles[@]}"; do
+    p="${profiles[i]}"
+    rows+="$(glyph_for "$p")<span size='60%'>  </span><span rise='4000' size='55%'>$(label_for "$p")</span>"$'\n'
+    [ "$p" = "$cur" ] && sel_row=$i
+done
 
-menu=$(printf '%s\n' "$profiles" | while IFS= read -r p; do
-    [ -z "$p" ] && continue
-    if [ "$p" = "$cur" ]; then printf '* %s\n' "$p"; else printf '  %s\n' "$p"; fi
-done)
+# Same card styling as rofi-power, but a single row of three (columns:3, lines:1).
+theme='
+window    { width: 640px; border: 2px; border-color: @border-c; background-color: @bg; }
+mainbox   { children: [ listview ]; padding: 22px; background-color: transparent; border: 0; }
+inputbar  { enabled: false; }
+listview  { columns: 3; lines: 1; spacing: 14px; fixed-height: true; fixed-columns: true;
+            border: 0; background-color: transparent; scrollbar: false; }
+element {
+    padding:          22px 10px;
+    border:           1px;
+    border-radius:    12px;
+    background-color: @bg-alt;
+    border-color:     @border-med;
+    text-color:       @fg;
+}
+element normal.normal,
+element alternate.normal {
+    background-color: @bg-alt;
+    border-color:     @border-med;
+    text-color:       @fg;
+}
+element selected.normal {
+    background-color: @bg-sel;
+    border-color:     @accent;
+    text-color:       @accent;
+}
+element-text {
+    font:             "JetBrainsMono Nerd Font 21";
+    horizontal-align: 0.5;
+    vertical-align:   0.5;
+    background-color: transparent;
+    text-color:       inherit;
+}
+'
 
-sel=$(printf '%s\n' "$menu" | rofi -dmenu -p 'profile ❯') || exit 0
-sel=${sel#\* }; sel=${sel#  }    # strip the mark from the display text
-[ -n "$sel" ] && powerprofilesctl set "$sel"
+idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -selected-row "$sel_row" -format i -theme-str "$theme") || exit 0
+[ -n "$idx" ] || exit 0
+powerprofilesctl set "${profiles[idx]}"
+# refresh the waybar power-profile icon immediately (interval is only a fallback)
+pkill -RTMIN+11 waybar 2>/dev/null || true

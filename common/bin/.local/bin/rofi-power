@@ -32,11 +32,6 @@ glyphs=(
     ""     # logout   (U+F08B sign-out)
 )
 
-# Shutdown is flagged "urgent" (rofi -u) so the theme can give just that card the
-# danger-red border + glyph + label, without touching the other three.
-urgent_idx=0
-for i in "${!actions[@]}"; do [ "${actions[i]}" = shutdown ] && urgent_idx=$i; done
-
 # Each row: glyph, a sized-space gap (so it doesn't inherit the big 21px icon
 # width), then the label lifted to the glyph's optical centre via rise (pango's
 # flex align-items: center). rise units are 1/1024pt.
@@ -45,14 +40,13 @@ for i in "${!actions[@]}"; do
     rows+="${glyphs[i]}<span size='60%'>  </span><span rise='4000' size='55%'>${labels[i]}</span>"$'\n'
 done
 
-# Grid overlay on top of config.rasi's palette (@bg-alt/@accent/@urgent/... resolve
+# Grid overlay on top of config.rasi's palette (@bg-alt/@accent/@border-med/... resolve
 # from its * block). Notes on why it's spelled out this way:
 #  - Only [listview] in mainbox -> no input row; inputbar disabled + all default
 #    borders zeroed so rofi's built-in theme can't leak its dashed separator.
-#  - State-qualified selectors (normal.normal / selected.normal / *.urgent) are
-#    REQUIRED: the default theme defines those, and a bare `element selected` is
-#    less specific, so it silently loses. The *.urgent variants colour ONLY the
-#    shutdown card (flagged via -u) — danger-red border + text in every state.
+#  - State-qualified selectors (normal.normal / alternate.normal / selected.normal)
+#    are REQUIRED: the default theme defines those, and a bare `element selected`
+#    is less specific, so it silently loses. All four cards share one look.
 #  - element-text font is enlarged so the row box fits the glyph (no crop); the
 #    label rides along smaller via its 55% span above.
 #  - fixed-columns/fixed-height keep the 2x2 shape.
@@ -81,17 +75,6 @@ element selected.normal {
     border-color:     @accent;
     text-color:       @accent;
 }
-element normal.urgent,
-element alternate.urgent {
-    background-color: @bg-alt;
-    border-color:     @urgent;
-    text-color:       @urgent;
-}
-element selected.urgent {
-    background-color: @bg-sel;
-    border-color:     @urgent;
-    text-color:       @urgent;
-}
 element-text {
     font:             "JetBrainsMono Nerd Font 21";
     horizontal-align: 0.5;
@@ -101,6 +84,6 @@ element-text {
 }
 '
 
-idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -u "$urgent_idx" -format i -theme-str "$theme") || exit 0
+idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -format i -theme-str "$theme") || exit 0
 [ -n "$idx" ] || exit 0
 exec "$HOME/.local/bin/power-menu" "${actions[idx]}"
