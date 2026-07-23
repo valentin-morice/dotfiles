@@ -12,7 +12,7 @@ set -euo pipefail
 glyph_for() {
     case "$1" in
         performance) printf '\357\203\247' ;;  # U+F0E7 bolt
-        balanced)    printf '\357\211\216' ;;  # U+F24E balance-scale
+        balanced)    printf '\357\201\202' ;;  # U+F042 adjust (half circle)
         power-saver) printf '\357\201\254' ;;  # U+F06C leaf
         *)           printf '\357\203\244' ;;  # U+F0E4 gauge (fallback)
     esac
