@@ -47,7 +47,7 @@ else
 fi
 
 H "Bar: waybar (plan §2)"
-running waybar && P "waybar running" || F "waybar not running (check /tmp/waybar.log)"
+running waybar && P "waybar running" || F "waybar not running (check ${XDG_STATE_HOME:-~/.local/state}/waybar.log)"
 cfg="$HOME/.config/waybar/config"
 if [ -f "$cfg" ]; then
     sed 's#^[[:space:]]*//.*##' "$cfg" | jq -e . >/dev/null 2>&1 \
@@ -60,22 +60,37 @@ fi
 
 H "Launcher + menus: rofi (plan §3)"
 have rofi && P "rofi present ($(rofi -version 2>/dev/null | head -1))" || F "rofi missing (Wayland launcher)"
-for b in rofi-clip rofi-window rofi-profile rofi-power; do
+for b in rofi-clip rofi-window rofi-profile rofi-power dnd-toggle; do
     [ -x "$HOME/.local/bin/$b" ] && P "$b present" || F "$b missing (re-stow the bin package)"
 done
+# rofi-power/rofi-profile hard-`source` this shared theme lib and die without it.
+[ -r "$HOME/.local/bin/rofi-card-theme.sh" ] && P "rofi-card-theme.sh present" \
+    || F "rofi-card-theme.sh missing — rofi-power/rofi-profile will fail to source it"
 W "manual: Super+d (drun), Super+c (clipboard), Super+w (window), Super+p (profile), Super+Escape (power)"
 
 H "Clipboard: wl-clipboard + cliphist (plan §4)"
 have wl-copy && have wl-paste && P "wl-clipboard present" || F "wl-clipboard (wl-copy/wl-paste) missing"
 have cliphist && P "cliphist present (text + image history; skips password-manager clips)" || F "cliphist missing (Super+c history won't populate)"
 if have wl-copy && have wl-paste; then
+    # Save the current clipboard first so this round-trip doesn't clobber it.
+    saved=$(wl-paste --no-newline 2>/dev/null || true)
     tok="wl-verify-$$-$(date +%s)"
     printf '%s' "$tok" | wl-copy 2>/dev/null
     got=$(wl-paste --no-newline 2>/dev/null)
     [ "$got" = "$tok" ] && P "clipboard round-trip works" || F "clipboard round-trip failed (got: '${got:0:20}')"
+    # Restore the previous text clipboard (best-effort; can't preserve image/
+    # binary clips this way, but the common text case is restored).
+    if [ -n "$saved" ]; then printf '%s' "$saved" | wl-copy 2>/dev/null
+    else wl-copy --clear 2>/dev/null || true; fi
 fi
-running clip-notify || pgrep -f 'bin/clip-notify' >/dev/null 2>&1 \
-    && P "clip-notify watcher running" || W "clip-notify not detected (Super+c history won't populate)"
+# clip-notify execs into wl-paste, so `pgrep -x clip-notify` never matches — only
+# the -f form does. And clip-notify is the copy-TOAST watcher; clipboard *history*
+# is populated by cliphist's own watchers, independently of it.
+if pgrep -f 'bin/clip-notify' >/dev/null 2>&1; then
+    P "clip-notify toast watcher running"
+else
+    W "clip-notify not detected (copy-to-clipboard toasts won't show; history is separate via cliphist)"
+fi
 
 H "Screenshots: grim/slurp (plan §5)"
 for b in grim slurp; do have "$b" && P "$b present" || F "$b missing"; done
@@ -83,7 +98,9 @@ for b in grim slurp; do have "$b" && P "$b present" || F "$b missing"; done
 W "manual: Print (region), Shift+Print (full), Ctrl+Print (focused output)"
 
 H "Mail alert: waybar custom/mail (plan §6)"
-state="/tmp/imap-$USER.txt"
+# Same dual path as waybar-mail: prefer the runtime-dir file, fall back to /tmp.
+state="${XDG_RUNTIME_DIR:-/tmp}/imap.txt"
+[ -e "$state" ] || state="/tmp/imap-$USER.txt"
 systemctl --user is-active imap.service >/dev/null 2>&1 && P "imap.service active" \
     || W "imap.service not active (enable: systemctl --user enable --now imap.service)"
 [ -r "$state" ] && P "mail state file present ($state)" || W "no mail state file yet (daemon not run / no mail)"
@@ -106,6 +123,10 @@ running gammastep && P "gammastep running" || W "gammastep not running"
 
 H "Theme system + portals (plan §8/§10)"
 [ -x "$HOME/.local/bin/theme-render" ] && P "theme-render present" || F "theme-render missing"
+[ -r "$HOME/.config/git/delta-theme.gitconfig" ] && P "delta theme include present (diffs follow light/dark)" \
+    || W "delta-theme.gitconfig missing (run theme-render; git silently ignores a missing include)"
+[ -x "$HOME/.claude/statusline.sh" ] && P "Claude statusline.sh present" \
+    || W "statusline.sh missing (Claude Code statusline command would fail)"
 busctl --user list 2>/dev/null | grep -q org.freedesktop.portal.Desktop \
     && P "xdg-desktop-portal.Desktop on the bus" || W "portal not on bus yet (GTK3/Qt live theming relies on it)"
 scheme=$(busctl --user call org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop \

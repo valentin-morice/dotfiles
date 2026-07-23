@@ -75,6 +75,16 @@ PACKAGES=(
     go github-cli
     # theming
     xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme
+    # apps the sway session launches + mimeapps maps: chromium browser, thunar
+    # file manager (+ volman for removable media, gvfs for trash/mounts), zathura
+    # PDF reader + mupdf backend, nsxiv image viewer, vscodium editor (AUR).
+    chromium thunar thunar-volman gvfs zathura zathura-pdf-mupdf nsxiv vscodium-bin
+    # session plumbing the sway config execs: awww wallpaper daemon (AUR), dex
+    # XDG-autostart, polkit auth agent, audio idle-inhibit (AUR), kanshi outputs.
+    awww dex polkit-gnome sway-audio-idle-inhibit-git kanshi
+    # screen recording, battery notifier (AUR), XDG user dirs, and THE font every
+    # config names (without it fontconfig substitutes garbage glyphs).
+    wf-recorder batsignal xdg-user-dirs ttf-jetbrains-mono-nerd
     # secrets / signing  (both AUR)
     1password 1password-cli
 )
@@ -84,21 +94,20 @@ ok "Packages installed"
 
 # --- stow -----------------------------------------------------------------
 # Packages are grouped: common/ (WM-neutral) and wayland/ (sway session).
-# --restow re-links cleanly on a re-run; one package per dir.
-# `common/bin` (personal ~/.local/bin helpers) is tracked but deliberately NOT
-# deployed here — enable it by hand with `stow -d common bin`.
+# --restow re-links cleanly on a re-run; one package per dir. `common/bin` IS
+# deployed: the always-stowed sway/waybar/dunst configs bind and exec its helpers
+# (volume/brightness/mic notifiers, the rofi-* menus, clip-notify, dunst-dmenu),
+# so leaving it out would ship dead keys and menus.
 info "Stowing packages into \$HOME (common + wayland)"
 cd "$REPO"
 for group in common wayland; do
     pkgs=()
     for d in "$group"/*/; do
-        name="$(basename "$d")"
-        [ "$group/$name" = "common/bin" ] && continue
-        pkgs+=("$name")
+        pkgs+=("$(basename "$d")")
     done
     [ "${#pkgs[@]}" -gt 0 ] && stow --restow --dir="$group" --target="$HOME" -- "${pkgs[@]}"
 done
-ok "Symlinks in place (skipped 'common/bin' — run 'stow -d common bin' to deploy those helpers)"
+ok "Symlinks in place"
 
 # --- git identity (the gitconfig-symlink fixup) ---------------------------
 # ~/.gitconfig is itself tracked + symlinked here, so a history rewrite (rebase)
@@ -107,13 +116,18 @@ ok "Symlinks in place (skipped 'common/bin' — run 'stow -d common bin' to depl
 # a single source of truth.
 if [ -d "$REPO/.git" ]; then
     info "Setting repo-local git identity + 1Password SSH signing"
-    src="$REPO/git/.gitconfig"
-    git -C "$REPO" config --local user.name        "$(git config --file "$src" user.name)"
-    git -C "$REPO" config --local user.email       "$(git config --file "$src" user.email)"
-    git -C "$REPO" config --local user.signingkey  "$(git config --file "$src" user.signingkey)"
-    git -C "$REPO" config --local gpg.format       "$(git config --file "$src" gpg.format)"
-    git -C "$REPO" config --local gpg.ssh.program  "$(git config --file "$src" gpg.ssh.program)"
-    git -C "$REPO" config --local commit.gpgsign   "$(git config --file "$src" commit.gpgsign)"
+    # NOTE: the tracked gitconfig lives under common/ since the repo was regrouped
+    # (it used to be $REPO/git). Read each key into a var and DIE if it's missing
+    # rather than pin an empty value: `git config --file <missing>` fails inside a
+    # command substitution, which set -e does NOT catch, so a wrong path here
+    # would silently pin empty user.name/email/signingkey and break commits.
+    src="$REPO/common/git/.gitconfig"
+    [ -r "$src" ] || die "tracked gitconfig not found at $src — cannot pin identity."
+    for key in user.name user.email user.signingkey gpg.format gpg.ssh.program commit.gpgsign; do
+        val=$(git config --file "$src" "$key") \
+            || die "missing '$key' in $src — refusing to pin an empty git identity."
+        git -C "$REPO" config --local "$key" "$val"
+    done
     ok "git identity pinned to repo-local config"
 fi
 
@@ -127,6 +141,7 @@ IMAP_USER=you@example.com
 IMAP_HOST=imap.example.com
 IMAP_PASS=your-app-password
 EOF
+    chmod 600 "$imap_env"   # it holds a plaintext password; imap.service assumes 600
     warn "Edit $imap_env with real IMAP credentials, or the mail widget stays blank."
 else
     ok "imap.env already present — left untouched"
@@ -135,7 +150,7 @@ fi
 imap_src="$HOME/.config/imap"
 if [ -d "$imap_src" ]; then
     info "Building imap-daemon (the shared mail backend)"
-    # The Go module builds the daemon that writes /tmp/imap-$USER.txt; the
+    # The Go module builds the daemon that writes $XDG_RUNTIME_DIR/imap.txt; the
     # waybar custom/mail module (waybar-mail) just reads that file. The daemon
     # is run via the imap.service user unit (systemd package).
     ( cd "$imap_src" && go build -o "$HOME/.local/bin/imap-daemon" )
@@ -147,6 +162,14 @@ fi
 # would just restart-loop. Enable it yourself once imap.env holds real values.
 if command -v systemctl >/dev/null; then
     systemctl --user daemon-reload 2>/dev/null || true
+    # Enable the session units that are WantedBy=sway-session.target (no sudo).
+    # imap.service is deliberately NOT enabled here — it would restart-loop on the
+    # placeholder credentials (enable it after filling in imap.env; see below).
+    for unit in batsignal.service thunar.service; do
+        systemctl --user enable "$unit" >/dev/null 2>&1 \
+            && ok "enabled $unit" \
+            || warn "could not enable $unit yet (its package may not be installed — re-run install.sh)"
+    done
 fi
 
 # --- generate the non-stowed (theme-rendered) configs ---------------------
@@ -159,7 +182,7 @@ mkdir -p "$HOME/.cache/theme"
 if "$HOME/.config/theme/theme-render" --no-reload; then
     ok "Theme configs rendered"
 else
-    warn "theme-render reported errors (commonly a missing wallpaper) — configs were still written."
+    warn "theme-render failed. A missing wallpaper is harmless (configs were still written); an 'undefined palette var' error means nothing was written — fix the palette and re-run."
 fi
 
 # --- done -----------------------------------------------------------------
@@ -171,9 +194,6 @@ ${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
                   in ~/.config/theme/palettes/*.sh).
   • IMAP creds  — edit ~/.config/imap/imap.env, then start the mail daemon:
                   systemctl --user enable --now imap.service
-  • bin helpers — \`stow -d common bin\` to deploy the personal ~/.local/bin scripts
-                  (volume/mic/brightness notifiers, clipboard notifier, and the
-                  rofi-* clipboard / power-profile / power / window menus).
   • Audio       — pactl volume keys need a PulseAudio-compatible server
                   (e.g. pipewire-pulse); not auto-installed to avoid conflicts.
   • Optional    — nvm, bun, and Oh My Zsh each have their own installers.
