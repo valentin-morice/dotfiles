@@ -16,7 +16,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Lint shell scripts
         shell: bash
         run: |
@@ -34,10 +34,13 @@ jobs:
       run:
         working-directory: common/imap/.config/imap
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
           go-version-file: common/imap/.config/imap/go.mod
+          # The module is nested, not at the repo root, so point the build cache
+          # at its go.sum (otherwise setup-go warns it can't find one).
+          cache-dependency-path: common/imap/.config/imap/go.sum
       - name: gofmt
         run: |
           unformatted="$(gofmt -l .)"
@@ -53,7 +56,7 @@ jobs:
     name: palette parity
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: dark.sh and light.sh must export identical THEME_ keys
         shell: bash
         run: |
