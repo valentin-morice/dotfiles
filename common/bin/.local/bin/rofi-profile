@@ -1,8 +1,8 @@
 #!/bin/bash
-# rofi power-profiles-daemon switcher as a vertical card list (performance /
-# balanced / power-saver). Each card is a big Nerd Font glyph + label; the ACTIVE
-# profile is pre-selected (accent highlight) via -selected-row, and picking a
-# card sets that profile — instant, no confirm.
+# rofi power-profiles-daemon switcher as a one-row card grid (performance /
+# balanced / power-saver), matching the rofi-power grid style. Each card is a big
+# Nerd Font glyph + label; the ACTIVE profile is pre-selected (accent highlight)
+# via -selected-row, and picking a card sets that profile — instant, no confirm.
 #
 # Cards are built from `powerprofilesctl list`, so the menu adapts if a profile
 # is unavailable; glyph + display label are mapped per known profile name.
@@ -41,16 +41,15 @@ for i in "${!profiles[@]}"; do
     [ "$p" = "$cur" ] && sel_row=$i
 done
 
-# Same card styling as rofi-power, but stacked vertically: one column, one row
-# per profile (columns:1, lines:N). Narrower window than the 3-across grid.
-theme="
-window    { width: 360px; border: 2px; border-color: @border-c; background-color: @bg; }
+# Same card styling as rofi-power, but a single row of three (columns:3, lines:1).
+theme='
+window    { width: 640px; border: 2px; border-color: @border-c; background-color: @bg; }
 mainbox   { children: [ listview ]; padding: 22px; background-color: transparent; border: 0; }
 inputbar  { enabled: false; }
-listview  { columns: 1; lines: ${#profiles[@]}; spacing: 14px; fixed-height: true;
+listview  { columns: 3; lines: 1; spacing: 14px; fixed-height: true; fixed-columns: true;
             border: 0; background-color: transparent; scrollbar: false; }
 element {
-    padding:          16px 20px;
+    padding:          22px 10px;
     border:           1px;
     border-radius:    12px;
     background-color: @bg-alt;
@@ -69,13 +68,13 @@ element selected.normal {
     text-color:       @accent;
 }
 element-text {
-    font:             \"JetBrainsMono Nerd Font 21\";
+    font:             "JetBrainsMono Nerd Font 21";
     horizontal-align: 0.5;
     vertical-align:   0.5;
     background-color: transparent;
     text-color:       inherit;
 }
-"
+'
 
 idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -selected-row "$sel_row" -format i -theme-str "$theme") || exit 0
 [ -n "$idx" ] || exit 0
