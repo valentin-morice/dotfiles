@@ -1,5 +1,5 @@
 #!/bin/sh
 # Menu backend for dunst actions (dunstrc: `dmenu = ~/.local/bin/dunst-dmenu`).
 # dunst pipes the action list on stdin and reads the pick on stdout — the same
-# contract as dmenu; fuzzel's --dmenu mode speaks it natively.
-exec fuzzel --dmenu --prompt 'dunst ❯ '
+# contract as dmenu; rofi's -dmenu mode speaks it natively.
+exec rofi -dmenu -p 'dunst ❯'

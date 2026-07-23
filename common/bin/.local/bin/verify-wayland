@@ -58,9 +58,10 @@ else
     F "waybar config missing at $cfg"
 fi
 
-H "Launcher + menus: fuzzel (plan §3)"
-have fuzzel && P "fuzzel present ($(fuzzel --version 2>/dev/null | head -1))" || F "fuzzel missing (Wayland launcher)"
-for b in fuzzel-clip fuzzel-window fuzzel-profile fuzzel-power; do
+H "Launcher + menus: rofi (plan §3)"
+have rofi && P "rofi present ($(rofi -version 2>/dev/null | head -1))" || F "rofi missing (Wayland launcher)"
+have fuzzel && P "fuzzel present (fallback)" || W "fuzzel absent (optional fuzzel-* fallback menus)"
+for b in rofi-clip rofi-window rofi-profile rofi-power; do
     [ -x "$HOME/.local/bin/$b" ] && P "$b present" || F "$b missing (re-stow the bin package)"
 done
 W "manual: Super+d (drun), Super+c (clipboard), Super+w (window), Super+p (profile), Super+Escape (power)"

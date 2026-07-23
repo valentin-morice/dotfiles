@@ -1,0 +1,114 @@
+/* rofi config + theme — RENDERED by theme-render from
+   templates/rofi.rasi.tmpl into ~/.config/rofi/config.rasi. Do NOT edit the
+   generated file; edit this template (layout) or the palettes (colours:
+   palettes/{light,dark}.sh). rofi reads #RRGGBB directly, so the plain
+   ${THEME_*} forms are used here (no _bare/ff hack, unlike fuzzel).
+
+   Faithful port of the retired fuzzel launcher look: JetBrainsMono 11.5, 2px
+   border (radius 0), "❯" prompt, "Search" placeholder, 11 visible rows, no
+   icons, 720px wide. rofi is spawned fresh per keypress (no daemon), so it
+   re-reads this file on every launch — theme-render needs NO reload hook for
+   rofi, unlike the daemons it also renders.
+
+   drun is $mod+d; the ~/.local/bin/rofi-* menus drive rofi in -dmenu mode and
+   each passes its own "<name> ❯" via -p. */
+
+configuration {
+    font:                "JetBrainsMono Nerd Font 11.5";
+    show-icons:          false;
+    terminal:            "alacritty";
+    /* drun search fields mirror fuzzel's fields=name,generic,keywords */
+    drun-match-fields:   "name,generic,keywords";
+    drun-display-format: "{name}";
+}
+
+* {
+    bg:        ${THEME_bg};
+    bg-sel:    ${THEME_bg_sel};
+    fg:        ${THEME_fg_soft};
+    accent:    ${THEME_accent};
+    prompt-fg: ${THEME_secondary};
+    muted:     ${THEME_muted_dim};
+    border-c:  ${THEME_border};
+
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+window {
+    location:         center;
+    /* fixed 720px — the width fuzzel's ~72-char setting was tuned to match */
+    width:            720px;
+    border:           2px;
+    border-color:     @border-c;
+    border-radius:    0px;
+    background-color: @bg;
+    padding:          0px;
+}
+
+mainbox {
+    padding:  14px 16px;
+    spacing:  10px;
+    border:   0;
+    children: [ inputbar, listview ];
+}
+
+inputbar {
+    spacing:  8px;
+    border:   0;
+    children: [ prompt, entry ];
+}
+
+/* the "<name> ❯" text comes from each menu's -p (or the drun bind) */
+prompt {
+    text-color: @prompt-fg;
+}
+
+entry {
+    placeholder:       "Search";
+    placeholder-color: @muted;
+    text-color:        @fg;
+}
+
+listview {
+    lines:        11;
+    columns:      1;
+    fixed-height: false;
+    scrollbar:    false;
+    spacing:      2px;
+    border:       0;
+    background-color: transparent;
+}
+
+/* row pitch ~34px: 6px vertical padding + the font's line box, matching the
+   metric fuzzel's line-height=26 was reverse-engineered from. */
+element {
+    padding:          6px 10px;
+    border-radius:    0px;
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+/* State-qualified selectors are REQUIRED: rofi's default theme defines
+   `element alternate.normal` (a cream row background) and a bare `element
+   selected` is less specific, so without these the default cream/dashed styling
+   leaks into every list (drun, clip, window, profile). */
+element normal.normal,
+element alternate.normal {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+element selected.normal {
+    background-color: @bg-sel;
+    text-color:       @accent;
+}
+
+/* matched-substring highlight (fuzzel's `match` colour). rofi's `highlight`
+   property takes a literal colour, not an @reference — so the palette value is
+   inlined here (still re-rendered on every theme-switch). */
+element-text {
+    background-color: transparent;
+    text-color:       inherit;
+    highlight:        bold ${THEME_accent};
+}

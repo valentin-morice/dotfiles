@@ -181,17 +181,18 @@ bindsym $mod+Shift+v exec codium
 # kill focused window
 bindsym $mod+Shift+q kill
 
-# Application launcher (fuzzel's native drun mode)
-bindsym $mod+d exec fuzzel --prompt 'drun ❯ '
+# Application launcher (rofi's native drun mode)
+bindsym $mod+d exec rofi -show drun -p 'drun ❯'
 
 # Clipboard history (entries recorded by clip-notify)
-bindsym $mod+c exec ~/.local/bin/fuzzel-clip
+bindsym $mod+c exec ~/.local/bin/rofi-clip
 
-# Window switcher and CPU power-profile picker. fuzzel has no mode-switcher,
-# so each gets its own bind + dmenu wrapper in ~/.local/bin.
-# $mod+w (was "layout tabbed") is the window switcher's mnemonic home.
-bindsym $mod+w exec ~/.local/bin/fuzzel-window
-bindsym $mod+p exec ~/.local/bin/fuzzel-profile
+# Window switcher and CPU power-profile picker. rofi could fold these into one
+# mode-switcher, but each is kept as its own bind + -dmenu wrapper in
+# ~/.local/bin (a faithful 1:1 of the old fuzzel binds; fuzzel-* remain as a
+# fallback). $mod+w (was "layout tabbed") is the switcher's mnemonic home.
+bindsym $mod+w exec ~/.local/bin/rofi-window
+bindsym $mod+p exec ~/.local/bin/rofi-profile
 
 # Wi-Fi (nmtui) and Bluetooth (bluetuith) in a floating terminal — replaced the
 # rofi wifi/bluetooth script-modi (see for_window rules below).
@@ -199,7 +200,7 @@ bindsym $mod+n exec alacritty --class netmenu-float -e nmtui
 bindsym $mod+b exec alacritty --class btmenu-float -e bluetuith
 
 # Power menu (lock / logout / suspend / reboot / shutdown)
-bindsym $mod+Escape exec ~/.local/bin/fuzzel-power
+bindsym $mod+Escape exec ~/.local/bin/rofi-power
 
 # Keybinding cheat sheet — toggles a floating terminal listing every bind
 # (the helper kills its own window on a second press; see the for_window rule
@@ -297,7 +298,7 @@ bindsym $mod+v split v
 bindsym $mod+f fullscreen toggle
 
 # change container layout (stacked, toggle split). $mod+w used to be "layout
-# tabbed" but is now the fuzzel window switcher; toggle tabbed via $mod+e cycling
+# tabbed" but is now the rofi window switcher; toggle tabbed via $mod+e cycling
 # or "layout tabbed" on demand if ever needed.
 bindsym $mod+s layout stacking
 bindsym $mod+e layout toggle split

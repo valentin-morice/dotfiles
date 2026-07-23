@@ -1,10 +1,10 @@
 #!/bin/bash
-# Emoji picker: fuzzel over a curated list. Copies the pick to the clipboard and
+# Emoji picker: rofi over a curated list. Copies the pick to the clipboard and
 # also types it if wtype is installed (else copy-only — paste with your usual
 # bind). Bound to $mod+period. Extend the list below to taste.
 set -eu
 
-sel=$(fuzzel --dmenu --prompt 'emoji ❯ ' <<'EOF'
+sel=$(rofi -dmenu -p 'emoji ❯' <<'EOF'
 😀 grinning face
 😁 beaming smile
 😂 tears of joy

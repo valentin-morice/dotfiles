@@ -11,7 +11,7 @@ Personal configuration for an **Arch Linux + sway (Wayland)** desktop, managed w
 |------|------|
 | Window manager | sway (mod = <kbd>Super</kbd>) |
 | Status bar | waybar |
-| Launcher | fuzzel (`Super+d`) |
+| Launcher | rofi (`Super+d`) |
 | Terminal | alacritty (`Super+Return`) |
 | Notifications | dunst |
 | Compositor | sway (built-in) |
@@ -53,7 +53,7 @@ Packages bundle their own `~/.local/bin` helpers where the config needs them: `t
 
 `systemd` holds the `imap.service` user unit that runs the shared mail daemon (`imap-daemon`, built from the `common/imap` package). It's stowed by `install.sh`, but **enabling** it is left to you (it needs real IMAP credentials first — see Post-install).
 
-`common/bin` holds the remaining personal `~/.local/bin` helpers that aren't tied to one config: volume/brightness/mic notifiers, a clipboard notifier + history browser, the fuzzel menus (clipboard, power-profile, power, window, emoji), and the `verify-wayland` self-test. It's tracked for version control but **opt-in**: `install.sh` does not deploy it. Enable it with `stow -d common bin`.
+`common/bin` holds the remaining personal `~/.local/bin` helpers that aren't tied to one config: volume/brightness/mic notifiers, a clipboard notifier + history browser, the rofi menus (clipboard, power-profile, power, window, emoji), and the `verify-wayland` self-test. It's tracked for version control but **opt-in**: `install.sh` does not deploy it. Enable it with `stow -d common bin`.
 
 ## Install
 
@@ -86,7 +86,7 @@ Stow one package with `stow -d <group> <name>`, remove one with `stow -d <group>
 
 ### Dependencies
 
-Wayland core: `sway swaybg swayidle swaylock-effects waybar gammastep grim slurp jq wl-clipboard cliphist wtype fuzzel xorg-xwayland xdg-desktop-portal-wlr` (`swaylock-effects` is AUR; `cliphist` is the clipboard history, `wtype` lets the emoji picker type its pick)
+Wayland core: `sway swaybg swayidle swaylock-effects waybar gammastep grim slurp jq wl-clipboard cliphist wtype rofi fuzzel xorg-xwayland xdg-desktop-portal-wlr` (`swaylock-effects` is AUR; `rofi` is the launcher/dmenu backend and `fuzzel` its drop-in fallback; `cliphist` is the clipboard history, `wtype` lets the emoji picker type its pick)
 WM-neutral: `alacritty dunst fastfetch zsh tmux stow`
 Hardware keys: `playerctl` (media) · `brightnessctl` (brightness, also used by the idle-dim) · a PulseAudio-compatible server for `pactl` volume control (e.g. `pipewire-pulse`)
 Shell CLI: `zoxide fzf fd eza bat git-delta` (plus `nvm`, `bun`)
@@ -94,7 +94,7 @@ TUIs/other: `lazygit lazydocker` (`lazydocker` is AUR)
 Build: `go` — compiles `imap-daemon`, the mail backend (see Post-install)
 Theming: `xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme` — live GTK/Qt light-dark on `theme-switch` (Qt via `QT_QPA_PLATFORMTHEME=xdgdesktopportal`; GTK3 via the xdg settings portal)
 Signing/secrets: `1password` + `1password-cli` (SSH agent & commit signing)
-`bin` helpers (opt-in package): `power-profiles-daemon` (fuzzel-profile) · `wl-clipboard` + `cliphist` (clip-notify / fuzzel-clip) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) — `pactl`/`brightnessctl` are already listed above
+`bin` helpers (opt-in package): `power-profiles-daemon` (rofi-profile) · `wl-clipboard` + `cliphist` (clip-notify / rofi-clip) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) — `pactl`/`brightnessctl` are already listed above
 
 ## Post-install (not tracked in the repo)
 

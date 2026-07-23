@@ -28,7 +28,7 @@ WINDOWS & APPS
   Mod+Shift+Return   browser (chromium)
   Mod+Shift+f        file manager (thunar)
   Mod+Shift+v        editor (codium)
-  Mod+d              app launcher (fuzzel)
+  Mod+d              app launcher (rofi)
   Mod+w              window switcher
   Mod+c              clipboard history
   Mod+p              CPU power-profile

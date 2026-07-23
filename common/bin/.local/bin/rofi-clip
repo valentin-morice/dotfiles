@@ -1,0 +1,13 @@
+#!/bin/sh
+# rofi front-end for the clipboard history. cliphist owns storage — text AND
+# images, with password-manager clips skipped — so this just pipes its list
+# through rofi and copies the decoded pick.
+#
+# cliphist list emits "<id>\t<preview>" lines; `cliphist decode` reads a whole
+# such line from stdin and recovers the full clip by its id (so identical
+# previews never collide, and binary/image clips round-trip correctly).
+set -eu
+
+sel=$(cliphist list | rofi -dmenu -p 'clipboard ❯') || exit 0
+[ -n "$sel" ] || exit 0   # cancelled — don't clobber the clipboard with empty
+printf '%s\n' "$sel" | cliphist decode | wl-copy

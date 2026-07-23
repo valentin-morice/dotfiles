@@ -51,10 +51,11 @@ ok "Using AUR helper: $AUR"
 # --- packages -------------------------------------------------------------
 # Repo + AUR mixed; the helper sorts them out. --needed makes this idempotent.
 PACKAGES=(
-    # Wayland / sway session  (swaylock-effects is AUR); fuzzel is the
-    # launcher and the dmenu backend for the ~/.local/bin/fuzzel-* menus.
+    # Wayland / sway session  (swaylock-effects is AUR); rofi is the launcher
+    # and the dmenu backend for the ~/.local/bin/rofi-* menus. fuzzel is kept
+    # installed as a drop-in fallback (its fuzzel-* wrappers still ship).
     sway swaybg swayidle swaylock-effects waybar gammastep
-    grim slurp wl-clipboard jq fuzzel
+    grim slurp wl-clipboard jq rofi fuzzel
     # cliphist: Wayland clipboard history (text + images; skips password-manager
     # clips). wtype: lets the emoji picker type its pick (optional).
     cliphist wtype
@@ -172,7 +173,7 @@ ${c_ok}Bootstrap complete.${c_off} A few things are intentionally left to you:
                   systemctl --user enable --now imap.service
   • bin helpers — \`stow -d common bin\` to deploy the personal ~/.local/bin scripts
                   (volume/mic/brightness notifiers, clipboard notifier, and the
-                  fuzzel-* clipboard / power-profile / power / window menus).
+                  rofi-* clipboard / power-profile / power / window menus).
   • Audio       — pactl volume keys need a PulseAudio-compatible server
                   (e.g. pipewire-pulse); not auto-installed to avoid conflicts.
   • Optional    — nvm, bun, and Oh My Zsh each have their own installers.

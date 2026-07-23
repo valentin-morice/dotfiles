@@ -1,14 +1,14 @@
 # xdg-desktop-portal-wlr — screencast source chooser.
 #
-# Pin fuzzel as the screencast chooser. Without this, chooser_type defaults to
+# Pin rofi as the screencast chooser. Without this, chooser_type defaults to
 # auto-detection from a hardcoded list (slurp, wmenu, wofi, rofi, bemenu, mew,
 # fuzzel); installing any of those earlier in the list would silently hijack
 # which chooser appears. Pinning keeps behaviour deterministic across machines.
 #
 # dmenu mode feeds the source list (outputs + "Window: <id>" toplevels) to
-# fuzzel on stdin and reads the pick on stdout, so both full-screen and
+# rofi on stdin and reads the pick on stdout, so both full-screen and
 # individual-window sharing work. Scoped to [screencast] only — screenshots
 # keep slurp's graphical region-select (default).
 [screencast]
 chooser_type=dmenu
-chooser_cmd=fuzzel --dmenu --prompt "Share source: "
+chooser_cmd=rofi -dmenu -p "Share source: "
