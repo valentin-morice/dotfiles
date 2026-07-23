@@ -79,3 +79,7 @@
     frame_color = "${THEME_urgent}"
     highlight = "${THEME_urgent}"
     timeout = 0
+    # Punch through Do-Not-Disturb: dnd-toggle sets pause level 50, and a
+    # notification is shown while paused when its override_pause_level >= the
+    # current level. So battery 5% / "locking in 1 minute" stay visible in DND.
+    override_pause_level = 100
