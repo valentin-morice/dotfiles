@@ -30,10 +30,13 @@ window#waybar {
     border: none;
     border-radius: 0;
     color: ${THEME_muted};
-    background-color: ${THEME_bg_alt};
+    background-color: ${THEME_bg_section};
+    /* kill Adwaita's default button gradient/inset so the block stays flat */
+    background-image: none;
 }
 #workspaces button:hover {
-    background-color: ${THEME_bg_alt2};
+    background-color: ${THEME_bg_hover};
+    background-image: none;
     box-shadow: none;
     text-shadow: none;
 }
@@ -98,7 +101,7 @@ window#waybar {
  * into the mostly-hidden signal labels instead of shifting volume/network/
  * bt/battery. */
 #tray {
-    background-color: ${THEME_bg_alt};
+    background-color: ${THEME_bg_section};
 }
 
 /* Battery states — urgent-tinted text at 20%, urgent block below 10%

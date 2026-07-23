@@ -7,6 +7,11 @@ export THEME_bg=#0d0d0d
 export THEME_bg_alt=#141414
 export THEME_bg_alt2=#1a1a1a
 export THEME_bg_sel=#1c1c1c
+# Distinct-region fill for the waybar workspace group + tray — bg_alt (the
+# terminal bg) sits almost on top of bg in dark, so those sections vanished.
+# bg_hover is the workspace :hover state (a step further from bg).
+export THEME_bg_section=#202020
+export THEME_bg_hover=#2e2e2e
 export THEME_fg=#ffffff
 export THEME_fg_soft=#d4d4d4
 export THEME_muted=#888888

@@ -8,6 +8,10 @@ export THEME_bg=#f4f6f8
 export THEME_bg_alt=#e9eef2
 export THEME_bg_alt2=#e4e9ee
 export THEME_bg_sel=#d4e2ee
+# Distinct-region fill for the waybar workspace group + tray (section == the old
+# bg_alt value here, so light is unchanged); bg_hover is the workspace :hover.
+export THEME_bg_section=#e9eef2
+export THEME_bg_hover=#dde2e7
 export THEME_fg=#1d2329
 export THEME_fg_soft=#333b42
 export THEME_muted=#6b7680
