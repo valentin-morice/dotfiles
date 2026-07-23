@@ -52,10 +52,9 @@ ok "Using AUR helper: $AUR"
 # Repo + AUR mixed; the helper sorts them out. --needed makes this idempotent.
 PACKAGES=(
     # Wayland / sway session  (swaylock-effects is AUR); rofi is the launcher
-    # and the dmenu backend for the ~/.local/bin/rofi-* menus. fuzzel is kept
-    # installed as a drop-in fallback (its fuzzel-* wrappers still ship).
+    # and the dmenu backend for the ~/.local/bin/rofi-* menus.
     sway swaybg swayidle swaylock-effects waybar gammastep
-    grim slurp wl-clipboard jq rofi fuzzel
+    grim slurp wl-clipboard jq rofi
     # cliphist: Wayland clipboard history (text + images; skips password-manager
     # clips). wtype: lets the emoji picker type its pick (optional).
     cliphist wtype

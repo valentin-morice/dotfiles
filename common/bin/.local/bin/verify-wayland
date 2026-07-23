@@ -60,7 +60,6 @@ fi
 
 H "Launcher + menus: rofi (plan §3)"
 have rofi && P "rofi present ($(rofi -version 2>/dev/null | head -1))" || F "rofi missing (Wayland launcher)"
-have fuzzel && P "fuzzel present (fallback)" || W "fuzzel absent (optional fuzzel-* fallback menus)"
 for b in rofi-clip rofi-window rofi-profile rofi-power; do
     [ -x "$HOME/.local/bin/$b" ] && P "$b present" || F "$b missing (re-stow the bin package)"
 done

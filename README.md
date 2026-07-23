@@ -86,7 +86,7 @@ Stow one package with `stow -d <group> <name>`, remove one with `stow -d <group>
 
 ### Dependencies
 
-Wayland core: `sway swaybg swayidle swaylock-effects waybar gammastep grim slurp jq wl-clipboard cliphist wtype rofi fuzzel xorg-xwayland xdg-desktop-portal-wlr` (`swaylock-effects` is AUR; `rofi` is the launcher/dmenu backend and `fuzzel` its drop-in fallback; `cliphist` is the clipboard history, `wtype` lets the emoji picker type its pick)
+Wayland core: `sway swaybg swayidle swaylock-effects waybar gammastep grim slurp jq wl-clipboard cliphist wtype rofi xorg-xwayland xdg-desktop-portal-wlr` (`swaylock-effects` is AUR; `rofi` is the launcher/dmenu backend; `cliphist` is the clipboard history, `wtype` lets the emoji picker type its pick)
 WM-neutral: `alacritty dunst fastfetch zsh tmux stow`
 Hardware keys: `playerctl` (media) · `brightnessctl` (brightness, also used by the idle-dim) · a PulseAudio-compatible server for `pactl` volume control (e.g. `pipewire-pulse`)
 Shell CLI: `zoxide fzf fd eza bat git-delta` (plus `nvm`, `bun`)

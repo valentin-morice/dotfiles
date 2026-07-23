@@ -1,5 +1,5 @@
 #!/bin/bash
-# Session power actions — the action backend for fuzzel-power, which passes the
+# Session power actions — the action backend for rofi-power, which passes the
 # picked entry as $1.
 #
 # Lock routes through `loginctl lock-session` (not the lock script directly) so

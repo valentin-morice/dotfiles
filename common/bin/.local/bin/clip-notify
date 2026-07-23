@@ -3,7 +3,7 @@
 #
 # History storage is cliphist (started below): captures text AND images, and
 # skips clips marked sensitive by password managers (x-kde-passwordManagerHint),
-# so 1Password copies never persist. fuzzel-clip is the reader ($mod+c).
+# so 1Password copies never persist. rofi-clip is the reader ($mod+c).
 # Requires: wl-clipboard, cliphist.
 
 PREVIEW_MAX=80

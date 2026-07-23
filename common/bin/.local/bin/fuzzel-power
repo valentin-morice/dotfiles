@@ -1,6 +1,0 @@
-#!/bin/sh
-# Fuzzel front-end for the session power menu. Delegates to power-menu's
-# action branch so there's one source of truth for what each entry does.
-set -eu
-sel=$(printf 'lock\nlogout\nsuspend\nreboot\nshutdown\n' | fuzzel --dmenu --prompt 'power ❯ ') || exit 0
-[ -n "$sel" ] && exec "$HOME/.local/bin/power-menu" "$sel"

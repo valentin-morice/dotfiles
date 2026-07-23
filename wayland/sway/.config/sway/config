@@ -191,8 +191,8 @@ bindsym $mod+c exec ~/.local/bin/rofi-clip
 
 # Window switcher and CPU power-profile picker. rofi could fold these into one
 # mode-switcher, but each is kept as its own bind + -dmenu wrapper in
-# ~/.local/bin (a faithful 1:1 of the old fuzzel binds; fuzzel-* remain as a
-# fallback). $mod+w (was "layout tabbed") is the switcher's mnemonic home.
+# ~/.local/bin (a faithful 1:1 of the old fuzzel binds). $mod+w (was "layout
+# tabbed") is the switcher's mnemonic home.
 bindsym $mod+w exec ~/.local/bin/rofi-window
 bindsym $mod+p exec ~/.local/bin/rofi-profile
 
