@@ -1,6 +1,6 @@
-// imap-daemon: holds an IMAP IDLE connection and writes the unread
-// count + 3 most-recent unread (From | Subject) to a state file. Conky reads
-// that file via ${execi cat ...}.
+// imap-daemon: holds an IMAP IDLE connection and writes the unread count and the
+// most-recent unread subject to a state file (line 1 = count, line 2 = subject).
+// The waybar custom/mail module reads that file.
 package main
 
 import (
@@ -17,9 +17,12 @@ import (
 )
 
 const (
-	idleTimeout = 25 * time.Minute
-	retryDelay  = 10 * time.Second
-	subjectMax  = 36
+	idleTimeout  = 25 * time.Minute
+	retryBase    = 10 * time.Second
+	retryMax     = 5 * time.Minute
+	settledAfter = 1 * time.Minute // a session lasting this long resets the backoff
+	netTimeout   = 2 * time.Minute // connect/login/refresh watchdog (NOT the IDLE wait)
+	subjectMax   = 36
 )
 
 func main() {
@@ -30,11 +33,27 @@ func main() {
 	host := mustEnv("IMAP_HOST")
 	stateFile := envOr("STATE_FILE", defaultStateFile())
 
+	backoff := retryBase
 	for {
+		start := time.Now()
 		if err := session(user, pass, host, stateFile); err != nil {
 			log.Printf("session ended: %v", err)
 			writeError(stateFile)
-			time.Sleep(retryDelay)
+		}
+		// A session that stayed up a while was a transient blip -> reset the
+		// backoff. One that failed fast (e.g. rejected credentials) grows it
+		// toward the cap, so we stop re-logging-in every retryBase forever and
+		// risking a server-side rate-limit or account lockout.
+		if time.Since(start) >= settledAfter {
+			backoff = retryBase
+		}
+		log.Printf("reconnecting in %s", backoff)
+		time.Sleep(backoff)
+		if backoff < retryMax {
+			backoff *= 2
+			if backoff > retryMax {
+				backoff = retryMax
+			}
 		}
 	}
 }
@@ -77,6 +96,15 @@ func session(user, pass, host, stateFile string) error {
 	}
 	defer c.Close()
 
+	// Watchdog: a stalled-but-open socket during connect/login/refresh would
+	// block session() forever, so the backoff loop never runs and only the bar's
+	// staleness marker notices. Closing the conn unblocks the pending Wait() with
+	// an error. The long IDLE wait is deliberately NOT guarded (it legitimately
+	// blocks up to idleTimeout) — the guard is stopped before each IDLE and reset
+	// around each refresh.
+	guard := time.AfterFunc(netTimeout, func() { c.Close() })
+	defer guard.Stop()
+
 	if err := c.Login(user, pass).Wait(); err != nil {
 		return fmt.Errorf("login: %w", err)
 	}
@@ -89,9 +117,11 @@ func session(user, pass, host, stateFile string) error {
 	log.Printf("connected to %s as %s", host, user)
 
 	for {
+		guard.Reset(netTimeout) // cover the refresh...
 		if err := refresh(c, stateFile); err != nil {
 			return fmt.Errorf("refresh: %w", err)
 		}
+		guard.Stop() // ...but not the IDLE wait below.
 
 		idleCmd, err := c.Idle()
 		if err != nil {
@@ -143,7 +173,7 @@ func refresh(c *imapclient.Client, stateFile string) error {
 			return fmt.Errorf("fetch envelope: %w", err)
 		}
 		if len(msgs) > 0 && msgs[0].Envelope != nil {
-			subject = truncateRunes(strings.TrimSpace(msgs[0].Envelope.Subject), subjectMax)
+			subject = truncateRunes(sanitizeSubject(strings.TrimSpace(msgs[0].Envelope.Subject)), subjectMax)
 		}
 	}
 
@@ -152,6 +182,17 @@ func refresh(c *imapclient.Client, stateFile string) error {
 	}
 	log.Printf("refreshed: %d unread; subject=%q", count, subject)
 	return nil
+}
+
+// sanitizeSubject maps control characters (a malformed header, embedded tab/ESC/
+// CR) to spaces so they can't reach the state file the bar renders as JSON.
+func sanitizeSubject(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return ' '
+		}
+		return r
+	}, s)
 }
 
 func truncateRunes(s string, n int) string {
@@ -188,6 +229,12 @@ func writeError(stateFile string) {
 }
 
 func defaultStateFile() string {
+	// Prefer the per-user runtime dir (0700, tmpfs) over the world-writable,
+	// predictable-name /tmp path. waybar-mail reads the same preference order,
+	// with the /tmp path kept as a fallback for pre-rebuild compatibility.
+	if x := os.Getenv("XDG_RUNTIME_DIR"); x != "" {
+		return filepath.Join(x, "imap.txt")
+	}
 	return fmt.Sprintf("/tmp/imap-%s.txt", os.Getenv("USER"))
 }
 

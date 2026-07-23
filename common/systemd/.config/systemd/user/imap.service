@@ -1,6 +1,10 @@
 [Unit]
 Description=IMAP IDLE notifier for the mail widget (waybar custom/mail)
-After=graphical-session.target
+# Deliberately session-independent: the daemon only writes a state file that the
+# bar reads, so it's wired to default.target (starts with the user manager). The
+# old `After=graphical-session.target` was inert here — WantedBy=default.target
+# never pulls that target into the transaction — so it's dropped rather than left
+# as a misleading no-op.
 
 [Service]
 Type=simple
