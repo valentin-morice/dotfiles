@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: removable drives/media settings. Shadows /usr/share/applications/thunar-volman-settings.desktop.
+[Desktop Entry]
+Type=Application
+Name=Removable Drives and Media
+NoDisplay=true

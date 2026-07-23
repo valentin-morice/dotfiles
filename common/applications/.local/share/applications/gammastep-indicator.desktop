@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: night-light tray applet, not menu-launched. Shadows /usr/share/applications/gammastep-indicator.desktop.
+[Desktop Entry]
+Type=Application
+Name=Gammastep Indicator
+NoDisplay=true

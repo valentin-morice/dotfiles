@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: Avahi browser. Shadows /usr/share/applications/avahi-discover.desktop.
+[Desktop Entry]
+Type=Application
+Name=Avahi Zeroconf Browser
+NoDisplay=true

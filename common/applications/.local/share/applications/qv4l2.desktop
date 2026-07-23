@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: V4L2 test utility. Shadows /usr/share/applications/qv4l2.desktop.
+[Desktop Entry]
+Type=Application
+Name=Qt V4L2 test Utility
+NoDisplay=true

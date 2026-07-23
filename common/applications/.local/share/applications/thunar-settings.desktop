@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: Thunar preferences. Shadows /usr/share/applications/thunar-settings.desktop.
+[Desktop Entry]
+Type=Application
+Name=Thunar Preferences
+NoDisplay=true

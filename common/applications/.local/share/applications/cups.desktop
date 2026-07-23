@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: printer admin. Shadows /usr/share/applications/cups.desktop.
+[Desktop Entry]
+Type=Application
+Name=Manage Printing
+NoDisplay=true

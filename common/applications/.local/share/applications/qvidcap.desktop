@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: V4L2 capture test utility. Shadows /usr/share/applications/qvidcap.desktop.
+[Desktop Entry]
+Type=Application
+Name=Qt V4L2 video capture utility
+NoDisplay=true

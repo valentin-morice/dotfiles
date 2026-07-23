@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: terminal app. Shadows /usr/share/applications/htop.desktop.
+[Desktop Entry]
+Type=Application
+Name=Htop
+NoDisplay=true

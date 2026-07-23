@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: hwloc topology viewer. Shadows /usr/share/applications/lstopo.desktop.
+[Desktop Entry]
+Type=Application
+Name=Hardware Locality lstopo
+NoDisplay=true

@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: printer admin. Shadows /usr/share/applications/system-config-printer.desktop.
+[Desktop Entry]
+Type=Application
+Name=Print Settings
+NoDisplay=true

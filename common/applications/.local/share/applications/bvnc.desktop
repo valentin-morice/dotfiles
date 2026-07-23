@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: Avahi browser. Shadows /usr/share/applications/bvnc.desktop.
+[Desktop Entry]
+Type=Application
+Name=Avahi VNC Server Browser
+NoDisplay=true

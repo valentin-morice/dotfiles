@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: ZapZap no-GPU fallback (keep the GPU one). Shadows /usr/share/applications/com.rtosta.zapzap.nogpu.desktop.
+[Desktop Entry]
+Type=Application
+Name=ZapZapNoGpu
+NoDisplay=true

@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: the launcher itself. Shadows /usr/share/applications/rofi.desktop.
+[Desktop Entry]
+Type=Application
+Name=Rofi
+NoDisplay=true

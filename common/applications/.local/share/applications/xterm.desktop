@@ -1,0 +1,6 @@
+# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
+# Reason: X terminal (use alacritty). Shadows /usr/share/applications/xterm.desktop.
+[Desktop Entry]
+Type=Application
+Name=XTerm
+NoDisplay=true
