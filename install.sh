@@ -56,8 +56,9 @@ PACKAGES=(
     sway swaybg swayidle swaylock-effects waybar gammastep
     grim slurp wl-clipboard jq rofi
     # cliphist: Wayland clipboard history (text + images; skips password-manager
-    # clips). wtype: lets the emoji picker type its pick (optional).
-    cliphist wtype
+    # clips). wtype: lets the emoji picker type its pick (optional). imagemagick:
+    # thumbnails image clips in the rofi-clip menu.
+    cliphist wtype imagemagick
     xorg-xwayland xdg-desktop-portal-wlr
     # Network / Bluetooth TUIs (opened in a floating terminal from $mod+n /
     # $mod+b). bluetuith is AUR.

@@ -1,13 +1,59 @@
-#!/bin/sh
-# rofi front-end for the clipboard history. cliphist owns storage — text AND
-# images, with password-manager clips skipped — so this just pipes its list
-# through rofi and copies the decoded pick.
+#!/bin/bash
+# rofi front-end for the clipboard history, with image thumbnails. cliphist owns
+# storage — text AND images, with password-manager clips skipped.
 #
-# cliphist list emits "<id>\t<preview>" lines; `cliphist decode` reads a whole
-# such line from stdin and recovers the full clip by its id (so identical
-# previews never collide, and binary/image clips round-trip correctly).
+# cliphist list emits "<id>\t<preview>" lines; image clips render as an opaque
+# placeholder ("[[ binary data 348 KiB png 1920x1200 ]]"). To make them
+# recognisable, each image row is decoded to a small cached thumbnail (keyed by
+# the stable cliphist id) and handed to rofi as a per-row icon via the
+# "<text>\0icon\x1f<path>" dmenu protocol (+ -show-icons) — the same mechanism
+# drun and the window switcher use. Text rows get a generic document icon so the
+# icon column stays consistent. Icons + the larger icon size are enabled only for
+# THIS invocation (via -show-icons and -theme-str), leaving the other rofi menus
+# untouched (the shared config.rasi keeps show-icons off, element-icon 22px).
+#
+# `cliphist decode` reads a whole "<id>\t<preview>" line from stdin and recovers
+# the full clip by id, so identical previews never collide and images round-trip.
 set -eu
 
-sel=$(cliphist list | rofi -dmenu -p 'clipboard ❯') || exit 0
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/rofi-clip"
+mkdir -p "$CACHE"
+
+# ImageMagick 7 ships `magick`; 6 ships `convert`. Downscales a decoded image
+# (on stdin) to a <=128px thumbnail — plenty for the ~28px display slot.
+thumb_cmd() { if command -v magick >/dev/null 2>&1; then magick "$@"; else convert "$@"; fi; }
+
+list=$(cliphist list)
+
+# Prune thumbnails whose clipboard entry has aged out of history (cliphist caps
+# at max-items 750, after which the id — and thus the cache key — is gone).
+ids=$(printf '%s\n' "$list" | cut -f1)
+for f in "$CACHE"/*.png; do
+    [ -e "$f" ] || continue
+    printf '%s\n' "$ids" | grep -qxF "$(basename "$f" .png)" || rm -f "$f"
+done
+
+# Stream one rofi row per clip: "<id>\t<preview>\0icon\x1f<icon>". A NUL byte
+# can't live in a shell variable, so rows go straight into rofi's stdin pipe.
+sel=$(
+    printf '%s\n' "$list" | while IFS= read -r line; do
+        id=${line%%$'\t'*}
+        preview=${line#*$'\t'}
+        if [[ "$preview" == "[[ binary data "* ]] \
+           && [[ "$preview" =~ [[:space:]](png|jpe?g|gif|bmp|webp)[[:space:]] ]]; then
+            thumb="$CACHE/$id.png"
+            if [[ ! -s "$thumb" ]]; then
+                printf '%s\n' "$line" | cliphist decode 2>/dev/null \
+                    | thumb_cmd - -thumbnail 128x128 "$thumb" 2>/dev/null \
+                    || rm -f "$thumb"
+            fi
+            if [[ -s "$thumb" ]]; then icon="$thumb"; else icon="image-x-generic"; fi
+        else
+            icon="text-x-generic"
+        fi
+        printf '%s\0icon\x1f%s\n' "$line" "$icon"
+    done | rofi -dmenu -show-icons -p 'clipboard ❯' -theme-str 'element-icon { size: 28px; }'
+) || exit 0
+
 [ -n "$sel" ] || exit 0   # cancelled — don't clobber the clipboard with empty
 printf '%s\n' "$sel" | cliphist decode | wl-copy

@@ -94,7 +94,7 @@ TUIs/other: `lazygit lazydocker` (`lazydocker` is AUR)
 Build: `go` — compiles `imap-daemon`, the mail backend (see Post-install)
 Theming: `xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme` — live GTK/Qt light-dark on `theme-switch` (Qt via `QT_QPA_PLATFORMTHEME=xdgdesktopportal`; GTK3 via the xdg settings portal)
 Signing/secrets: `1password` + `1password-cli` (SSH agent & commit signing)
-`bin` helpers (opt-in package): `power-profiles-daemon` (rofi-profile) · `wl-clipboard` + `cliphist` (clip-notify / rofi-clip) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) — `pactl`/`brightnessctl` are already listed above
+`bin` helpers (opt-in package): `power-profiles-daemon` (rofi-profile) · `wl-clipboard` + `cliphist` + `imagemagick` (clip-notify / rofi-clip; imagemagick thumbnails image clips) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) — `pactl`/`brightnessctl` are already listed above
 
 ## Post-install (not tracked in the repo)
 
