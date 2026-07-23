@@ -1,28 +1,55 @@
 #!/usr/bin/env bash
-# waybar custom/mail module — the conky mail widget's replacement. Reads the
-# state file the imap-daemon writes (line 1 = unread count, line 2 = subject)
-# and emits waybar JSON. The IMAP backend (imap-daemon + imap.service) is
-# unchanged and display-agnostic, so the mail alert survives the migration 1:1.
+# waybar custom/mail module. Reads the state file imap-daemon writes (line 1 =
+# unread count, line 2 = subject) and emits waybar JSON. The IMAP backend is
+# display-agnostic — it just writes a file, this just reads it.
 #
-# The "MAIL" prefix is accent-coloured to match the bar's other text labels. It
-# uses the FROZEN accent (THEME_accent_fixed, equal across themes) like the rest
-# of the config-side prefixes, so the JSON is theme-independent and a theme
-# switch needs no module re-exec — only style.css recolours, live.
-state="/tmp/imap-$USER.txt"
+# The "MAIL" prefix uses the FROZEN accent (THEME_accent_fixed, identical across
+# palettes by design), so the JSON is theme-independent and a theme switch needs
+# no module re-exec — only style.css recolours. Because that value never varies
+# we hardcode it here rather than sourcing the palette every tick (that source
+# was pure per-poll churn).
+set -u
 
-# shellcheck disable=SC1091
-. "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_accent_fixed="#3a7bc8"
-THEME_accent_fixed="${THEME_accent_fixed:-#3a7bc8}"
+# Prefer the daemon's new per-user runtime path; fall back to the legacy /tmp
+# path so this keeps working with a not-yet-rebuilt daemon (and auto-upgrades
+# once the rebuilt daemon starts writing the runtime-dir file).
+state="${XDG_RUNTIME_DIR:-/tmp}/imap.txt"
+[ -e "$state" ] || state="/tmp/imap-$USER.txt"
+
+accent="#3a7bc8"   # THEME_accent_fixed — frozen across themes
+stale_after=5400   # seconds; > 2x the daemon's 25-min IDLE ceiling
+
+# The tooltip is rendered as pango markup, so &, <, > must be entity-escaped
+# BEFORE the JSON \ and " escaping — otherwise a subject like `A & B <x>` yields
+# invalid markup and a broken/empty tooltip.
+esc() {
+    printf '%s' "$1" \
+        | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/\\/\\\\/g; s/"/\\"/g'
+}
+
+count_field() {
+    printf '{"text":"<span foreground=\\"%s\\">MAIL</span> %s","tooltip":"%s","class":"%s"}\n' \
+        "$accent" "$1" "$2" "$3"
+}
 
 c=$(awk 'NR==1' "$state" 2>/dev/null)
 subj=$(awk 'NR==2' "$state" 2>/dev/null)
 
-# JSON-escape the tooltip (subjects can contain quotes/backslashes).
-esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+# Surface a dead/stalled daemon instead of showing a frozen count forever: if the
+# file is missing or hasn't been touched in stale_after seconds, mark it stale.
+now=$(date +%s)
+mtime=$(stat -c %Y "$state" 2>/dev/null || echo 0)
 
-if [ -z "$c" ] || [ "$c" = "0" ]; then
+if [ ! -e "$state" ]; then
+    # No state file at all: the daemon never ran (or was deliberately never
+    # enabled) — stay blank rather than nag with a permanent "?" badge.
+    printf '{"text":"","class":"read"}\n'
+elif [ "$((now - mtime))" -gt "$stale_after" ]; then
+    count_field "?" "mail daemon not updating" "stale"
+elif [ "$c" = "?" ]; then
+    count_field "?" "mail check failed" "stale"
+elif [ -z "$c" ] || [ "$c" = "0" ]; then
     printf '{"text":"","class":"read"}\n'
 else
-    printf '{"text":"<span foreground=\\"%s\\">MAIL</span> %s","tooltip":"%s","class":"unread"}\n' \
-        "$THEME_accent_fixed" "$c" "$(esc "$subj")"
+    count_field "$c" "$(esc "$subj")" "unread"
 fi

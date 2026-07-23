@@ -80,22 +80,27 @@
     // and nothing (module hidden) when not, so they add no gap when idle and the
     // rendered config stays theme-invariant. Refreshed on demand: screenrecord
     // sends RTMIN+8, the DND bind RTMIN+9, nightlight-toggle RTMIN+10.
+    // These labels only appear while active, which makes them ideal click
+    // targets to turn the thing back off (helpers already exist).
     "custom/recording": {
         "exec": "$HOME/.local/bin/waybar-recording",
         "interval": "once",
         "signal": 8,
+        "on-click": "$HOME/.local/bin/screenrecord",
         "tooltip": false
     },
     "custom/dnd": {
         "exec": "$HOME/.local/bin/waybar-dnd",
         "interval": "once",
         "signal": 9,
+        "on-click": "$HOME/.local/bin/dnd-toggle",
         "tooltip": false
     },
     "custom/nightlight": {
         "exec": "$HOME/.local/bin/waybar-nightlight",
         "interval": "once",
         "signal": 10,
+        "on-click": "$HOME/.local/bin/nightlight-toggle",
         "tooltip": false
     },
 
@@ -104,9 +109,12 @@
     // config stays byte-identical across themes.
     "idle_inhibitor": {
         "format": "{icon}",
+        // Distinct TEXT per state (not just colour) so caffeination is readable
+        // at a glance and for colour-blind users: AWAKE = idle inhibited (screen
+        // forced on), AUTO = normal idle/lock behaviour.
         "format-icons": {
             "activated": "<span foreground='${THEME_secondary_fixed}'>AWAKE</span>",
-            "deactivated": "<span foreground='${THEME_muted_fixed}'>AWAKE</span>"
+            "deactivated": "<span foreground='${THEME_muted_fixed}'>AUTO</span>"
         },
         "tooltip-format-activated": "Idle inhibitor: On",
         "tooltip-format-deactivated": "Idle inhibitor: Off"
@@ -147,8 +155,8 @@
     },
 
     "battery": {
-        "bat": "BAT0",
-        "adapter": "AC",
+        // No hardcoded "bat"/"adapter": waybar autodetects the first battery +
+        // adapter, so this stays portable (adapters vary: AC / AC0 / ADP1 ...).
         "interval": 5,
         // States only stamp CSS classes (warning/critical); the colour lives
         // in style.css like everything else theme-varying.
