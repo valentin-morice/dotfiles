@@ -131,5 +131,9 @@ element selected.normal {
 element-text {
     background-color: transparent;
     text-color:       inherit;
+    /* centre the label against the (taller) icon — element-icon is already
+       vertical-align 0.5, so without this the two sit off-centre (flex
+       align-items: center). Affects every iconned menu: drun, window, clip. */
+    vertical-align:   0.5;
     highlight:        bold ${THEME_accent};
 }
