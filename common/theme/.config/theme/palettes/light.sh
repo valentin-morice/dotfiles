@@ -62,6 +62,9 @@ export THEME_border_inactive=#c2cad1
 export THEME_border_unfocused=#dde2e7
 export THEME_border_med=#c2cad1
 export THEME_urgent_dark=#9e2820
+# Text on the urgent (dark-red) titlebar — near-white for ~7:1 on the red, vs
+# THEME_fg (near-black) which was ~2.1:1. See dark.sh for the rationale.
+export THEME_urgent_text=#f4f6f8
 
 # Bare (no #) RRGGBBAA forms — swaynag.config.tmpl appends an alpha byte to each.
 export THEME_fg_bare=1d2329
@@ -81,6 +84,11 @@ export THEME_gtk_color_scheme=prefer-light
 
 # VSCodium theme applied by theme-render (Claude Code follows the terminal via "auto")
 export THEME_vscode="Light 2026"
+
+# git delta decoration colours follow the terminal light/dark (rendered into a
+# git include; see delta.gitconfig.tmpl). Set the matching key "true".
+export THEME_delta_dark=false
+export THEME_delta_light=true
 
 # Wallpaper (applied by theme-render)
 export THEME_wallpaper="$HOME/Pictures/Wallpapers/scott-webb-2X6nZA0jmvU-unsplash.jpg"

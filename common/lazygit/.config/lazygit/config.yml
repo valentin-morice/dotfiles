@@ -1,4 +1,6 @@
 git:
   paging:
     colorArg: always
-    pager: delta --dark --paging=never
+    # No --dark: delta reads [delta] from git config, which theme-render keeps in
+    # sync with the terminal light/dark (see delta-theme.gitconfig include).
+    pager: delta --paging=never

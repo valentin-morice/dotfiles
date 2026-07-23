@@ -14,8 +14,11 @@
 	diffFilter = delta --color-only
 [delta]
 	navigate = true
-	dark = true
 	line-numbers = true
+# delta's dark/light is theme-rendered so diffs follow the live terminal theme
+# (see theme/templates/delta.gitconfig.tmpl). Generated, gitignored, ~-expanded.
+[include]
+	path = ~/.config/git/delta-theme.gitconfig
 [merge]
 	conflictStyle = zdiff3
 [gpg]
@@ -27,3 +30,9 @@
 	gpgsign = true
 [tag]
 	gpgsign = true
+[init]
+	defaultBranch = main
+[push]
+	autoSetupRemote = true
+[pull]
+	rebase = true
