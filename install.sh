@@ -77,8 +77,9 @@ PACKAGES=(
     xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme
     # apps the sway session launches + mimeapps maps: chromium browser, thunar
     # file manager (+ volman for removable media, gvfs for trash/mounts), zathura
-    # PDF reader + mupdf backend, nsxiv image viewer, vscodium editor (AUR).
-    chromium thunar thunar-volman gvfs zathura zathura-pdf-mupdf nsxiv vscodium-bin
+    # PDF reader + mupdf backend, nsxiv image viewer, mpv (the video/audio handler
+    # in mimeapps.list), vscodium editor (AUR).
+    chromium thunar thunar-volman gvfs zathura zathura-pdf-mupdf nsxiv mpv vscodium-bin
     # session plumbing the sway config execs: awww wallpaper daemon (AUR), dex
     # XDG-autostart, polkit auth agent, audio idle-inhibit (AUR), kanshi outputs.
     awww dex polkit-gnome sway-audio-idle-inhibit-git kanshi
