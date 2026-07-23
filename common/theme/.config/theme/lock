@@ -55,7 +55,7 @@ exec swaylock \
     --indicator \
     --indicator-caps-lock \
     --timestr "%H:%M" \
-    --datestr "%A %e %B" \
+    --datestr "%d/%m/%y" \
     --font "$font" \
     --font-size 24 \
     --indicator-radius 120 \
