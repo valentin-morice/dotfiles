@@ -70,6 +70,22 @@ window#waybar {
 #tray {
     padding: 0 9px;
 }
+
+/* Power-profile icon + its centring counterweight — both pinned to the same
+ * width so the clock stays centred with the icon on its left. The icon is the
+ * sole glyph in the bar (a deliberate exception to the text-label rule);
+ * accent-coloured so it reads like a status label and tracks the theme. */
+#custom-powerprofile,
+#custom-clockpad {
+    min-width: 16px;
+    padding: 0 9px;
+}
+/* Slide the glyph toward the date (less right / more left padding). Total padding
+ * stays 18px, so the module keeps its width and the clock stays centred. */
+#custom-powerprofile {
+    color: ${THEME_accent};
+    padding: 0 3px 0 15px;
+}
 /* Battery is the right-most module now (tray moved to the left of volume), so it
  * carries the extra right-edge breathing room the tray used to hold. */
 #battery {
@@ -98,9 +114,17 @@ window#waybar {
 tooltip {
     background-color: ${THEME_bg_alt2};
     border: 1px solid ${THEME_border_med};
+    padding: 2px 6px;
     transition: background-color 500ms ease, border-color 500ms ease;
 }
+/* Tooltip text: a normal-metrics sans-serif at normal weight. The bar's global
+ * semibold JetBrainsMono Nerd Font otherwise renders tooltips bold and
+ * vertically stretched in the auto-sized box (its tall icon-glyph line metrics);
+ * the bar hides that with its fixed height, a tooltip can't. */
 tooltip label {
     color: ${THEME_fg};
+    font-family: sans-serif;
+    font-weight: normal;
+    font-size: 13px;
     transition: color 500ms ease;
 }

@@ -15,7 +15,9 @@
     "position": "bottom",
     "height": 30,
     "modules-left": ["sway/workspaces", "idle_inhibitor", "sway/mode"],
-    "modules-center": ["clock"],
+    // clock is flanked by the power-profile icon (left) and an equal-width
+    // invisible pad (right) so the date itself stays centred despite the icon.
+    "modules-center": ["custom/powerprofile", "clock", "custom/clockpad"],
     // tray sits left of volume (not last) so a newly-added icon grows it
     // leftward into the mostly-hidden signal labels rather than shoving the
     // fixed volume/network/bt/battery block. See the "tray" note below.
@@ -47,6 +49,25 @@
         "interval": 10,
         "format": "{:%a %d %b %H:%M}",
         "tooltip-format": "<tt>{calendar}</tt>"
+    },
+
+    // Power-profile icon — the single glyph in the bar (a deliberate exception
+    // to the text-label rule). Shows bolt/scale/leaf for performance/balanced/
+    // power-saver; click opens the rofi-profile card panel. Refreshed instantly
+    // by rofi-profile (pkill -RTMIN+11 waybar); interval is the external-change
+    // fallback. Colour is theme-varying, so it lives in style.css.
+    "custom/powerprofile": {
+        "exec": "$HOME/.local/bin/waybar-powerprofile",
+        "return-type": "json",
+        "interval": 30,
+        "signal": 11,
+        "on-click": "$HOME/.local/bin/rofi-profile"
+    },
+
+    // Invisible counterweight, forced to the same width as custom/powerprofile in
+    // style.css so the clock stays truly centred with the icon to its left.
+    "custom/clockpad": {
+        "format": ""
     },
 
     "custom/mail": {
@@ -87,13 +108,14 @@
             "activated": "<span foreground='${THEME_secondary_fixed}'>AWAKE</span>",
             "deactivated": "<span foreground='${THEME_muted_fixed}'>AWAKE</span>"
         },
-        "tooltip-format-activated": "idle inhibited",
-        "tooltip-format-deactivated": "idle timers active"
+        "tooltip-format-activated": "Idle inhibitor: On",
+        "tooltip-format-deactivated": "Idle inhibitor: Off"
     },
 
     "pulseaudio": {
         "format": "<span foreground='${THEME_accent_fixed}'>VOL</span> {volume}%",
         "format-muted": "<span foreground='${THEME_accent_fixed}'>VOL</span> <span foreground='${THEME_muted_fixed}'>MUTED</span>",
+        "tooltip-format": "Volume: {volume}%",
         // Scroll to change volume, click to mute — reuse the same helpers the
         // XF86Audio keys use (so the OSD toast + 100% clamp behave identically).
         "on-scroll-up": "$HOME/.local/bin/volume-notify up",
@@ -106,9 +128,9 @@
         "format-wifi": "<span foreground='${THEME_accent_fixed}'>WIFI</span> {essid}",
         "format-ethernet": "<span foreground='${THEME_accent_fixed}'>ETH</span> {ifname}",
         "format-disconnected": "<span foreground='${THEME_accent_fixed}'>WIFI</span> <span foreground='${THEME_muted_fixed}'>OFFLINE</span>",
-        "tooltip-format-wifi": "{essid} ({signalStrength}%)",
-        "tooltip-format-ethernet": "{ifname}",
-        "tooltip-format-disconnected": "disconnected",
+        "tooltip-format-wifi": "Network: {essid} ({signalStrength}%)",
+        "tooltip-format-ethernet": "Network: {ifname}",
+        "tooltip-format-disconnected": "Network: Disconnected",
         "on-click": "alacritty --app-id netmenu-float -e nmtui"
     },
 
@@ -117,7 +139,10 @@
         "format-off": "<span foreground='${THEME_accent_fixed}'>BT</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
         "format-disabled": "<span foreground='${THEME_accent_fixed}'>BT</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
         "format-connected": "<span foreground='${THEME_accent_fixed}'>BT</span> {device_alias}",
-        "tooltip-format-connected": "{device_alias}",
+        "tooltip-format": "Bluetooth: On",
+        "tooltip-format-connected": "Bluetooth: {device_alias}",
+        "tooltip-format-off": "Bluetooth: Off",
+        "tooltip-format-disabled": "Bluetooth: Off",
         "on-click": "alacritty --app-id btmenu-float -e bluetuith"
     },
 
@@ -128,6 +153,7 @@
         // States only stamp CSS classes (warning/critical); the colour lives
         // in style.css like everything else theme-varying.
         "states": { "warning": 20, "critical": 10 },
+        "tooltip-format": "Battery: {capacity}%",
         "format": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%",
         "format-charging": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%+",
         "format-full": "<span foreground='${THEME_accent_fixed}'>BAT</span> <span foreground='${THEME_muted_fixed}'>FULL</span>"

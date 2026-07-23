@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# waybar custom/powerprofile module — shows one glyph for the active
+# power-profiles-daemon profile (bolt=performance, scale=balanced, leaf=saver),
+# matching the rofi-profile card glyphs. This is the single glyph in the bar, a
+# deliberate exception to the text-label rule. Click opens the rofi-profile card
+# panel (on-click in the waybar config).
+#
+# Refreshed instantly by rofi-profile, which sends `pkill -RTMIN+11 waybar` after
+# switching; the module's interval catches any external change. Colour lives in
+# style.css (#custom-powerprofile) so it tracks the theme.
+#
+# Glyphs are UTF-8 octal escapes (pure-ASCII source, unmanglable).
+set -eu
+
+p=$(powerprofilesctl get 2>/dev/null || echo balanced)
+case "$p" in
+    performance) g=$(printf '\357\203\247'); name=Performance  ;;  # U+F0E7 bolt
+    balanced)    g=$(printf '\357\211\216'); name=Balanced     ;;  # U+F24E balance-scale
+    power-saver) g=$(printf '\357\201\254'); name='Power Saver' ;; # U+F06C leaf
+    *)           g=$(printf '\357\203\244'); name=$p           ;;  # U+F0E4 gauge (fallback)
+esac
+
+# return-type json: text = the glyph, class = raw profile (for optional per-profile
+# CSS), tooltip names the profile ("Power profile: Balanced") to match the other
+# module tooltips, since the icon alone is ambiguous.
+printf '{"text":"%s","tooltip":"Power profile: %s","class":"%s"}\n' "$g" "$name" "$p"
