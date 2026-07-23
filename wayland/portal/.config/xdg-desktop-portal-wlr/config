@@ -8,7 +8,8 @@
 # dmenu mode feeds the source list (outputs + "Window: <id>" toplevels) to
 # rofi on stdin and reads the pick on stdout, so both full-screen and
 # individual-window sharing work. Scoped to [screencast] only — screenshots
-# keep slurp's graphical region-select (default).
+# keep slurp's graphical region-select (default). The "share ❯" prompt follows
+# the same "<name> ❯" convention as every other rofi menu (rofi-clip, rofi-window…).
 [screencast]
 chooser_type=dmenu
-chooser_cmd=rofi -dmenu -p "Share source: "
+chooser_cmd=rofi -dmenu -p "share ❯"
