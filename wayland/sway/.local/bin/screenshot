@@ -13,7 +13,12 @@
 # Requires: grim, slurp, jq, wl-clipboard, libnotify (notify-send).
 set -euo pipefail
 
-dir="$HOME/Pictures/Screenshots"
+# Honour the XDG user-dir (localized / relocated ~/Pictures) with a fallback.
+# An unconfigured xdg-user-dirs prints $HOME (not empty) — treat that as unset
+# so shots don't land in ~/Screenshots.
+pics=$(xdg-user-dir PICTURES 2>/dev/null) || pics=""
+[ "$pics" = "$HOME" ] && pics=""
+dir="${pics:-$HOME/Pictures}/Screenshots"
 mkdir -p "$dir"
 ts=$(date +%Y-%m-%d_%H-%M-%S)
 out="$dir/screenshot_$ts.png"
@@ -22,7 +27,9 @@ out="$dir/screenshot_$ts.png"
 # $1 names the capture mode so the toast says exactly what fired; the body
 # spells out that it's on the clipboard as well as saved to disk.
 notify_saved() {
-    wl-copy < "$out"
+    # --type image/png so the clipboard advertises an image MIME; without it
+    # wl-clipboard offers only a filename and pastes come out empty in chat/apps.
+    wl-copy --type image/png < "$out"
     notify-send -t 2000 -i "$out" "Screenshot · $1" \
         "Saved + copied to clipboard
 ${out/#$HOME/~}"
@@ -39,7 +46,12 @@ case "${1:-region}" in
         notify_saved "Full screen"
         ;;
     output)
-        name=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
+        # Focused output name. Some sway builds don't populate .focused on
+        # outputs, so fall back to the output that holds the focused workspace,
+        # and bail with a toast rather than let `grim -o ""` abort under set -e.
+        name=$(swaymsg -t get_outputs | jq -r 'first(.[] | select(.focused)) | .name // empty')
+        [ -n "$name" ] || name=$(swaymsg -t get_workspaces | jq -r 'first(.[] | select(.focused)) | .output // empty')
+        [ -n "$name" ] || { notify-send -u critical "Screenshot" "Couldn't determine the focused output."; exit 1; }
         grim -o "$name" "$out"
         notify_saved "Monitor ($name)"
         ;;

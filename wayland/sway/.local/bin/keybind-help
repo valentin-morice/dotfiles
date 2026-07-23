@@ -50,7 +50,7 @@ LAYOUT
   Mod+v              split vertical
   Mod+f              fullscreen toggle
   Mod+s              stacking layout
-  Mod+e              toggle split layout
+  Mod+e              cycle split/tabbed/stack
   Mod+Shift+space    floating toggle
   Mod+r              resize mode
   Mod+g              gaps mode

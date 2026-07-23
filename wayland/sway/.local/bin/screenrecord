@@ -10,17 +10,32 @@ if pgrep -x wf-recorder >/dev/null; then
     # Wait for wf-recorder to finish flushing the file before refreshing the bar,
     # so the REC label clears cleanly instead of lingering during shutdown.
     for _ in $(seq 20); do pgrep -x wf-recorder >/dev/null || break; sleep 0.1; done
-    pkill -RTMIN+8 waybar
-    dunstify -u low "Recording saved" "$(cat "$pathfile" 2>/dev/null || echo done)"
+    pkill -RTMIN+8 waybar 2>/dev/null || true   # set -e: waybar may not be up
+    dunstify -u low "Recording saved" "$(cat "$pathfile" 2>/dev/null || echo 'done')"
     exit 0
 fi
 
-out="$HOME/Videos/rec-$(date +%Y%m%d-%H%M%S).mp4"
-mkdir -p "$HOME/Videos"
-printf '%s\n' "$out" > "$pathfile"
+vids=$(xdg-user-dir VIDEOS 2>/dev/null) || vids=""
+[ "$vids" = "$HOME" ] && vids=""   # unconfigured xdg-user-dirs prints $HOME
+vids="${vids:-$HOME/Videos}"
+mkdir -p "$vids"
+out="$vids/rec-$(date +%Y%m%d-%H%M%S).mp4"
 
-geom="$(slurp)" || exit 0
+geom="$(slurp)" || exit 0   # Esc / no selection -> cancel cleanly
+
+# Start in the background and give it a beat to fail fast (bad geometry/codec)
+# before claiming success — otherwise the "started" toast lies and a stale
+# pathfile is left behind. Only record the pathfile + light the REC module once
+# we've confirmed it's actually running.
+wf-recorder -g "$geom" -f "$out" &
+rec=$!
+sleep 0.3
+if ! kill -0 "$rec" 2>/dev/null; then
+    dunstify -u critical "Recording failed" "wf-recorder exited immediately."
+    exit 1
+fi
+printf '%s\n' "$out" > "$pathfile"
 dunstify -u low "Recording started" "Press the bind again to stop."
-# Refresh the REC bar module once wf-recorder is up (subshell survives the exec).
-( sleep 0.3; pkill -RTMIN+8 waybar ) &
-exec wf-recorder -g "$geom" -f "$out"
+pkill -RTMIN+8 waybar 2>/dev/null || true   # set -e: waybar may not be up
+# Block until stopped (the next invocation SIGINTs it -> non-zero is expected).
+wait "$rec" || true

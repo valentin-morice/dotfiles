@@ -11,14 +11,23 @@ exists() {
         | jq -e '[.. | select(.app_id? == "dropdown-term")] | length > 0' >/dev/null 2>&1
 }
 
+# True once the window exists AND the `for_window … move scratchpad` rule has
+# actually stashed it (scratchpad_state leaves "none" the moment it's moved).
+# Waiting on this rather than mere existence closes the race where `scratchpad
+# show` raced ahead of the stash and the first $mod+grave after a respawn no-op'd.
+stashed() {
+    swaymsg -t get_tree | jq -e \
+        '[.. | select(.app_id? == "dropdown-term" and (.scratchpad_state // "none") != "none")] | length > 0' \
+        >/dev/null 2>&1
+}
+
 if ! exists; then
     alacritty --class dropdown-term >/dev/null 2>&1 &
-    # Wait for the window to map and the for_window rule to stash it.
+    # Poll until it's mapped and stashed (up to ~2s) instead of a fixed sleep.
     i=0
-    while ! exists; do
-        i=$((i + 1)); [ "$i" -ge 40 ] && break; sleep 0.05
+    while ! stashed; do
+        i=$((i + 1)); [ "$i" -ge 100 ] && break; sleep 0.02
     done
-    sleep 0.1
 fi
 
 exec swaymsg '[app_id="dropdown-term"] scratchpad show, move position center'

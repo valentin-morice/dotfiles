@@ -123,7 +123,7 @@ bindsym $mod+Shift+t exec ~/.local/bin/theme-switch toggle
 ### Notifications & utilities ------------------------------------------------
 # Do-Not-Disturb toggle (pauses dunst); the RTMIN+9 signal refreshes the DND bar
 # module immediately instead of waiting for its poll.
-bindsym $mod+Shift+d exec dunstctl set-paused toggle && pkill -RTMIN+9 waybar
+bindsym $mod+Shift+d exec ~/.local/bin/dnd-toggle
 # Dismiss all visible notifications; pop the most recent one back from history.
 bindsym $mod+Shift+BackSpace exec dunstctl close-all
 bindsym $mod+Shift+grave exec dunstctl history-pop
@@ -245,6 +245,10 @@ for_window [window_role="bubble"] floating enable
 for_window [window_type="dialog"] floating enable
 for_window [window_type="splash"] floating enable
 
+# Mark XWayland (X11) clients in tabbed/stacked titlebars, so it's obvious at a
+# glance which windows aren't running natively on Wayland.
+for_window [shell="xwayland"] title_format "[X] %title"
+
 # GNOME polkit auth prompt (the password dialog for gparted etc.). Runs
 # Wayland-native here, so it's matched by app_id (window_type wouldn't apply).
 for_window [app_id="polkit-gnome-authentication-agent-1"] floating enable, move position center
@@ -299,11 +303,12 @@ bindsym $mod+v split v
 # enter fullscreen mode for the focused container
 bindsym $mod+f fullscreen toggle
 
-# change container layout (stacked, toggle split). $mod+w used to be "layout
-# tabbed" but is now the rofi window switcher; toggle tabbed via $mod+e cycling
-# or "layout tabbed" on demand if ever needed.
+# change container layout. $mod+e cycles split -> tabbed -> stacking (the
+# orientation of a split is set explicitly with $mod+h / $mod+v); $mod+s jumps
+# straight to stacking. ($mod+w used to be "layout tabbed" but is now the rofi
+# window switcher — hence cycling tabbed onto $mod+e so it stays reachable.)
 bindsym $mod+s layout stacking
-bindsym $mod+e layout toggle split
+bindsym $mod+e layout toggle split tabbed stacking
 
 # toggle tiling / floating
 bindsym $mod+Shift+space floating toggle
@@ -383,6 +388,7 @@ bindsym $mod+r mode "resize"
 # Adjust inner gaps live: +/- to grow/shrink, 0 to reset, Esc/Return to exit.
 mode "gaps" {
         bindsym plus  gaps inner all plus 5
+        bindsym equal gaps inner all plus 5
         bindsym minus gaps inner all minus 5
         bindsym 0     gaps inner all set 10
         bindsym Return mode "default"
