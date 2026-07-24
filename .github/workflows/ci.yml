@@ -1,6 +1,8 @@
 # Lightweight CI for the dotfiles: lints every shell script, vets + builds the
-# Go IMAP daemon, and enforces the light/dark palette-parity invariant the theme
-# engine depends on. Deliberately does NOT run `sway --validate`: the sway config
+# Go IMAP daemon, enforces the light/dark palette-parity invariant the theme
+# engine depends on, and bootstraps the whole repo from scratch in an Arch
+# container (install.sh with packages skipped). Deliberately does NOT run
+# `sway --validate`: the sway config
 # `include`s ~/.config/sway/colors.conf (a theme-rendered file that doesn't exist
 # in a bare checkout), so a headless validate can't parse it meaningfully.
 name: ci
@@ -69,3 +71,85 @@ jobs:
             echo "palette key mismatch between dark.sh and light.sh (see diff above)"; exit 1
           fi
           printf 'palettes agree on %d keys\n' "$(echo "$d" | wc -l)"
+
+  bootstrap:
+    name: bootstrap (arch container)
+    runs-on: ubuntu-latest
+    # Run the REAL install.sh on a bare Arch install and assert it produced a
+    # working home. This is the fresh-machine proof the other jobs can't give:
+    # it catches stow conflicts, a broken git-identity pin, a daemon that won't
+    # build, and a theme render that silently emits nothing. Package install is
+    # skipped (DOTFILES_SKIP_PACKAGES=1) — building the full AUR set from source
+    # would test Arch/makepkg, not this repo, and take 10-20 flaky minutes.
+    container: archlinux:latest
+    steps:
+      # archlinux:latest ships no Node, which actions/checkout (a JS action)
+      # needs, so install it here in a plain `run:` step BEFORE checkout. The
+      # rest are install.sh's actual runtime deps once packages are skipped:
+      # stow (symlinks), go (imap-daemon), gettext (envsubst, for theme-render),
+      # jq (theme-render's VSCodium/bluetuith steps). -Syu (not -Sy) avoids the
+      # partial-upgrade lib mismatch that bites long-lived base images.
+      - name: Install toolchain (node for checkout + install.sh deps)
+        run: pacman -Syu --noconfirm --needed nodejs git stow go gettext jq
+      - uses: actions/checkout@v5
+      - name: Bootstrap into a pristine $HOME and assert the result
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # A pristine, empty HOME so stow has nothing to collide with. It must
+          # NOT be the checkout's HOME: actions/checkout writes a global
+          # ~/.gitconfig (safe.directory), and stow's `git` package would then
+          # refuse to link ~/.gitconfig. An empty home is also the honest
+          # "fresh machine" this job claims to prove.
+          export HOME=/tmp/bootstrap-home
+          mkdir -p "$HOME"
+
+          # root owns the checkout; clear git's dubious-ownership guard WITHOUT
+          # writing a ~/.gitconfig (that would collide with the stowed one) by
+          # using system scope (/etc/gitconfig), which no stow package touches.
+          git config --system --add safe.directory '*'
+
+          echo "::group::install.sh (DOTFILES_SKIP_PACKAGES=1)"
+          DOTFILES_SKIP_PACKAGES=1 ./install.sh
+          echo "::endgroup::"
+
+          echo "Asserting the bootstrap produced a working home:"
+          set +e
+          fails=0
+          pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; }
+          bad()  { printf '  \033[31mFAIL\033[0m %s\n' "$1"; fails=1; }
+
+          # 1. sway config is stow-linked back into the repo. Stow tree-folds:
+          #    ~/.config/sway itself is the symlink, `config` a real file inside
+          #    it, so resolve and compare against the repo's source file.
+          sway_link="$(readlink -f "$HOME/.config/sway/config" 2>/dev/null)"
+          sway_src="$(readlink -f "$GITHUB_WORKSPACE/wayland/sway/.config/sway/config" 2>/dev/null)"
+          if [ -L "$HOME/.config/sway" ] && [ -n "$sway_link" ] && [ "$sway_link" = "$sway_src" ]; then
+            pass "sway config stowed into the repo"
+          else
+            bad  "sway config not linked into the repo (link=$sway_link src=$sway_src)"
+          fi
+
+          # 2. repo-local git identity pinned and NON-EMPTY — the empty-pin bug
+          #    (a wrong gitconfig path silently pinning "") that hid for months.
+          email="$(git -C "$GITHUB_WORKSPACE" config --local user.email)"
+          if [ -n "$email" ]; then pass "git local user.email pinned: $email"
+          else bad "git local user.email is empty (the pin bug)"; fi
+
+          # 3. the shared mail backend actually built.
+          if [ -x "$HOME/.local/bin/imap-daemon" ] && [ -s "$HOME/.local/bin/imap-daemon" ]; then
+            pass "imap-daemon built to ~/.local/bin"
+          else bad "imap-daemon missing or not executable"; fi
+
+          # 4. theme-render produced a config AND envsubst substituted every
+          #    THEME_ var (a leftover ${THEME_x} means a template/palette drift
+          #    that renders a broken config only for the affected theme).
+          wb="$HOME/.config/waybar/config"
+          if [ -s "$wb" ] && ! grep -q '\${THEME_' "$wb"; then
+            pass "waybar config rendered (all THEME_ vars substituted)"
+          else bad "waybar config missing/empty or has unsubstituted \${THEME_...}"; fi
+
+          echo
+          if [ "$fails" -ne 0 ]; then echo "bootstrap assertions FAILED"; exit 1; fi
+          echo "all bootstrap assertions passed"
