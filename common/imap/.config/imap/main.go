@@ -186,17 +186,23 @@ func session(user, pass, host, stateFile string) error {
 // loop runs. go-imap's own DialTLS uses a bare dialer with no keepalive, hence
 // this replacement rather than a plain option.
 func dialTLSKeepAlive(host string, opts *imapclient.Options) (*imapclient.Client, error) {
-	addr := host
-	if _, _, err := net.SplitHostPort(host); err != nil {
-		addr = net.JoinHostPort(host, "993") // default implicit-TLS IMAP port
-	}
 	dialer := &net.Dialer{Timeout: netTimeout, KeepAlive: keepAlive}
 	// nil-ServerName config: tls.DialWithDialer fills ServerName from addr's host.
-	conn, err := tls.DialWithDialer(dialer, "tcp", addr, &tls.Config{NextProtos: []string{"imap"}})
+	conn, err := tls.DialWithDialer(dialer, "tcp", imapAddr(host), &tls.Config{NextProtos: []string{"imap"}})
 	if err != nil {
 		return nil, err
 	}
 	return imapclient.New(conn, opts), nil
+}
+
+// imapAddr returns host unchanged when it already carries a port, otherwise it
+// appends the default implicit-TLS IMAP port (993). Split out from
+// dialTLSKeepAlive so the port-defaulting is unit-testable without a network.
+func imapAddr(host string) string {
+	if _, _, err := net.SplitHostPort(host); err == nil {
+		return host
+	}
+	return net.JoinHostPort(host, "993")
 }
 
 func refresh(c *imapclient.Client, stateFile string) error {
