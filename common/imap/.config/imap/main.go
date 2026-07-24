@@ -146,11 +146,33 @@ func session(user, pass, host, stateFile string) error {
 			break
 		}
 
-		if err := idleCmd.Close(); err != nil {
-			return fmt.Errorf("idle close: %w", err)
-		}
-		if err := idleCmd.Wait(); err != nil {
-			return fmt.Errorf("idle wait: %w", err)
+		// Exit IDLE, but with a hard bound. Close (send DONE) and Wait (await
+		// completion) both do network I/O, and this runs with the watchdog
+		// stopped (see above). If the connection was silently killed mid-IDLE —
+		// a laptop suspend tears down wifi (NetworkManager 'sleeping'), leaving a
+		// dead socket on resume — go-imap can block here forever, freezing the
+		// whole daemon (and the widget, until it's manually restarted). Bound the
+		// teardown: if it doesn't finish within netTimeout, force the socket shut
+		// and return so the reconnect loop runs. Any goroutine still stuck on the
+		// dead connection is unblocked by that Close (and is at worst one leaked
+		// goroutine per suspend, reclaimed when the session is replaced).
+		teardown := make(chan error, 1)
+		go func() {
+			if cerr := idleCmd.Close(); cerr != nil {
+				teardown <- cerr
+				return
+			}
+			teardown <- idleCmd.Wait()
+		}()
+		select {
+		case err := <-teardown:
+			if err != nil {
+				c.Close() // conn is likely dead; keep the deferred Logout from hanging too
+				return fmt.Errorf("idle stop: %w", err)
+			}
+		case <-time.After(netTimeout):
+			c.Close() // unblock the stuck teardown goroutine, then reconnect
+			return fmt.Errorf("idle stop timed out after %s", netTimeout)
 		}
 	}
 }
