@@ -121,7 +121,10 @@ for group in common wayland; do
     for d in "$group"/*/; do
         pkgs+=("$(basename "$d")")
     done
-    [ "${#pkgs[@]}" -gt 0 ] && stow --restow --dir="$group" --target="$HOME" -- "${pkgs[@]}"
+    # No `--` before the package list: GNU stow 2.4 rejects it ("No packages to
+    # stow") — its option parser doesn't treat `--` as end-of-options. The names
+    # are directory basenames (never dash-prefixed), so it was never needed.
+    [ "${#pkgs[@]}" -gt 0 ] && stow --restow --dir="$group" --target="$HOME" "${pkgs[@]}"
 done
 ok "Symlinks in place"
 
