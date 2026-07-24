@@ -7,6 +7,12 @@
 # and never clobbers existing secrets. Safe to run as your normal user — the
 # AUR helper escalates with sudo where it needs to; do not run this with sudo.
 #
+# Env:
+#   DOTFILES_SKIP_PACKAGES=1  Skip the AUR-helper preflight and the package
+#                             install entirely; only stow/build/render. Handy
+#                             for re-runs, no-AUR machines, and the CI bootstrap
+#                             job (which pre-installs the few build deps itself).
+#
 # What it does NOT do (deliberately — see the closing notes it prints):
 #   - install an audio server for pactl (system-dependent; avoids conflicts)
 #   - install nvm / bun / Oh My Zsh (each has its own installer)
@@ -15,6 +21,7 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKIP_PACKAGES="${DOTFILES_SKIP_PACKAGES:-}"
 
 # --- pretty output --------------------------------------------------------
 if [ -t 1 ]; then
@@ -36,13 +43,17 @@ command -v pacman >/dev/null || die "pacman not found — this script targets Ar
 # lazydocker, 1password*) live in the AUR. paru/yay install repo
 # and AUR packages alike, so we route everything through it.
 AUR=""
-for h in paru yay; do
-    if command -v "$h" >/dev/null; then AUR="$h"; break; fi
-done
-[ -n "$AUR" ] || die "No AUR helper (paru/yay) found. Install one first, e.g.:
+if [ -n "$SKIP_PACKAGES" ]; then
+    warn "DOTFILES_SKIP_PACKAGES set — skipping AUR-helper check and package install."
+else
+    for h in paru yay; do
+        if command -v "$h" >/dev/null; then AUR="$h"; break; fi
+    done
+    [ -n "$AUR" ] || die "No AUR helper (paru/yay) found. Install one first, e.g.:
     sudo pacman -S --needed base-devel git
     git clone https://aur.archlinux.org/paru.git && cd paru && makepkg -si"
-ok "Using AUR helper: $AUR"
+    ok "Using AUR helper: $AUR"
+fi
 
 [ "$(basename "$REPO")" = ".dotfiles" ] || \
     warn "Repo dir is '$REPO', not ~/.dotfiles — stow targets \$HOME so this is fine, just unusual."
@@ -89,9 +100,13 @@ PACKAGES=(
     # secrets / signing  (both AUR)
     1password 1password-cli
 )
-info "Installing ${#PACKAGES[@]} packages via $AUR (already-present ones are skipped)"
-"$AUR" -S --needed "${PACKAGES[@]}"
-ok "Packages installed"
+if [ -n "$SKIP_PACKAGES" ]; then
+    info "Skipping install of ${#PACKAGES[@]} packages (DOTFILES_SKIP_PACKAGES set)"
+else
+    info "Installing ${#PACKAGES[@]} packages via $AUR (already-present ones are skipped)"
+    "$AUR" -S --needed "${PACKAGES[@]}"
+    ok "Packages installed"
+fi
 
 # --- stow -----------------------------------------------------------------
 # Packages are grouped: common/ (WM-neutral) and wayland/ (sway session).
