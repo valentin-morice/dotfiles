@@ -1,32 +1,62 @@
 # swaynag theme — RENDERED by theme-render from the active palette into
-# ~/.config/swaynag/config (swaynag reads this path by default). Themes the two
-# swaynag surfaces — the sway exit dialog (-t warning) and the config-error bar
-# (-t error) — which otherwise render in stock beige, the last unthemed surface.
+# ~/.config/swaynag/config (swaynag reads this path by default). Since the
+# exit/shutdown confirms moved to rofi-confirm (swaynag's bar reserves an
+# exclusive zone and resizes the tiling), sway only raises swaynag for the
+# config-error bar (-t error) on a bad reload — otherwise stock beige. The
+# [warning] block is kept for anything else that invokes `swaynag -t warning`.
+#
+# Design: one calm near-bg bar carrying a SINGLE accent stroke along the bottom
+# edge — accent (blue) for the exit prompt, urgent (red) for a config error. The
+# stroke is the only severity cue; the message sits in neutral fg and the buttons
+# are flat accent-coloured labels (no box), so accent == "interactive" and the
+# stroke == "how serious", one consistent language across both bars.
+#
+# Why flat labels, not chips: swaynag vertically centres the message but TOP-PINS
+# buttons (drawn at y = button-border-size, never centred), with bar height =
+# max(message, button). A visible button box therefore can't float with equal
+# top/bottom margins — it either fills the bar (touches both edges) or gaps only
+# at the bottom. Dropping the box sidesteps it entirely: there's no edge to touch,
+# and the label still reads centred because button-padding == message-padding
+# makes the (invisible) button fill the bar height and centre its own text.
+#
 # Colours are RRGGBBAA WITHOUT '#', so the palette's *_bare forms feed straight
-# in (an "ff"/"f2" alpha byte is appended per key).
+# in; an alpha byte is appended per key — f2 (~95%) on the bar for a faint glassy
+# depth over the wallpaper, 00 on the button background to make the box vanish,
+# ff elsewhere for crisp legibility. The two blocks are identical but for the
+# accent-stroke colour, by design.
 
 [warning]
+# bar: near-black ground, message at full contrast, one blue stroke on the edge
 background=${THEME_bg_bare}f2
 text=${THEME_fg_bare}ff
-border=${THEME_border_bare}ff
 border-bottom=${THEME_accent_bare}ff
 border-bottom-size=2
-button-background=${THEME_bg_sel_bare}ff
-button-text=${THEME_fg_bare}ff
-button-border-size=1
+# buttons: no box (transparent bg, zero border), accent label carries the action
+button-background=${THEME_bg_bare}00
+button-text=${THEME_accent_bare}ff
+button-border-size=0
+# spacing (4px grid): button-padding == message-padding (see header) so labels
+# centre vertically; 12 left-pad mirrored by a 12 right-margin; the dismiss
+# button held 16 off the affirmative
 message-padding=12
-button-padding=8
+button-padding=12
+button-gap=8
+button-dismiss-gap=16
+button-margin-right=12
 font=JetBrainsMono Nerd Font 11
 
 [error]
+# identical to [warning] — only the accent stroke turns red to flag severity
 background=${THEME_bg_bare}f2
 text=${THEME_fg_bare}ff
-border=${THEME_border_bare}ff
 border-bottom=${THEME_urgent_bare}ff
 border-bottom-size=2
-button-background=${THEME_bg_sel_bare}ff
-button-text=${THEME_fg_bare}ff
-button-border-size=1
+button-background=${THEME_bg_bare}00
+button-text=${THEME_accent_bare}ff
+button-border-size=0
 message-padding=12
-button-padding=8
+button-padding=12
+button-gap=8
+button-dismiss-gap=16
+button-margin-right=12
 font=JetBrainsMono Nerd Font 11

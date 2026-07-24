@@ -8,13 +8,14 @@
 # here.
 set -e
 
-# Confirm a machine-level destructive action, then run it. The nag bar's button
-# runs the command directly; Escape / dismiss cancels. swaynag is themed via
-# templates/swaynag.config.tmpl. Matches the $mod+Shift+e exit-sway confirm —
-# shutdown/reboot shouldn't be a single fuzzy keystroke.
+# Confirm a machine-level destructive action, then run it — via rofi-confirm
+# (floats over content; swaynag's bar reserved an exclusive zone and resized the
+# tiling). Cancel is pre-selected; Escape cancels. Matches the $mod+Shift+e
+# exit-sway confirm — shutdown/reboot shouldn't be a single fuzzy keystroke.
+# args: <label> <command> <glyph-name> <message>
 confirm_run() {
-    if [ -n "${SWAYSOCK:-}" ]; then
-        exec swaynag -t warning -m "$1?" -B "$1" "$2"
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v rofi >/dev/null; then
+        exec "$HOME/.local/bin/rofi-confirm" "$1" "$2" "$3" "$4"
     else
         exec sh -c "$2"
     fi
@@ -24,7 +25,7 @@ case "$1" in
     lock)     exec loginctl lock-session ;;
     logout)   exec swaymsg exit ;;
     suspend)  exec systemctl suspend ;;
-    reboot)   confirm_run 'Reboot' 'systemctl reboot' ;;
-    shutdown) confirm_run 'Shutdown' 'systemctl poweroff' ;;
+    reboot)   confirm_run 'Reboot' 'systemctl reboot' reboot 'Restart the machine?' ;;
+    shutdown) confirm_run 'Shutdown' 'systemctl poweroff' shutdown 'Power off the machine?' ;;
     *)        echo "power-menu: unknown action '${1:-}' (lock|logout|suspend|reboot|shutdown)" >&2; exit 2 ;;
 esac

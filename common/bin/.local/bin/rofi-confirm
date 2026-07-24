@@ -1,0 +1,54 @@
+#!/bin/bash
+# rofi confirm dialog — a centred two-card grid ([Action] [Cancel]) in the same
+# card style as rofi-power/rofi-profile (shared rofi-card-theme.sh), with the
+# question as a message line above the cards. Replaces the swaynag -t warning
+# confirms (the exit-sway bind + power-menu's reboot/shutdown), which reserved a
+# layer-shell exclusive zone and so RESIZED the tiled windows; rofi's surface
+# floats over content like every other menu here. swaynag keeps only the
+# config-error bar, which sway raises internally.
+#
+#   rofi-confirm <label> <command> [glyph-name] [message]
+#
+# Callers pass a glyph NAME (logout|reboot|shutdown); the octal escapes live
+# here so sources stay pure ASCII (same technique as rofi-power/rofi-profile).
+#
+# Safety: Cancel is pre-selected, so Enter never fires the action — a destructive
+# command takes a deliberate Left-arrow (or click) first. Escape cancels too.
+# This is the keyboard analogue of the mouse-only swaynag bar it replaces, where
+# confirming always took an aimed click.
+set -euo pipefail
+
+label="${1:?usage: rofi-confirm <label> <command> [glyph-name] [message]}"
+cmd="${2:?usage: rofi-confirm <label> <command> [glyph-name] [message]}"
+glyph_name="${3:-}"
+mesg="${4:-}"
+
+# Nerd Font glyphs as UTF-8 octal escapes (pure-ASCII source, unmanglable).
+case "$glyph_name" in
+    logout)   glyph="$(printf '\357\202\213')" ;;  # U+F08B sign-out
+    reboot)   glyph="$(printf '\357\200\241')" ;;  # U+F021 refresh
+    shutdown) glyph="$(printf '\357\200\221')" ;;  # U+F011 power-off
+    *)        glyph="$(printf '\357\201\261')" ;;  # U+F071 warning triangle
+esac
+cancel_glyph="$(printf '\357\200\215')"            # U+F00D times
+
+# Rows in rofi-power's card grammar: glyph, a sized-space gap, label lifted to
+# the glyph's optical centre via rise. Row 0 = action, row 1 = Cancel. The
+# newline is concatenated as $'\n' (NOT via command substitution, which strips
+# trailing newlines and would fuse both entries into one row/card).
+row() { printf "%s<span size='60%%'>  </span><span rise='4000' size='55%%'>%s</span>" "$1" "$2"; }
+rows="$(row "$glyph" "$label")"$'\n'"$(row "$cancel_glyph" "Cancel")"
+
+# Two cards side by side, rofi-power's window width. The message line slots in
+# above the listview; textbox styling matches the base list look (fg, centred).
+# shellcheck source=/dev/null
+. "$HOME/.local/bin/rofi-card-theme.sh"
+theme="$(rofi_card_theme 440px 2 1)
+mainbox { children: [ message, listview ]; spacing: 18px; }
+message { border: 0; background-color: transparent; }
+textbox { background-color: transparent; text-color: @fg; horizontal-align: 0.5; }"
+
+idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -format i -selected-row 1 \
+          ${mesg:+-mesg "$mesg"} -theme-str "$theme") || exit 0
+[ "$idx" = "0" ] || exit 0
+exec sh -c "$cmd"

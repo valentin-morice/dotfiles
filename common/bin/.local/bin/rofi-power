@@ -18,7 +18,7 @@ set -euo pipefail
 # rofi fills COLUMN-major, so the arrays below are that grid's column-major
 # traversal (col1 top->bottom, then col2): shutdown, reboot, lock, logout.
 # index 0 (shutdown, top-left) is the default-selected card — its poweroff still
-# routes through power-menu's swaynag confirm, so Enter is safe. (Suspend was
+# routes through power-menu's rofi-confirm, so Enter is safe. (Suspend was
 # dropped: closing the laptop lid already suspends.)
 actions=(shutdown   reboot     lock       logout)
 labels=( Shutdown   Reboot     Lock       Logout)

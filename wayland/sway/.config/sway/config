@@ -366,8 +366,9 @@ bindsym $mod+Shift+c reload
 # sway has no i3-style `restart`; reload is the only in-place refresh, so this
 # is a muscle-memory alias for $mod+Shift+c.
 bindsym $mod+Shift+r reload
-# exit sway (ends the Wayland session)
-bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+# exit sway (ends the Wayland session) — rofi-confirm floats over content;
+# the old swaynag bar reserved an exclusive zone and resized the tiling
+bindsym $mod+Shift+e exec ~/.local/bin/rofi-confirm 'Exit sway' 'swaymsg exit' logout 'End the Wayland session?'
 
 ### Resize -------------------------------------------------------------------
 mode "resize" {

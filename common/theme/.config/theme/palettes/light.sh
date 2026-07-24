@@ -70,13 +70,13 @@ export THEME_urgent_text=#f4f6f8
 # was only ~3:1. Opposite polarity to dark's accent_text by design. See dark.sh.
 export THEME_accent_text=#f4f6f8
 
-# Bare (no #) RRGGBBAA forms — swaynag.config.tmpl appends an alpha byte to each.
+# Bare (no #) RRGGBBAA forms — swaynag.config.tmpl appends an alpha byte to each
+# (bar bg, message text, and the accent/urgent bottom stroke + flat button
+# labels). swaynag is the only consumer.
 export THEME_fg_bare=1d2329
 export THEME_bg_bare=f4f6f8
 export THEME_accent_bare=2f6fb3
 export THEME_urgent_bare=c8332b
-export THEME_bg_sel_bare=d4e2ee
-export THEME_border_bare=d3dae0
 
 # GTK / Qt. Light uses the plain (built-in) Adwaita name; dark uses Adwaita-dark
 # (see dark.sh) so GTK3 reloads on the name change. GTK4/libadwaita + Qt follow

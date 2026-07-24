@@ -75,13 +75,13 @@ export THEME_urgent_text=#ffffff
 # trick waybar uses for its active workspace pill.
 export THEME_accent_text=#0d0d0d
 
-# Bare (no #) RRGGBBAA forms — swaynag.config.tmpl appends an alpha byte to each.
+# Bare (no #) RRGGBBAA forms — swaynag.config.tmpl appends an alpha byte to each
+# (bar bg, message text, and the accent/urgent bottom stroke + flat button
+# labels). swaynag is the only consumer.
 export THEME_fg_bare=ffffff
 export THEME_bg_bare=0d0d0d
 export THEME_accent_bare=5294e2
 export THEME_urgent_bare=ff5555
-export THEME_bg_sel_bare=1c1c1c
-export THEME_border_bare=1f1f1f
 
 # GTK / Qt. GTK3 reloads reliably only on a theme-NAME change, so dark uses the
 # named Adwaita-dark (needs gnome-themes-extra) rather than the prefer-dark flag
