@@ -1,8 +1,10 @@
 # Lightweight CI for the dotfiles: lints every shell script, vets + builds the
 # Go IMAP daemon, enforces the light/dark palette-parity invariant the theme
-# engine depends on, and bootstraps the whole repo from scratch in an Arch
-# container (install.sh with packages skipped). Deliberately does NOT run
-# `sway --validate`: the sway config
+# engine depends on, golden-tests the rendered configs, bats-tests theme-render's
+# flock + atomic-write internals, and bootstraps the whole repo from scratch in
+# an Arch container (install.sh with packages skipped). A final non-gating job
+# checks the official-repo package set still resolves under current Arch.
+# Deliberately does NOT run `sway --validate`: the sway config
 # `include`s ~/.config/sway/colors.conf (a theme-rendered file that doesn't exist
 # in a bare checkout), so a headless validate can't parse it meaningfully.
 name: ci
@@ -22,10 +24,12 @@ jobs:
       - name: Lint shell scripts
         shell: bash
         run: |
-          # Every file with a bash/sh shebang (zsh files excluded — shellcheck
-          # can't lint zsh). -S warning: the repo intentionally uses the
-          # `A && B || C` idiom (SC2015, info) in verify-wayland etc.
-          mapfile -t files < <(grep -rlE '^#!.*\b(bash|sh)\b' --exclude-dir=.git . | grep -viE '/\.?zsh')
+          # Every file with a bash/sh shebang (zsh excluded — shellcheck can't
+          # lint zsh; .bats excluded — it's bats syntax, exercised by the `bats`
+          # job, and would otherwise be matched via its heredoc'd stub shebangs).
+          # -S warning: the repo intentionally uses the `A && B || C` idiom
+          # (SC2015, info) in verify-wayland etc.
+          mapfile -t files < <(grep -rlE '^#!.*\b(bash|sh)\b' --exclude-dir=.git . | grep -viE '/\.?zsh' | grep -vE '\.bats$')
           printf 'linting %d scripts\n' "${#files[@]}"
           shellcheck -S warning "${files[@]}"
 
@@ -86,6 +90,23 @@ jobs:
       # preinstalled on the runner.
       - name: Render both palettes and diff against committed goldens
         run: tests/theme/render-golden.sh
+
+  bats:
+    name: bats (theme-render internals)
+    runs-on: ubuntu-latest
+    # theme-render's flock serialization and atomic-write/symlink handling are
+    # shell mechanics the golden job can't see (it only checks rendered output).
+    # Run them on real Arch so the flock/util-linux behaviour matches the target.
+    container: archlinux:latest
+    steps:
+      # nodejs for actions/checkout (JS action, no Node in the base image); bats
+      # is the runner; gettext gives theme-render its envsubst. flock, grep, sed,
+      # awk, mktemp, readlink all ship in base.
+      - name: Install bats + theme-render deps
+        run: pacman -Syu --noconfirm --needed nodejs git bats gettext
+      - uses: actions/checkout@v5
+      - name: Run the theme-render bats suite
+        run: bats tests/theme/theme-render.bats
 
   bootstrap:
     name: bootstrap (arch container)
@@ -168,3 +189,41 @@ jobs:
           echo
           if [ "$fails" -ne 0 ]; then echo "bootstrap assertions FAILED"; exit 1; fi
           echo "all bootstrap assertions passed"
+
+  package-existence:
+    name: package existence (non-gating)
+    runs-on: ubuntu-latest
+    # Bootstrap-rot guard: an official-repo package can be dropped or renamed out
+    # from under install.sh (e.g. moved to the AUR), and nothing would notice
+    # until a real fresh install fails. This resolves the whole REPO_PKGS set
+    # against current Arch's sync DBs. Non-gating (continue-on-error): it tracks
+    # upstream Arch, not this repo's own correctness, so a rename shouldn't turn
+    # the whole pipeline red — it surfaces as a warning annotation to act on.
+    # AUR packages are excluded: they're not in the sync DBs, and building them
+    # from source is exactly what the bootstrap job skips.
+    continue-on-error: true
+    container: archlinux:latest
+    steps:
+      - name: Install toolchain (node for checkout)
+        run: pacman -Syu --noconfirm --needed nodejs git
+      - uses: actions/checkout@v5
+      - name: Every official-repo package in install.sh still resolves
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The list comes straight from install.sh's REPO_PKGS via its
+          # introspection hook — single source of truth, no parsing, can't drift.
+          mapfile -t repo < <(DOTFILES_PRINT_PACKAGES=repo ./install.sh)
+          [ "${#repo[@]}" -gt 0 ] || { echo "hook returned no packages"; exit 1; }
+          printf 'resolving %d official-repo packages against the sync DBs\n' "${#repo[@]}"
+          missing=()
+          for p in "${repo[@]}"; do
+            # -Si queries the sync DBs (no download); non-zero => not in any repo.
+            pacman -Si "$p" >/dev/null 2>&1 || missing+=("$p")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::warning title=Package gone from Arch repos::%s\n' "${missing[*]}"
+            echo "no longer in the official repos: ${missing[*]}"
+            exit 1
+          fi
+          echo "all ${#repo[@]} official-repo packages still exist"
