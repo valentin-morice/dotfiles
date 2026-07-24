@@ -1,0 +1,139 @@
+/* rofi config + theme — RENDERED by theme-render from
+   templates/rofi.rasi.tmpl into ~/.config/rofi/config.rasi. Do NOT edit the
+   generated file; edit this template (layout) or the palettes (colours:
+   palettes/{light,dark}.sh). rofi reads #RRGGBB directly, so the plain
+   ${THEME_*} forms are used here (no _bare/ff hack, unlike fuzzel).
+
+   Faithful port of the retired fuzzel launcher look: JetBrainsMono 11.5, 2px
+   border (radius 0), "❯" prompt, "Search" placeholder, 11 visible rows, no
+   icons, 720px wide. rofi is spawned fresh per keypress (no daemon), so it
+   re-reads this file on every launch — theme-render needs NO reload hook for
+   rofi, unlike the daemons it also renders.
+
+   drun is $mod+d; the ~/.local/bin/rofi-* menus drive rofi in -dmenu mode and
+   each passes its own "<name> ❯" via -p. */
+
+configuration {
+    font:                "JetBrainsMono Nerd Font 11.5";
+    /* show-icons stays off by default so the clip/profile dmenu wrappers have
+       no empty icon column; the drun bind and rofi-window flip it on with
+       -show-icons (drun from .desktop icons, rofi-window from per-row app_id
+       icons). icon-theme follows the palette's Papirus variant so app icons
+       track light/dark. */
+    show-icons:          false;
+    icon-theme:          "Papirus";
+    terminal:            "alacritty";
+    /* drun search fields mirror fuzzel's fields=name,generic,keywords */
+    drun-match-fields:   "name,generic,keywords";
+    drun-display-format: "{name}";
+    /* drun mode ignores -p, so its "drun ❯" prompt comes from display-drun; the
+       dmenu wrappers still get their "<name> ❯" from -p. */
+    display-drun:        "drun ❯";
+}
+
+* {
+    bg:        #f4f6f8;
+    bg-alt:    #e9eef2;
+    bg-sel:    #d4e2ee;
+    fg:        #333b42;
+    accent:    #2f6fb3;
+    prompt-fg: #b5790a;
+    muted:     #9aa4ad;
+    border-c:  #d3dae0;
+    border-med: #c2cad1;
+
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+window {
+    location:         center;
+    /* fixed 720px — the width fuzzel's ~72-char setting was tuned to match */
+    width:            720px;
+    border:           2px;
+    border-color:     @border-c;
+    border-radius:    0px;
+    background-color: @bg;
+    padding:          0px;
+}
+
+mainbox {
+    padding:  14px 16px;
+    spacing:  10px;
+    border:   0;
+    children: [ inputbar, listview ];
+}
+
+inputbar {
+    spacing:  8px;
+    border:   0;
+    children: [ prompt, entry ];
+}
+
+/* the "<name> ❯" text comes from each menu's -p (drun's from display-drun) */
+prompt {
+    text-color: @prompt-fg;
+}
+
+entry {
+    placeholder:       "Search";
+    placeholder-color: @muted;
+    text-color:        @fg;
+}
+
+listview {
+    lines:        11;
+    columns:      1;
+    fixed-height: true;
+    scrollbar:    false;
+    spacing:      2px;
+    border:       0;
+    background-color: transparent;
+}
+
+/* row pitch ~34px: 6px vertical padding + the font's line box, matching the
+   metric fuzzel's line-height=26 was reverse-engineered from. */
+element {
+    padding:          6px 10px;
+    spacing:          10px;   /* gap between icon and text (drun + window) */
+    border-radius:    0px;
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+/* Only rendered when -show-icons is on (drun + rofi-window). Hidden for the
+   remaining dmenu wrappers (clip/profile), so `spacing` above adds no leading
+   gap there. */
+element-icon {
+    size:             22px;
+    vertical-align:   0.5;
+    background-color: transparent;
+}
+
+/* State-qualified selectors are REQUIRED: rofi's default theme defines
+   `element alternate.normal` (a cream row background) and a bare `element
+   selected` is less specific, so without these the default cream/dashed styling
+   leaks into every list (drun, clip, window, profile). */
+element normal.normal,
+element alternate.normal {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+element selected.normal {
+    background-color: @bg-sel;
+    text-color:       @accent;
+}
+
+/* matched-substring highlight (fuzzel's `match` colour). rofi's `highlight`
+   property takes a literal colour, not an @reference — so the palette value is
+   inlined here (still re-rendered on every theme-switch). */
+element-text {
+    background-color: transparent;
+    text-color:       inherit;
+    /* centre the label against the (taller) icon — element-icon is already
+       vertical-align 0.5, so without this the two sit off-centre (flex
+       align-items: center). Affects every iconned menu: drun, window, clip. */
+    vertical-align:   0.5;
+    highlight:        bold #2f6fb3;
+}

@@ -1,0 +1,181 @@
+// waybar config — rendered by theme-render from the active palette.
+// The accent/muted text prefixes (WIFI/BT/VOL/BAT/MAIL) use pango <span> with
+// the FROZEN colours (THEME_accent_fixed/THEME_muted_fixed), which are equal in
+// every theme — so this rendered file is byte-identical between light and dark.
+// Deliberate: per-theme colour lives entirely in style.css, which waybar
+// live-applies via reload_style_on_change (below) with no reset/flicker. The
+// config has no in-place reload, so anything theme-varying here would force the
+// flickery SIGUSR2 reset. Layout/spacing live in style.css.
+{
+    // Watch style.css and hot-apply CSS changes in place (no widget reset) —
+    // this is what makes a theme switch recolour smoothly instead of flickering.
+    "reload_style_on_change": true,
+
+    "layer": "top",
+    "position": "bottom",
+    "height": 30,
+    "modules-left": ["sway/workspaces", "idle_inhibitor", "sway/mode"],
+    // clock is flanked by the power-profile icon (left) and an equal-width
+    // invisible pad (right) so the date itself stays centred despite the icon.
+    "modules-center": ["custom/powerprofile", "clock", "custom/clockpad"],
+    // tray sits left of volume (not last) so a newly-added icon grows it
+    // leftward into the mostly-hidden signal labels rather than shoving the
+    // fixed volume/network/bt/battery block. See the "tray" note below.
+    "modules-right": ["custom/recording", "custom/dnd", "custom/nightlight", "custom/mail", "tray", "pulseaudio", "network", "bluetooth", "battery"],
+
+    "sway/workspaces": {
+        "disable-scroll": true,
+        "format": "{name}",
+        // Always render 1–4 (even when empty) so the workspace block is a fixed
+        // width and the bar never layout-shifts. sway is capped at 4 workspaces
+        // to match (see the config), so nothing beyond 4 can ever appear.
+        "persistent-workspaces": {
+            "1": [],
+            "2": [],
+            "3": [],
+            "4": []
+        }
+    },
+
+    // Binding-mode indicator (e.g. "resize"); auto-hidden in the default mode,
+    // mirroring polybar's internal/i3 mode label. Accent-coloured like the
+    // other text labels, hence rendered from the palette.
+    "sway/mode": {
+        "format": "<span foreground='#3a7bc8'>{}</span>",
+        "tooltip": false
+    },
+
+    "clock": {
+        "interval": 10,
+        "format": "{:%a %d %b %H:%M}",
+        "tooltip-format": "<tt>{calendar}</tt>"
+    },
+
+    // Power-profile icon — the single glyph in the bar (a deliberate exception
+    // to the text-label rule). Shows fast-forward/adjust/minus-circle for performance/balanced/
+    // power-saver; click opens the rofi-profile card panel. Refreshed instantly
+    // by rofi-profile (pkill -RTMIN+11 waybar); interval is the external-change
+    // fallback. Colour is theme-varying, so it lives in style.css.
+    "custom/powerprofile": {
+        "exec": "$HOME/.local/bin/waybar-powerprofile",
+        "return-type": "json",
+        "interval": 30,
+        "signal": 11,
+        "on-click": "$HOME/.local/bin/rofi-profile"
+    },
+
+    // Invisible counterweight, forced to the same width as custom/powerprofile in
+    // style.css so the clock stays truly centred with the icon to its left.
+    "custom/clockpad": {
+        "format": ""
+    },
+
+    "custom/mail": {
+        "exec": "$HOME/.local/bin/waybar-mail",
+        "interval": 5,
+        "return-type": "json"
+    },
+
+    // Signal-driven status labels — each prints a frozen-colour span when active
+    // and nothing (module hidden) when not, so they add no gap when idle and the
+    // rendered config stays theme-invariant. Refreshed on demand: screenrecord
+    // sends RTMIN+8, the DND bind RTMIN+9, nightlight-toggle RTMIN+10.
+    // These labels only appear while active, which makes them ideal click
+    // targets to turn the thing back off (helpers already exist).
+    "custom/recording": {
+        "exec": "$HOME/.local/bin/waybar-recording",
+        "return-type": "json",
+        "interval": "once",
+        "signal": 8,
+        "on-click": "$HOME/.local/bin/screenrecord"
+    },
+    "custom/dnd": {
+        "exec": "$HOME/.local/bin/waybar-dnd",
+        "return-type": "json",
+        "interval": "once",
+        "signal": 9,
+        "on-click": "$HOME/.local/bin/dnd-toggle"
+    },
+    "custom/nightlight": {
+        "exec": "$HOME/.local/bin/waybar-nightlight",
+        "return-type": "json",
+        "interval": "once",
+        "signal": 10,
+        "on-click": "$HOME/.local/bin/nightlight-toggle"
+    },
+
+    // Click-to-caffeinate: inhibits the swayidle timers while activated.
+    // Both states use frozen colours (accent on, muted off), so the rendered
+    // config stays byte-identical across themes.
+    "idle_inhibitor": {
+        "format": "{icon}",
+        // Distinct TEXT per state (not just colour) so caffeination is readable
+        // at a glance and for colour-blind users: AWAKE = idle inhibited (screen
+        // forced on), AUTO = normal idle/lock behaviour.
+        "format-icons": {
+            "activated": "<span foreground='#c0851f'>AWAKE</span>",
+            "deactivated": "<span foreground='#808488'>AUTO</span>"
+        },
+        "tooltip-format-activated": "Idle inhibitor: On",
+        "tooltip-format-deactivated": "Idle inhibitor: Off"
+    },
+
+    "pulseaudio": {
+        "format": "<span foreground='#3a7bc8'>VOL</span> {volume}%",
+        "format-muted": "<span foreground='#3a7bc8'>VOL</span> <span foreground='#808488'>MUTED</span>",
+        "tooltip-format": "Volume: {volume}%",
+        // Scroll to change volume, click to mute — reuse the same helpers the
+        // XF86Audio keys use (so the OSD toast + 100% clamp behave identically).
+        "on-scroll-up": "$HOME/.local/bin/volume-notify up",
+        "on-scroll-down": "$HOME/.local/bin/volume-notify down",
+        "on-click": "$HOME/.local/bin/toggle-audio-mute"
+    },
+
+    "network": {
+        "interval": 5,
+        "format-wifi": "<span foreground='#3a7bc8'>WIFI</span> {essid}",
+        "format-ethernet": "<span foreground='#3a7bc8'>ETH</span> {ifname}",
+        "format-disconnected": "<span foreground='#3a7bc8'>WIFI</span> <span foreground='#808488'>OFFLINE</span>",
+        "tooltip-format-wifi": "Network: {essid} ({signalStrength}%)",
+        "tooltip-format-ethernet": "Network: {ifname}",
+        "tooltip-format-disconnected": "Network: Disconnected",
+        "on-click": "alacritty --app-id netmenu-float -e nmtui"
+    },
+
+    "bluetooth": {
+        "format": "<span foreground='#3a7bc8'>BT</span> ON",
+        "format-off": "<span foreground='#3a7bc8'>BT</span> <span foreground='#808488'>OFF</span>",
+        "format-disabled": "<span foreground='#3a7bc8'>BT</span> <span foreground='#808488'>OFF</span>",
+        "format-connected": "<span foreground='#3a7bc8'>BT</span> {device_alias}",
+        "tooltip-format": "Bluetooth: On",
+        "tooltip-format-connected": "Bluetooth: {device_alias}",
+        "tooltip-format-off": "Bluetooth: Off",
+        "tooltip-format-disabled": "Bluetooth: Off",
+        "on-click": "alacritty --app-id btmenu-float -e bluetuith"
+    },
+
+    "battery": {
+        // No hardcoded "bat"/"adapter": waybar autodetects the first battery +
+        // adapter, so this stays portable (adapters vary: AC / AC0 / ADP1 ...).
+        "interval": 5,
+        // States only stamp CSS classes (warning/critical); the colour lives
+        // in style.css like everything else theme-varying.
+        "states": { "warning": 20, "critical": 10 },
+        "tooltip-format": "Battery: {capacity}%",
+        "format": "<span foreground='#3a7bc8'>BAT</span> {capacity}%",
+        "format-charging": "<span foreground='#3a7bc8'>BAT</span> {capacity}%+",
+        "format-full": "<span foreground='#3a7bc8'>BAT</span> <span foreground='#808488'>FULL</span>"
+    },
+
+    // Positioned before volume in modules-right (not at the far right): the tray
+    // is the only right-side module whose width changes at runtime, so keeping the
+    // fixed labels (volume/network/bt/battery) anchored to its right stops them
+    // layout-shifting when an icon appears — the tray grows leftward instead.
+    // The gray fill (matching the inactive workspace blocks) lives in style.css.
+    // spacing matches the block's 9px edge padding (#tray in style.css) so the
+    // gap between icons equals the gap at the edges — a uniform 9px throughout.
+    "tray": {
+        "spacing": 9,
+        "icon-size": 19
+    }
+}

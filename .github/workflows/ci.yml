@@ -74,6 +74,19 @@ jobs:
           fi
           printf 'palettes agree on %d keys\n' "$(echo "$d" | wc -l)"
 
+  theme-golden:
+    name: theme render golden
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # Renders every template for dark + light through the real palettes and
+      # envsubst, then diffs against tests/theme/golden/. A template/palette edit
+      # that changes a rendered config fails here until the goldens are updated
+      # (tests/theme/render-golden.sh --update). envsubst ships in gettext-base,
+      # preinstalled on the runner.
+      - name: Render both palettes and diff against committed goldens
+        run: tests/theme/render-golden.sh
+
   bootstrap:
     name: bootstrap (arch container)
     runs-on: ubuntu-latest

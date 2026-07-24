@@ -1,0 +1,133 @@
+/* waybar style — rendered by theme-render from the active palette.
+ * Reproduces the polybar look: flat (no rounding), text labels, semibold
+ * JetBrainsMono, accent-tinted focused workspace, muted inactive ones. */
+
+* {
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 14px;
+    font-weight: 600;
+    min-height: 0;
+}
+
+window#waybar {
+    background-color: #0d0d0d;
+    color: #ffffff;
+    /* Cross-fade the bar surface on theme switch (reload_style_on_change applies
+     * the new palette live, GTK3 honours the transition), 0.5s. The wallpaper
+     * itself swaps instantly (awww --transition-type none) — only the bar fades.
+     * Scoped to the bar surface — a transition on #workspaces button would also
+     * smear the focused-accent block during normal workspace navigation, not
+     * just on theme switch. */
+    transition: background-color 500ms ease, color 500ms ease;
+}
+
+/* Workspaces — flat blocks. Inactive ones carry a very light gray fill so the
+ * workspace group reads as a distinct region (with the AWAKE label sitting on
+ * the bar bg just after it); the focused one gets the accent fill. */
+#workspaces button {
+    padding: 0 11px;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    color: #888888;
+    background-color: #202020;
+    /* kill Adwaita's default button gradient/inset so the block stays flat */
+    background-image: none;
+}
+#workspaces button:hover {
+    background-color: #2e2e2e;
+    background-image: none;
+    box-shadow: none;
+    text-shadow: none;
+}
+#workspaces button.visible {
+    color: #ffffff;
+}
+#workspaces button.focused {
+    color: #0d0d0d;
+    background-color: #5294e2;
+}
+#workspaces button.urgent {
+    color: #0d0d0d;
+    background-color: #ff5555;
+}
+
+/* Binding-mode indicator and the AWAKE (idle_inhibitor) toggle — both sit in
+ * modules-left next to the workspaces, so they carry the same horizontal
+ * padding as a workspace block rather than the 9px the center/right modules use. */
+#mode,
+#idle_inhibitor {
+    padding: 0 11px;
+}
+
+/* Center + right modules (module-margin spacing, padding-right 2 on the bar). */
+#clock,
+#custom-mail,
+#custom-recording,
+#custom-dnd,
+#custom-nightlight,
+#pulseaudio,
+#network,
+#bluetooth,
+#battery,
+#tray {
+    padding: 0 9px;
+}
+
+/* Power-profile icon + its centring counterweight — both pinned to the same
+ * width so the clock stays centred with the icon on its left. The icon is the
+ * sole glyph in the bar (a deliberate exception to the text-label rule);
+ * accent-coloured so it reads like a status label and tracks the theme. */
+#custom-powerprofile,
+#custom-clockpad {
+    min-width: 16px;
+    padding: 0 9px;
+}
+/* Slide the glyph toward the date (less right / more left padding). Total padding
+ * stays 18px, so the module keeps its width and the clock stays centred. */
+#custom-powerprofile {
+    color: #5294e2;
+    padding: 0 3px 0 15px;
+}
+/* Battery is the right-most module now (tray moved to the left of volume), so it
+ * carries the extra right-edge breathing room the tray used to hold. */
+#battery {
+    padding-right: 14px;
+}
+
+/* System tray — same light-gray fill as the inactive workspace blocks so a
+ * populated tray reads as its own region. It sits left of volume in
+ * modules-right (see config), so a newly-added icon grows the tray leftward
+ * into the mostly-hidden signal labels instead of shifting volume/network/
+ * bt/battery. */
+#tray {
+    background-color: #202020;
+}
+
+/* Battery states — urgent-tinted text at 20%, urgent block below 10%
+ * (mirrors the urgent-workspace treatment). */
+#battery.warning {
+    color: #ff5555;
+}
+#battery.critical:not(.charging) {
+    color: #0d0d0d;
+    background-color: #ff5555;
+}
+
+tooltip {
+    background-color: #1a1a1a;
+    border: 1px solid #444444;
+    padding: 2px 6px;
+    transition: background-color 500ms ease, border-color 500ms ease;
+}
+/* Tooltip text: a normal-metrics sans-serif at normal weight. The bar's global
+ * semibold JetBrainsMono Nerd Font otherwise renders tooltips bold and
+ * vertically stretched in the auto-sized box (its tall icon-glyph line metrics);
+ * the bar hides that with its fixed height, a tooltip can't. */
+tooltip label {
+    color: #ffffff;
+    font-family: sans-serif;
+    font-weight: normal;
+    font-size: 13px;
+    transition: color 500ms ease;
+}
