@@ -34,13 +34,78 @@ ok()   { printf '%s ok %s %s\n' "$c_ok"   "$c_off" "$*"; }
 warn() { printf '%s !! %s %s\n' "$c_warn" "$c_off" "$*" >&2; }
 die()  { printf '%serr%s %s\n' "$c_err"  "$c_off" "$*" >&2; exit 1; }
 
+# --- package lists --------------------------------------------------------
+# Split by source: REPO_PKGS live in the official Arch repos, AUR_PKGS need the
+# helper. The helper installs both alike, so at install time they're just
+# concatenated — but keeping them apart is the single source of truth the CI
+# `package-existence` job reads (via the DOTFILES_PRINT_PACKAGES hook below) to
+# check the repo set still resolves, without building the AUR set from source.
+# Defined before preflight so the hook can dump a clean list on any machine
+# (no pacman, no info() noise on stdout).
+REPO_PKGS=(
+    # Wayland / sway session; rofi is the launcher and the dmenu backend for the
+    # ~/.local/bin/rofi-* menus.
+    sway swaybg swayidle waybar gammastep
+    grim slurp wl-clipboard jq rofi
+    # cliphist: Wayland clipboard history (text + images; skips password-manager
+    # clips). wtype: lets the emoji picker type its pick (optional). imagemagick:
+    # thumbnails image clips in the rofi-clip menu.
+    cliphist wtype imagemagick
+    xorg-xwayland xdg-desktop-portal-wlr
+    # Network TUI (opened in a floating terminal from $mod+n).
+    networkmanager
+    # Desktop
+    alacritty dunst fastfetch
+    # shell / CLI
+    zsh tmux stow zoxide fzf fd eza bat git-delta
+    # TUIs
+    lazygit lazydocker
+    # hardware keys
+    playerctl brightnessctl
+    # build / vcs
+    go github-cli
+    # theming
+    xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme
+    # apps the sway session launches + mimeapps maps: chromium browser, thunar
+    # file manager (+ volman for removable media, gvfs for trash/mounts), zathura
+    # PDF reader + mupdf backend, nsxiv image viewer, mpv (the video/audio handler
+    # in mimeapps.list).
+    chromium thunar thunar-volman gvfs zathura zathura-pdf-mupdf nsxiv mpv
+    # session plumbing the sway config execs: awww wallpaper daemon (swww fork),
+    # dex XDG-autostart, polkit auth agent, kanshi outputs.
+    awww dex polkit-gnome kanshi
+    # screen recording, battery notifier, XDG user dirs, and THE font every
+    # config names (without it fontconfig substitutes garbage glyphs).
+    wf-recorder batsignal xdg-user-dirs ttf-jetbrains-mono-nerd
+)
+AUR_PKGS=(
+    swaylock-effects                # screen locker with blur (sway session)
+    bluetuith                       # Bluetooth TUI ($mod+b)
+    vscodium-bin                    # editor
+    sway-audio-idle-inhibit-git     # inhibit idle while audio plays
+    1password 1password-cli         # secrets + SSH commit signing
+)
+# Install-time view: the helper handles repo + AUR uniformly. --needed keeps it
+# idempotent on re-runs.
+PACKAGES=("${REPO_PKGS[@]}" "${AUR_PKGS[@]}")
+
+# Introspection hook: print one package group and exit before doing anything.
+# Used by the CI package-existence check and handy for ad-hoc listing.
+case "${DOTFILES_PRINT_PACKAGES:-}" in
+    repo) printf '%s\n' "${REPO_PKGS[@]}"; exit 0 ;;
+    aur)  printf '%s\n' "${AUR_PKGS[@]}";  exit 0 ;;
+    all)  printf '%s\n' "${PACKAGES[@]}";  exit 0 ;;
+    "")   ;;
+    *)    die "DOTFILES_PRINT_PACKAGES must be one of: repo aur all (got '$DOTFILES_PRINT_PACKAGES')" ;;
+esac
+
 # --- preflight ------------------------------------------------------------
 info "Preflight checks"
 
 command -v pacman >/dev/null || die "pacman not found — this script targets Arch Linux."
 
 # An AUR helper is required: several packages (swaylock-effects, bluetuith,
-# lazydocker, 1password*) live in the AUR. paru/yay install repo
+# 1password*) live in the AUR. paru/yay install repo
 # and AUR packages alike, so we route everything through it.
 AUR=""
 if [ -n "$SKIP_PACKAGES" ]; then
@@ -60,46 +125,9 @@ fi
 [ -d "$REPO/.git" ] || warn "No .git in $REPO — the git-identity step will be skipped."
 
 # --- packages -------------------------------------------------------------
-# Repo + AUR mixed; the helper sorts them out. --needed makes this idempotent.
-PACKAGES=(
-    # Wayland / sway session  (swaylock-effects is AUR); rofi is the launcher
-    # and the dmenu backend for the ~/.local/bin/rofi-* menus.
-    sway swaybg swayidle swaylock-effects waybar gammastep
-    grim slurp wl-clipboard jq rofi
-    # cliphist: Wayland clipboard history (text + images; skips password-manager
-    # clips). wtype: lets the emoji picker type its pick (optional). imagemagick:
-    # thumbnails image clips in the rofi-clip menu.
-    cliphist wtype imagemagick
-    xorg-xwayland xdg-desktop-portal-wlr
-    # Network / Bluetooth TUIs (opened in a floating terminal from $mod+n /
-    # $mod+b). bluetuith is AUR.
-    networkmanager bluetuith
-    # Desktop
-    alacritty dunst fastfetch
-    # shell / CLI
-    zsh tmux stow zoxide fzf fd eza bat git-delta
-    # TUIs  (lazydocker is AUR)
-    lazygit lazydocker
-    # hardware keys
-    playerctl brightnessctl
-    # build / vcs
-    go github-cli
-    # theming
-    xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme
-    # apps the sway session launches + mimeapps maps: chromium browser, thunar
-    # file manager (+ volman for removable media, gvfs for trash/mounts), zathura
-    # PDF reader + mupdf backend, nsxiv image viewer, mpv (the video/audio handler
-    # in mimeapps.list), vscodium editor (AUR).
-    chromium thunar thunar-volman gvfs zathura zathura-pdf-mupdf nsxiv mpv vscodium-bin
-    # session plumbing the sway config execs: awww wallpaper daemon (AUR), dex
-    # XDG-autostart, polkit auth agent, audio idle-inhibit (AUR), kanshi outputs.
-    awww dex polkit-gnome sway-audio-idle-inhibit-git kanshi
-    # screen recording, battery notifier (AUR), XDG user dirs, and THE font every
-    # config names (without it fontconfig substitutes garbage glyphs).
-    wf-recorder batsignal xdg-user-dirs ttf-jetbrains-mono-nerd
-    # secrets / signing  (both AUR)
-    1password 1password-cli
-)
+# Package lists (REPO_PKGS / AUR_PKGS / PACKAGES) are defined up top so the
+# DOTFILES_PRINT_PACKAGES introspection hook can dump them with zero side
+# effects. Here we just install.
 if [ -n "$SKIP_PACKAGES" ]; then
     info "Skipping install of ${#PACKAGES[@]} packages (DOTFILES_SKIP_PACKAGES set)"
 else
