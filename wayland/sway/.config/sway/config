@@ -92,6 +92,16 @@ exec playerctld daemon
 # Polkit authentication agent (GUI auth prompts for gparted, etc.).
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 
+# nm-applet and blueman-applet are NOT exec'd here on purpose: both ship
+# /etc/xdg/autostart entries, so the `dex --autostart` above already starts
+# them, and an explicit exec would double-start them (two tray icons).
+# They matter beyond the tray icon — nm-applet is NetworkManager's secret agent
+# (the Wi-Fi passphrase prompt) and blueman-applet is the bluez pairing agent
+# (the PIN/confirm dialog); without them, joining a new network or pairing a new
+# device fails with no prompt at all. Arch's nm-applet is built with
+# appindicator, so it registers on SNI (what waybar's tray speaks) unaided —
+# no --indicator flag needed.
+
 # Thunar daemon (needed for thunar-volman to auto-mount removable media) is NOT
 # started here: an `exec` races xdg-desktop-portal and the daemon loses its theme
 # for the whole session. It's a systemd unit ordered after the portal instead —
@@ -196,10 +206,12 @@ bindsym $mod+c exec ~/.local/bin/rofi-clip
 bindsym $mod+w exec ~/.local/bin/rofi-window
 bindsym $mod+p exec ~/.local/bin/rofi-profile
 
-# Wi-Fi (nmtui) and Bluetooth (bluetuith) in a floating terminal — replaced the
-# rofi wifi/bluetooth script-modi (see for_window rules below).
-bindsym $mod+n exec alacritty --class netmenu-float -e nmtui
-bindsym $mod+b exec alacritty --class btmenu-float -e bluetuith
+# Wi-Fi (nm-connection-editor) and Bluetooth (blueman-manager) — GTK GUIs,
+# floated by the for_window rules below. Both are frontends only; the daemons
+# (NetworkManager / bluez) and the tray agents (nm-applet / blueman-applet,
+# started in Autostart) do the actual work.
+bindsym $mod+n exec nm-connection-editor
+bindsym $mod+b exec blueman-manager
 
 # Power menu (lock / logout / suspend / reboot / shutdown)
 bindsym $mod+Escape exec ~/.local/bin/rofi-power
@@ -210,10 +222,18 @@ bindsym $mod+Escape exec ~/.local/bin/rofi-power
 # layout, the conventional help mnemonic.
 bindsym $mod+Shift+slash exec ~/.local/bin/keybind-help
 
-# Float + centre the network/bluetooth TUI terminals so they read like the old
-# pop-up menus rather than tiling into the layout.
-for_window [app_id="netmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
-for_window [app_id="btmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
+# Float + centre the network/bluetooth GUIs so they read like pop-up menus
+# rather than tiling into the layout. Both are Wayland-native GTK3, so app_id
+# matches (no XWayland class fallback needed).
+for_window [app_id="nm-connection-editor"] floating enable, resize set width 900 px height 600 px, move position center
+for_window [app_id="blueman-manager"] floating enable, resize set width 900 px height 600 px, move position center
+
+# blueman's secondary windows — the adapter/plugin preference dialogs and the
+# pairing/send-file assistants — open as separate toplevels, not transients of
+# blueman-manager, so they need their own rules or they tile in behind it.
+for_window [app_id="blueman-adapters"] floating enable, move position center
+for_window [app_id="blueman-sendto"] floating enable, move position center
+for_window [app_id="blueman-services"] floating enable, move position center
 
 # Keybinding cheat sheet ($mod+?) — float + centre it like the pop-up menus,
 # sized to fit the two-column sheet without scrolling.

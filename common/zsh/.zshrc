@@ -185,3 +185,6 @@ if command -v bat >/dev/null; then
   alias cat='bat --paging=never'
   export BAT_THEME='base16'
 fi
+
+# sentry
+fpath=("/home/valentin/.local/share/zsh/site-functions" $fpath)

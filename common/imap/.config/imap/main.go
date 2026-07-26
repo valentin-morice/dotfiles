@@ -5,6 +5,7 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -16,7 +17,11 @@ import (
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
+	"github.com/godbus/dbus/v5"
 )
+
+// errResumed unblocks the IDLE wait when logind reports a resume from suspend.
+var errResumed = errors.New("resumed from suspend")
 
 const (
 	idleTimeout  = 25 * time.Minute
@@ -36,10 +41,30 @@ func main() {
 	host := mustEnv("IMAP_HOST")
 	stateFile := envOr("STATE_FILE", defaultStateFile())
 
+	// Resume notifications are an optimisation, not a requirement: on failure we
+	// keep a nil channel, whose receive blocks forever, so the select below falls
+	// back to the old TCP-keepalive/idleTimeout recovery path unchanged.
+	var resume <-chan struct{}
+	if ch, err := watchResume(); err != nil {
+		log.Printf("resume watch unavailable (%v) — falling back to keepalive recovery", err)
+	} else {
+		resume = ch
+	}
+
 	backoff := retryBase
 	for {
 		start := time.Now()
-		if err := session(user, pass, host, stateFile); err != nil {
+		err := session(user, pass, host, stateFile, resume)
+		// A resume is an expected, self-inflicted teardown, not a failure: don't
+		// paint the bar with "?" and don't back off — the whole point is to be
+		// reconnected before the user looks at it. If the network isn't up yet
+		// the reconnect fails on its own and takes the normal error path below.
+		if errors.Is(err, errResumed) {
+			log.Printf("session ended: %v — reconnecting now", err)
+			backoff = retryBase
+			continue
+		}
+		if err != nil {
 			log.Printf("session ended: %v", err)
 			writeError(stateFile)
 		}
@@ -61,7 +86,7 @@ func main() {
 	}
 }
 
-func session(user, pass, host, stateFile string) error {
+func session(user, pass, host, stateFile string, resume <-chan struct{}) error {
 	notify := make(chan struct{}, 16)
 	opts := &imapclient.Options{
 		UnilateralDataHandler: &imapclient.UnilateralDataHandler{
@@ -119,6 +144,14 @@ func session(user, pass, host, stateFile string) error {
 
 	log.Printf("connected to %s as %s", host, user)
 
+	// Drop any resume signal that arrived while we were connecting: it refers to
+	// a socket this session doesn't own, and acting on it would tear down the
+	// fresh connection we just built.
+	select {
+	case <-resume:
+	default:
+	}
+
 	for {
 		guard.Reset(netTimeout) // cover the refresh...
 		if err := refresh(c, stateFile); err != nil {
@@ -133,6 +166,18 @@ func session(user, pass, host, stateFile string) error {
 
 		select {
 		case <-notify:
+		case <-resume:
+			// Suspend tears down wifi, so the socket is dead on resume — but
+			// nothing here would notice promptly. idleTimeout is a monotonic
+			// timer, and CLOCK_MONOTONIC excludes suspended time, so the 25-min
+			// ceiling is effectively paused while asleep; TCP keepalive is the
+			// only other escape and needs KEEPIDLE + probes x intvl (30s + 9x75s
+			// = ~12 min on stock kernel settings) to fail the blocked read. Both
+			// leave the state file stale, which the bar correctly renders as "?".
+			// Close the socket now so the blocked IDLE read fails immediately and
+			// the reconnect happens while the lid is still coming up.
+			c.Close()
+			return errResumed
 		case <-time.After(idleTimeout):
 		}
 
@@ -177,14 +222,65 @@ func session(user, pass, host, stateFile string) error {
 	}
 }
 
+// watchResume reports each resume from suspend/hibernate, as announced by
+// logind's PrepareForSleep signal on the system bus (true = going to sleep,
+// false = just resumed; we only care about the latter). This is the only prompt
+// signal available: the socket dies during suspend, but neither the monotonic
+// idleTimeout nor TCP keepalive notices for many minutes afterwards.
+//
+// The returned channel has depth 1 and is filled non-blockingly, so a resume
+// that lands while a session is mid-refresh is remembered but never coalesces
+// into a backlog of redundant reconnects.
+func watchResume() (<-chan struct{}, error) {
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return nil, fmt.Errorf("system bus: %w", err)
+	}
+	if err := conn.AddMatchSignal(
+		dbus.WithMatchObjectPath("/org/freedesktop/login1"),
+		dbus.WithMatchInterface("org.freedesktop.login1.Manager"),
+		dbus.WithMatchMember("PrepareForSleep"),
+	); err != nil {
+		return nil, fmt.Errorf("match PrepareForSleep: %w", err)
+	}
+
+	sigs := make(chan *dbus.Signal, 8)
+	conn.Signal(sigs)
+
+	out := make(chan struct{}, 1)
+	go func() {
+		for sig := range sigs {
+			if len(sig.Body) == 0 {
+				continue
+			}
+			sleeping, ok := sig.Body[0].(bool)
+			if !ok || sleeping {
+				continue // the pre-sleep edge; the socket is still alive here
+			}
+			select {
+			case out <- struct{}{}:
+			default: // one pending resume is as good as two
+			}
+		}
+	}()
+	return out, nil
+}
+
 // dialTLSKeepAlive connects with implicit TLS like imapclient.DialTLS, but on a
-// dialer with TCP keepalive enabled. The IDLE wait below is deliberately left
-// unguarded by the AfterFunc watchdog (it legitimately blocks up to idleTimeout),
-// so a silently dropped socket mid-IDLE would otherwise go unnoticed until the
-// 25-minute ceiling. SO_KEEPALIVE makes the kernel probe the dead peer and fail
-// the blocked read within a couple of minutes, unblocking IDLE so the reconnect
-// loop runs. go-imap's own DialTLS uses a bare dialer with no keepalive, hence
-// this replacement rather than a plain option.
+// dialer with TCP keepalive enabled. The IDLE wait is deliberately left unguarded
+// by the AfterFunc watchdog (it legitimately blocks up to idleTimeout), so a
+// silently dropped socket mid-IDLE would otherwise go unnoticed until the 25-minute
+// ceiling. SO_KEEPALIVE makes the kernel probe the dead peer and eventually fail
+// the blocked read, unblocking IDLE so the reconnect loop runs.
+//
+// Note this is the SLOW path, not the primary one: Go sets only TCP_KEEPIDLE from
+// Dialer.KeepAlive, leaving tcp_keepalive_intvl/probes at kernel defaults, so
+// detection takes 30s + 9x75s ~= 12 minutes. Suspend — the common case — is
+// handled promptly by watchResume instead; keepalive remains the backstop for
+// drops with no resume event (NAT timeouts, an AP vanishing).
+//
+// go-imap's own DialTLS uses a bare dialer with no keepalive, hence this
+// replacement rather than a plain option.
 func dialTLSKeepAlive(host string, opts *imapclient.Options) (*imapclient.Client, error) {
 	dialer := &net.Dialer{Timeout: netTimeout, KeepAlive: keepAlive}
 	// nil-ServerName config: tls.DialWithDialer fills ServerName from addr's host.

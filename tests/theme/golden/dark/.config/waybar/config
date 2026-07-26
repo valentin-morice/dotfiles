@@ -1,5 +1,5 @@
 // waybar config — rendered by theme-render from the active palette.
-// The accent/muted text prefixes (WIFI/BT/VOL/BAT/MAIL) use pango <span> with
+// The accent/muted text prefixes (VOL/BRI/BAT/MAIL) use pango <span> with
 // the FROZEN colours (THEME_accent_fixed/THEME_muted_fixed), which are equal in
 // every theme — so this rendered file is byte-identical between light and dark.
 // Deliberate: per-theme colour lives entirely in style.css, which waybar
@@ -20,8 +20,8 @@
     "modules-center": ["custom/powerprofile", "clock", "custom/clockpad"],
     // tray sits left of volume (not last) so a newly-added icon grows it
     // leftward into the mostly-hidden signal labels rather than shoving the
-    // fixed volume/network/bt/battery block. See the "tray" note below.
-    "modules-right": ["custom/recording", "custom/dnd", "custom/nightlight", "custom/mail", "tray", "pulseaudio", "network", "bluetooth", "battery"],
+    // fixed volume/brightness/battery block. See the "tray" note below.
+    "modules-right": ["custom/recording", "custom/dnd", "custom/nightlight", "custom/mail", "tray", "pulseaudio", "backlight", "battery"],
 
     "sway/workspaces": {
         "disable-scroll": true,
@@ -131,28 +131,24 @@
         "on-click": "$HOME/.local/bin/toggle-audio-mute"
     },
 
-    "network": {
-        "interval": 5,
-        "format-wifi": "<span foreground='#3a7bc8'>WIFI</span> {essid}",
-        "format-ethernet": "<span foreground='#3a7bc8'>ETH</span> {ifname}",
-        "format-disconnected": "<span foreground='#3a7bc8'>WIFI</span> <span foreground='#808488'>OFFLINE</span>",
-        "tooltip-format-wifi": "Network: {essid} ({signalStrength}%)",
-        "tooltip-format-ethernet": "Network: {ifname}",
-        "tooltip-format-disconnected": "Network: Disconnected",
-        "on-click": "alacritty --app-id netmenu-float -e nmtui"
+    // Screen backlight. No "device" key on purpose — waybar autodetects the sole
+    // entry in /sys/class/backlight, which keeps this portable the same way the
+    // battery module stays adapter-agnostic (here it'd be the amdgpu-specific
+    // "amdgpu_bl1"). udev-driven, so no polling interval is needed.
+    "backlight": {
+        "format": "<span foreground='#3a7bc8'>BRI</span> {percent}%",
+        "tooltip-format": "Brightness: {percent}%",
+        // Scroll to adjust — reuses the helper the XF86MonBrightness keys call,
+        // so the OSD toast and the 5% floor behave identically either way.
+        "on-scroll-up": "$HOME/.local/bin/brightness-notify up",
+        "on-scroll-down": "$HOME/.local/bin/brightness-notify down"
     },
 
-    "bluetooth": {
-        "format": "<span foreground='#3a7bc8'>BT</span> ON",
-        "format-off": "<span foreground='#3a7bc8'>BT</span> <span foreground='#808488'>OFF</span>",
-        "format-disabled": "<span foreground='#3a7bc8'>BT</span> <span foreground='#808488'>OFF</span>",
-        "format-connected": "<span foreground='#3a7bc8'>BT</span> {device_alias}",
-        "tooltip-format": "Bluetooth: On",
-        "tooltip-format-connected": "Bluetooth: {device_alias}",
-        "tooltip-format-off": "Bluetooth: Off",
-        "tooltip-format-disabled": "Bluetooth: Off",
-        "on-click": "alacritty --app-id btmenu-float -e bluetuith"
-    },
+    // The "network" and "bluetooth" modules were removed: wifi/BT now surface as
+    // nm-applet's and blueman's tray icons (both applets autostart via dex), and
+    // the GUIs are on $mod+n / $mod+b. Two indicators for the same state was
+    // redundant. Restore the modules here (and in modules-right + style.css) if
+    // the tray ever stops carrying them.
 
     "battery": {
         // No hardcoded "bat"/"adapter": waybar autodetects the first battery +
@@ -169,7 +165,7 @@
 
     // Positioned before volume in modules-right (not at the far right): the tray
     // is the only right-side module whose width changes at runtime, so keeping the
-    // fixed labels (volume/network/bt/battery) anchored to its right stops them
+    // fixed labels (volume/brightness/battery) anchored to its right stops them
     // layout-shifting when an icon appears — the tray grows leftward instead.
     // The gray fill (matching the inactive workspace blocks) lives in style.css.
     // spacing matches the block's 9px edge padding (#tray in style.css) so the

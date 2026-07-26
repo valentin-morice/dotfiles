@@ -67,8 +67,7 @@ window#waybar {
 #custom-dnd,
 #custom-nightlight,
 #pulseaudio,
-#network,
-#bluetooth,
+#backlight,
 #battery,
 #tray {
     padding: 0 9px;
@@ -98,8 +97,8 @@ window#waybar {
 /* System tray — same light-gray fill as the inactive workspace blocks so a
  * populated tray reads as its own region. It sits left of volume in
  * modules-right (see config), so a newly-added icon grows the tray leftward
- * into the mostly-hidden signal labels instead of shifting volume/network/
- * bt/battery. */
+ * into the mostly-hidden signal labels instead of shifting volume/brightness/
+ * battery. */
 #tray {
     background-color: ${THEME_bg_section};
 }
