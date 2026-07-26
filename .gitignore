@@ -10,6 +10,7 @@ wayland/waybar/.config/waybar/config
 wayland/waybar/.config/waybar/style.css
 common/alacritty/.config/alacritty/colors.toml
 common/git/.config/git/delta-theme.gitconfig
+common/nvim/.config/nvim/lua/theme/palette.lua
 
 # Launch-time style overlay written by waybar/launch.sh (@imports style.css);
 # waybar watches it for flicker-free live recolour on theme switch.

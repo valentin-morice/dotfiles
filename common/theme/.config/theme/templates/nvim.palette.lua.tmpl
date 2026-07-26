@@ -1,0 +1,60 @@
+-- nvim palette — RENDERED by theme-render from this template into
+-- ~/.config/nvim/lua/theme/palette.lua. Do NOT edit the generated file; edit
+-- the palette (palettes/{light,dark}.sh) for colours or the colorscheme
+-- (colors/graphite.lua in the nvim package) for how they're applied.
+--
+-- One adaptive colorscheme consumes this: the light/dark split lives entirely
+-- in the palette values, plus the `background` flag below (derived from the
+-- same prefer-dark key GTK uses). Running instances re-source this live via
+-- theme-render's RPC push (see the nvim block in theme-render).
+return {
+  background = (${THEME_gtk_prefer_dark} == 1) and "dark" or "light",
+
+  -- Grounds. bg_alt is the terminal background (alacritty renders it), so the
+  -- editor uses it as Normal bg to sit seamlessly in the terminal.
+  bg = "${THEME_bg}",
+  bg_alt = "${THEME_bg_alt}",
+  bg_alt2 = "${THEME_bg_alt2}",
+  bg_sel = "${THEME_bg_sel}",
+  bg_section = "${THEME_bg_section}",
+  bg_hover = "${THEME_bg_hover}",
+  fg = "${THEME_fg}",
+  fg_soft = "${THEME_fg_soft}",
+  muted = "${THEME_muted}",
+  muted_dim = "${THEME_muted_dim}",
+  muted_warm = "${THEME_muted_warm}",
+  highlight = "${THEME_highlight}",
+
+  -- Accents
+  accent = "${THEME_accent}",
+  accent_text = "${THEME_accent_text}",
+  secondary = "${THEME_secondary}",
+  urgent = "${THEME_urgent}",
+  urgent_dark = "${THEME_urgent_dark}",
+  urgent_text = "${THEME_urgent_text}",
+
+  -- Borders
+  border = "${THEME_border}",
+  border_med = "${THEME_border_med}",
+
+  -- Terminal ANSI 16 (also the syntax hues: green/magenta/cyan have no
+  -- standalone THEME_ key — the ANSI palette is their single source of truth).
+  ansi = {
+    black = "${THEME_ansi_black}",
+    red = "${THEME_ansi_red}",
+    green = "${THEME_ansi_green}",
+    yellow = "${THEME_ansi_yellow}",
+    blue = "${THEME_ansi_blue}",
+    magenta = "${THEME_ansi_magenta}",
+    cyan = "${THEME_ansi_cyan}",
+    white = "${THEME_ansi_white}",
+    bright_black = "${THEME_ansi_bright_black}",
+    bright_red = "${THEME_ansi_bright_red}",
+    bright_green = "${THEME_ansi_bright_green}",
+    bright_yellow = "${THEME_ansi_bright_yellow}",
+    bright_blue = "${THEME_ansi_bright_blue}",
+    bright_magenta = "${THEME_ansi_bright_magenta}",
+    bright_cyan = "${THEME_ansi_bright_cyan}",
+    bright_white = "${THEME_ansi_bright_white}",
+  },
+}

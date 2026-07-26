@@ -95,6 +95,7 @@ render fastfetch.config.jsonc.tmpl    "$HOME/.config/fastfetch/config.jsonc"
 render gtk3.settings.ini.tmpl         "$HOME/.config/gtk-3.0/settings.ini"
 render gtk4.settings.ini.tmpl         "$HOME/.config/gtk-4.0/settings.ini"
 render delta.gitconfig.tmpl           "$HOME/.config/git/delta-theme.gitconfig"
+render nvim.palette.lua.tmpl          "$HOME/.config/nvim/lua/theme/palette.lua"
 
 # bluetuith (Bluetooth TUI). Rendered as a whole file rather than patched in
 # place (cf. VSCodium below): it renders via tcell in truecolor, so named colors
@@ -188,6 +189,20 @@ if [ "$reload" -eq 1 ]; then
                 busctl --user call "$zname" /org/pwmt/zathura \
                     org.pwmt.zathura SourceConfig >/dev/null 2>&1 || true
             done
+    fi
+
+    # nvim (like zathura above): reads the rendered palette only at colorscheme
+    # load, but every instance serves RPC on $XDG_RUNTIME_DIR/nvim.<pid>.0, so
+    # push a re-source — require("theme").reload() drops the cached palette
+    # module and re-applies the colorscheme. Instances on another colorscheme
+    # no-op; dead sockets fail silently. No restart, no flash.
+    if command -v nvim >/dev/null; then
+        for __nvim_sock in "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/nvim.*.0; do
+            [ -S "$__nvim_sock" ] || continue
+            nvim --server "$__nvim_sock" \
+                --remote-expr 'v:lua.require("theme").reload()' >/dev/null 2>&1 || true
+        done
+        unset __nvim_sock
     fi
 
     if [ -n "${SWAYSOCK:-}" ]; then

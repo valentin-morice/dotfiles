@@ -30,7 +30,9 @@ require("lazy").setup({
     version = false, -- always use the latest git commit
     -- version = "*", -- try installing the latest stable version for plugins that support semver
   },
-  install = { colorscheme = { "tokyonight", "habamax" } },
+  -- graphite first: it's ours (colors/graphite.lua, no plugin needed), so even
+  -- the fresh-install screen renders in the theme.
+  install = { colorscheme = { "graphite", "tokyonight", "habamax" } },
   -- No plugin here needs luarocks, and lazy's hererocks bootstrap isn't installed.
   -- Turning it off removes the error instead of installing a toolchain nothing uses.
   rocks = { enabled = false },
