@@ -1,0 +1,17 @@
+-- Your own plugin specs go in this directory -- every `.lua` file under
+-- `lua/plugins/` is picked up automatically by lazy.nvim, so one file per plugin
+-- (or per concern) is the usual layout.
+--
+-- Each file returns a spec table, e.g. `lua/plugins/colorscheme.lua`:
+--
+--   return {
+--     { "ellisonleao/gruvbox.nvim" },
+--     { "LazyVim/LazyVim", opts = { colorscheme = "gruvbox" } },
+--   }
+--
+-- To disable a plugin LazyVim ships with: `{ "folke/noice.nvim", enabled = false }`
+-- Full reference: https://lazy.folke.io/spec
+--
+-- This file exists so lazy.nvim always has at least one spec to import; it is
+-- safe to delete once you add a real spec file alongside it.
+return {}

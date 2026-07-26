@@ -60,6 +60,11 @@ REPO_PKGS=(
     zsh tmux stow zoxide fzf fd eza bat git-delta
     # TUIs
     lazygit lazydocker
+    # Editor. The nvim package is LazyVim; it needs ripgrep + fd for its pickers
+    # and lazygit for the git UI (both already above). Language servers and
+    # formatters are NOT packaged here — Mason installs them per-user into
+    # ~/.local/share/nvim/mason, and unzip is what it extracts them with.
+    neovim ripgrep unzip
     # hardware keys
     playerctl brightnessctl
     # build / vcs

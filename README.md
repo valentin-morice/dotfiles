@@ -41,7 +41,7 @@ For example `wayland/sway/.config/sway/config` → `~/.config/sway/config`
 
 ```
 common/   alacritty  applications  bash  bin  claude  git  imap  lazydocker
-          lazygit  systemd  theme  tmux  xdg  zsh
+          lazygit  nvim  systemd  theme  tmux  xdg  zsh
 wayland/  gammastep  kanshi  portal  sway  waybar
 ```
 
@@ -81,7 +81,7 @@ Without the script, stow each group (the `-d` flag is the Stow directory; the
 target is `$HOME`):
 
 ```sh
-stow -d common  -t ~ alacritty applications bash bin claude git imap lazydocker lazygit systemd theme tmux xdg zsh
+stow -d common  -t ~ alacritty applications bash bin claude git imap lazydocker lazygit nvim systemd theme tmux xdg zsh
 stow -d wayland -t ~ gammastep kanshi portal sway waybar
 ```
 
@@ -96,6 +96,7 @@ WM-neutral: `alacritty dunst fastfetch zsh tmux stow`
 Hardware keys: `playerctl` (media) · `brightnessctl` (brightness, also used by the idle-dim) · a PulseAudio-compatible server for `pactl` volume control (e.g. `pipewire-pulse`)
 Shell CLI: `zoxide fzf fd eza bat git-delta` (plus `nvm`, `bun`)
 TUIs/other: `lazygit lazydocker` (`lazydocker` is AUR)
+Editor: `neovim ripgrep unzip` — the `nvim` package is a LazyVim config (pickers need `ripgrep`/`fd`, the git UI is `lazygit`). Language servers, formatters and debuggers are **not** system packages: Mason installs them per-user under `~/.local/share/nvim/mason` on first use, extracting with `unzip`. `lua/config/options.lua` puts that bin dir on `PATH` at startup so Mason-managed tools resolve before Mason itself lazy-loads.
 Build: `go` — compiles `imap-daemon`, the mail backend (see Post-install)
 Theming: `xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme` — live GTK/Qt light-dark on `theme-switch` (Qt via `QT_QPA_PLATFORMTHEME=xdgdesktopportal`; GTK3 via the xdg settings portal)
 Signing/secrets: `1password` + `1password-cli` (SSH agent & commit signing)
