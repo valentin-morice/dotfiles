@@ -113,6 +113,20 @@ window#waybar {
     background-color: #c8332b;
 }
 
+/* Mail error state. imap-daemon only writes "?" once an outage has outlived its
+ * grace window, so .stale means a real sustained failure, not the few seconds of
+ * DNS-not-up-yet after a resume — those now leave the last good count in place
+ * and never reach the bar. Dimmed so it reads as information rather than alarm.
+ *
+ * opacity, not color: the "MAIL" prefix carries an inline pango <span> with the
+ * frozen accent, and inline markup beats CSS colour, so `color` here would mute
+ * only the "?" and leave a bright blue label beside it. opacity dims the whole
+ * module uniformly. It takes no palette var, so it stays byte-identical across
+ * light and dark like the rest of the theme-invariant rules. */
+#custom-mail.stale {
+    opacity: 0.55;
+}
+
 tooltip {
     background-color: #e4e9ee;
     border: 1px solid #c2cad1;

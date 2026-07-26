@@ -31,6 +31,17 @@ const (
 	netTimeout   = 2 * time.Minute  // connect/login/refresh watchdog (NOT the IDLE wait)
 	keepAlive    = 30 * time.Second // TCP keepalive idle period (see dialTLSKeepAlive)
 	subjectMax   = 36
+
+	// How long an outage must last before the bar is told about it. Resuming or
+	// booting reliably beats the network by a few seconds — DNS is by far the
+	// most common failure here — and painting "?" for that is a flash of alarm
+	// for something that fixes itself. Below this we leave the last good count
+	// on the bar; a count a few seconds stale is a better lie than "broken".
+	// Sized to span the first three attempts (t=0, +10s, +30s under the backoff).
+	// The gate is only evaluated when an attempt fails, so the first "?" actually
+	// lands on the first failure at or after this — t=70s with the current
+	// backoff, not t=45s. That lag is the point, not a rounding error.
+	errorGrace = 45 * time.Second
 )
 
 func main() {
@@ -51,10 +62,17 @@ func main() {
 		resume = ch
 	}
 
+	// Start of the current outage; the zero value means "healthy". Deliberately
+	// measured from the first failure rather than from the last good refresh:
+	// after a long suspend the last refresh is hours old, so a last-good clock
+	// would already be past errorGrace and every resume would flash "?" — the
+	// exact case this exists to prevent. refresh() zeroes it on success.
+	var outageSince time.Time
+
 	backoff := retryBase
 	for {
 		start := time.Now()
-		err := session(user, pass, host, stateFile, resume)
+		err := session(user, pass, host, stateFile, resume, &outageSince)
 		// A resume is an expected, self-inflicted teardown, not a failure: don't
 		// paint the bar with "?" and don't back off — the whole point is to be
 		// reconnected before the user looks at it. If the network isn't up yet
@@ -66,7 +84,17 @@ func main() {
 		}
 		if err != nil {
 			log.Printf("session ended: %v", err)
-			writeError(stateFile)
+			if outageSince.IsZero() {
+				outageSince = time.Now()
+			}
+			// Only tell the bar once the outage has outlived the grace window.
+			// Short reconnects stay invisible; a real outage still surfaces, and
+			// keeps being re-asserted on each retry so the state file stays fresh
+			// (which is what keeps the bar's own staleness check from firing on
+			// top of it and reporting the same problem twice).
+			if time.Since(outageSince) >= errorGrace {
+				writeError(stateFile)
+			}
 		}
 		// A session that stayed up a while was a transient blip -> reset the
 		// backoff. One that failed fast (e.g. rejected credentials) grows it
@@ -86,7 +114,7 @@ func main() {
 	}
 }
 
-func session(user, pass, host, stateFile string, resume <-chan struct{}) error {
+func session(user, pass, host, stateFile string, resume <-chan struct{}, outageSince *time.Time) error {
 	notify := make(chan struct{}, 16)
 	opts := &imapclient.Options{
 		UnilateralDataHandler: &imapclient.UnilateralDataHandler{
@@ -154,7 +182,7 @@ func session(user, pass, host, stateFile string, resume <-chan struct{}) error {
 
 	for {
 		guard.Reset(netTimeout) // cover the refresh...
-		if err := refresh(c, stateFile); err != nil {
+		if err := refresh(c, stateFile, outageSince); err != nil {
 			return fmt.Errorf("refresh: %w", err)
 		}
 		guard.Stop() // ...but not the IDLE wait below.
@@ -301,7 +329,10 @@ func imapAddr(host string) string {
 	return net.JoinHostPort(host, "993")
 }
 
-func refresh(c *imapclient.Client, stateFile string) error {
+// refresh writes the current unread count/subject and, on success, clears the
+// caller's outage marker — the single place that can prove the daemon is healthy,
+// since a session only ever *returns* when something has gone wrong.
+func refresh(c *imapclient.Client, stateFile string, outageSince *time.Time) error {
 	criteria := &imap.SearchCriteria{
 		NotFlag: []imap.Flag{imap.FlagSeen},
 	}
@@ -329,6 +360,7 @@ func refresh(c *imapclient.Client, stateFile string) error {
 	if err := writeAtomic(stateFile, fmt.Sprintf("%d\n%s\n", count, subject)); err != nil {
 		return fmt.Errorf("write state: %w", err)
 	}
+	*outageSince = time.Time{} // healthy again; the next failure starts a fresh grace window
 	log.Printf("refreshed: %d unread; subject=%q", count, subject)
 	return nil
 }
