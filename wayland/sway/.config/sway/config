@@ -92,15 +92,16 @@ exec playerctld daemon
 # Polkit authentication agent (GUI auth prompts for gparted, etc.).
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 
-# nm-applet and blueman-applet are NOT exec'd here on purpose: both ship
-# /etc/xdg/autostart entries, so the `dex --autostart` above already starts
-# them, and an explicit exec would double-start them (two tray icons).
-# They matter beyond the tray icon — nm-applet is NetworkManager's secret agent
-# (the Wi-Fi passphrase prompt) and blueman-applet is the bluez pairing agent
-# (the PIN/confirm dialog); without them, joining a new network or pairing a new
-# device fails with no prompt at all. Arch's nm-applet is built with
-# appindicator, so it registers on SNI (what waybar's tray speaks) unaided —
-# no --indicator flag needed.
+# No network/bluetooth tray agent is started here — nm-applet and blueman are
+# uninstalled, and the two TUIs on $mod+n / $mod+b carry the agents themselves:
+# nmtui embeds NetworkManager's secret agent (NMSecretAgentSimple — the Wi-Fi
+# passphrase prompt) and bluetui registers an org.bluez.Agent1 for the duration
+# of its run (the PIN/confirm prompt). The consequence of no *resident* agent:
+# a secret or pairing request raised while neither TUI is open goes unanswered
+# rather than popping a dialog — open the relevant TUI and retry.
+#
+# The tray stays in waybar for real graphical apps that speak SNI; it just no
+# longer carries wifi/BT, which are waybar modules again (see waybar's config).
 
 # Thunar daemon (needed for thunar-volman to auto-mount removable media) is NOT
 # started here: an `exec` races xdg-desktop-portal and the daemon loses its theme
@@ -206,12 +207,12 @@ bindsym $mod+c exec ~/.local/bin/rofi-clip
 bindsym $mod+w exec ~/.local/bin/rofi-window
 bindsym $mod+p exec ~/.local/bin/rofi-profile
 
-# Wi-Fi (nm-connection-editor) and Bluetooth (blueman-manager) — GTK GUIs,
-# floated by the for_window rules below. Both are frontends only; the daemons
-# (NetworkManager / bluez) and the tray agents (nm-applet / blueman-applet,
-# started in Autostart) do the actual work.
-bindsym $mod+n exec nm-connection-editor
-bindsym $mod+b exec blueman-manager
+# Wi-Fi (nmtui) and Bluetooth (bluetui) in a floating terminal — floated by the
+# for_window rules below. `--class` (not --app-id, which alacritty has no flag
+# for) sets the Wayland app_id those rules match on. The waybar network/
+# bluetooth modules run these same two commands on click.
+bindsym $mod+n exec alacritty --class netmenu-float -e nmtui
+bindsym $mod+b exec alacritty --class btmenu-float -e bluetui
 
 # Power menu (lock / logout / suspend / reboot / shutdown)
 bindsym $mod+Escape exec ~/.local/bin/rofi-power
@@ -222,18 +223,11 @@ bindsym $mod+Escape exec ~/.local/bin/rofi-power
 # layout, the conventional help mnemonic.
 bindsym $mod+Shift+slash exec ~/.local/bin/keybind-help
 
-# Float + centre the network/bluetooth GUIs so they read like pop-up menus
-# rather than tiling into the layout. Both are Wayland-native GTK3, so app_id
-# matches (no XWayland class fallback needed).
-for_window [app_id="nm-connection-editor"] floating enable, resize set width 900 px height 600 px, move position center
-for_window [app_id="blueman-manager"] floating enable, resize set width 900 px height 600 px, move position center
-
-# blueman's secondary windows — the adapter/plugin preference dialogs and the
-# pairing/send-file assistants — open as separate toplevels, not transients of
-# blueman-manager, so they need their own rules or they tile in behind it.
-for_window [app_id="blueman-adapters"] floating enable, move position center
-for_window [app_id="blueman-sendto"] floating enable, move position center
-for_window [app_id="blueman-services"] floating enable, move position center
+# Float + centre the network/bluetooth TUI terminals so they read like pop-up
+# menus rather than tiling into the layout. Alacritty is Wayland-native, so the
+# app_id set by --class matches directly (no XWayland class fallback needed).
+for_window [app_id="netmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
+for_window [app_id="btmenu-float"] floating enable, resize set width 900 px height 600 px, move position center
 
 # Keybinding cheat sheet ($mod+?) — float + centre it like the pop-up menus,
 # sized to fit the two-column sheet without scrolling.

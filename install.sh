@@ -52,8 +52,11 @@ REPO_PKGS=(
     # thumbnails image clips in the rofi-clip menu.
     cliphist wtype imagemagick
     xorg-xwayland xdg-desktop-portal-wlr
-    # Network TUI (opened in a floating terminal from $mod+n).
-    networkmanager
+    # Network + Bluetooth TUIs, each opened in a floating terminal from $mod+n /
+    # $mod+b and from the waybar module click. No GUI applet backs either one:
+    # nmtui (in networkmanager) carries NM's secret agent and bluetui registers
+    # its own bluez pairing agent, so the prompts live in the TUIs.
+    networkmanager bluetui
     # Desktop
     alacritty dunst fastfetch
     # shell / CLI
@@ -85,7 +88,10 @@ REPO_PKGS=(
 )
 AUR_PKGS=(
     swaylock-effects                # screen locker with blur (sway session)
-    bluetuith                       # Bluetooth TUI ($mod+b)
+    bluetuith                       # heavier BT TUI: OBEX file transfer, PBAP,
+                                    # PAN tethering. Not bound to a key — bluetui
+                                    # (repo) is what $mod+b opens. Kept for the
+                                    # transfer/tethering jobs bluetui can't do.
     vscodium-bin                    # editor
     sway-audio-idle-inhibit-git     # inhibit idle while audio plays
     1password 1password-cli         # secrets + SSH commit signing

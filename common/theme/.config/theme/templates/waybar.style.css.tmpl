@@ -68,6 +68,8 @@ window#waybar {
 #custom-nightlight,
 #pulseaudio,
 #backlight,
+#network,
+#bluetooth,
 #battery,
 #tray {
     padding: 0 9px;
@@ -98,7 +100,7 @@ window#waybar {
  * populated tray reads as its own region. It sits left of volume in
  * modules-right (see config), so a newly-added icon grows the tray leftward
  * into the mostly-hidden signal labels instead of shifting volume/brightness/
- * battery. */
+ * wifi/bt/battery. */
 #tray {
     background-color: ${THEME_bg_section};
 }

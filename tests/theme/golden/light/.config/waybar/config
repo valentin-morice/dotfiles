@@ -1,5 +1,5 @@
 // waybar config — rendered by theme-render from the active palette.
-// The accent/muted text prefixes (VOL/BRI/BAT/MAIL) use pango <span> with
+// The accent/muted text prefixes (VOL/BRI/WIFI/BT/BAT/MAIL) use pango <span> with
 // the FROZEN colours (THEME_accent_fixed/THEME_muted_fixed), which are equal in
 // every theme — so this rendered file is byte-identical between light and dark.
 // Deliberate: per-theme colour lives entirely in style.css, which waybar
@@ -20,8 +20,8 @@
     "modules-center": ["custom/powerprofile", "clock", "custom/clockpad"],
     // tray sits left of volume (not last) so a newly-added icon grows it
     // leftward into the mostly-hidden signal labels rather than shoving the
-    // fixed volume/brightness/battery block. See the "tray" note below.
-    "modules-right": ["custom/recording", "custom/dnd", "custom/nightlight", "custom/mail", "tray", "pulseaudio", "backlight", "battery"],
+    // volume/brightness/wifi/bt/battery block. See the "tray" note below.
+    "modules-right": ["custom/recording", "custom/dnd", "custom/nightlight", "custom/mail", "tray", "pulseaudio", "backlight", "network", "bluetooth", "battery"],
 
     "sway/workspaces": {
         "disable-scroll": true,
@@ -144,11 +144,33 @@
         "on-scroll-down": "$HOME/.local/bin/brightness-notify down"
     },
 
-    // The "network" and "bluetooth" modules were removed: wifi/BT now surface as
-    // nm-applet's and blueman's tray icons (both applets autostart via dex), and
-    // the GUIs are on $mod+n / $mod+b. Two indicators for the same state was
-    // redundant. Restore the modules here (and in modules-right + style.css) if
-    // the tray ever stops carrying them.
+    // Wi-Fi and Bluetooth are waybar modules again (nm-applet and blueman are
+    // uninstalled, so the tray no longer carries them — it's for real graphical
+    // apps only now). Click opens the same floating TUI as the $mod+n / $mod+b
+    // bind: `--class` is alacritty's flag for the Wayland app_id (there is no
+    // --app-id), and it must stay in sync with sway's for_window rules.
+    "network": {
+        "interval": 5,
+        "format-wifi": "<span foreground='#3a7bc8'>WIFI</span> {essid}",
+        "format-ethernet": "<span foreground='#3a7bc8'>ETH</span> {ifname}",
+        "format-disconnected": "<span foreground='#3a7bc8'>WIFI</span> <span foreground='#808488'>OFFLINE</span>",
+        "tooltip-format-wifi": "Network: {essid} ({signalStrength}%) — click for nmtui",
+        "tooltip-format-ethernet": "Network: {ifname} — click for nmtui",
+        "tooltip-format-disconnected": "Network: Disconnected — click for nmtui",
+        "on-click": "alacritty --class netmenu-float -e nmtui"
+    },
+
+    "bluetooth": {
+        "format": "<span foreground='#3a7bc8'>BT</span> ON",
+        "format-off": "<span foreground='#3a7bc8'>BT</span> <span foreground='#808488'>OFF</span>",
+        "format-disabled": "<span foreground='#3a7bc8'>BT</span> <span foreground='#808488'>OFF</span>",
+        "format-connected": "<span foreground='#3a7bc8'>BT</span> {device_alias}",
+        "tooltip-format": "Bluetooth: On — click for bluetui",
+        "tooltip-format-connected": "Bluetooth: {device_alias} — click for bluetui",
+        "tooltip-format-off": "Bluetooth: Off — click for bluetui",
+        "tooltip-format-disabled": "Bluetooth: Off — click for bluetui",
+        "on-click": "alacritty --class btmenu-float -e bluetui"
+    },
 
     "battery": {
         // No hardcoded "bat"/"adapter": waybar autodetects the first battery +
@@ -165,7 +187,7 @@
 
     // Positioned before volume in modules-right (not at the far right): the tray
     // is the only right-side module whose width changes at runtime, so keeping the
-    // fixed labels (volume/brightness/battery) anchored to its right stops them
+    // fixed labels (volume/brightness/wifi/bt/battery) anchored to its right stops them
     // layout-shifting when an icon appears — the tray grows leftward instead.
     // The gray fill (matching the inactive workspace blocks) lives in style.css.
     // spacing matches the block's 9px edge padding (#tray in style.css) so the
