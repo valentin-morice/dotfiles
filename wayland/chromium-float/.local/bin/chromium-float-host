@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""Float chromium popup windows in sway.
+
+Native-messaging host for the "Float popups (sway)" extension (source alongside
+this script's config dir, ~/.config/chromium-float/extension).
+
+The extension cannot tell us *which* window it just opened: a window.open popup
+maps with app_id=chromium, indistinguishable from an ordinary browser window,
+and no extension API reaches the Wayland app_id. So the correlation is done
+here, by time. A background thread holds a persistent `swaymsg -t subscribe`
+and records every newly mapped chromium container; when the extension pings
+(it fires on chrome.windows.onCreated, a few ms *before* the surface maps) we
+take the chromium window that appeared within MATCH_WINDOW of the ping.
+
+Containers older than MATCH_WINDOW are discarded rather than floated — an
+ordinary browser window opened seconds earlier must never get swept up. The
+tradeoff is the reverse error: two windows mapping inside the same 2s bucket
+can be matched to the wrong ping. That only misfires when a popup and a manual
+new window land together, and the cost is a floated window, not a lost one.
+"""
+
+import glob
+import json
+import os
+import struct
+import subprocess
+import sys
+import threading
+import time
+from collections import deque
+
+APP_ID = "chromium"
+
+# How far either side of a ping a newly mapped window may sit and still be
+# considered "the one". Generous enough to absorb a slow first paint, tight
+# enough that a window opened by hand a moment earlier falls outside.
+MATCH_WINDOW = 2.0
+POLL = 0.05
+
+_recent = deque()      # (monotonic_ts, con_id) of newly mapped chromium windows
+_floated = set()       # con_ids already claimed, so two pings can't share one
+_lock = threading.Lock()
+
+
+def ensure_swaysock():
+    """Point SWAYSOCK at a live socket.
+
+    The host inherits chromium's environment, which is whatever it was launched
+    with — potentially a stale SWAYSOCK from a previous sway session, or none at
+    all if chromium came up from a systemd user unit. Fall back to the newest
+    socket for this uid.
+    """
+    sock = os.environ.get("SWAYSOCK")
+    if sock and os.path.exists(sock):
+        return
+    socks = sorted(glob.glob("/run/user/%d/sway-ipc.*.sock" % os.getuid()))
+    if socks:
+        os.environ["SWAYSOCK"] = socks[-1]
+
+
+def watch():
+    """Record every chromium window sway maps, forever."""
+    try:
+        proc = subprocess.Popen(
+            ["swaymsg", "-t", "subscribe", "-m", '["window"]'],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+        )
+    except OSError:
+        return
+    for line in proc.stdout:
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if event.get("change") != "new":
+            continue
+        container = event.get("container") or {}
+        if container.get("app_id") != APP_ID:
+            continue
+        con_id = container.get("id")
+        if con_id is None:
+            continue
+        with _lock:
+            _recent.append((time.monotonic(), con_id))
+
+
+def take_match(ping):
+    """Claim the chromium window belonging to a ping at time `ping`.
+
+    Returns a con_id, or None if nothing mapped in time. Blocks up to
+    MATCH_WINDOW because the ping normally *precedes* the map.
+    """
+    deadline = ping + MATCH_WINDOW
+    while True:
+        with _lock:
+            while _recent and _recent[0][0] < ping - MATCH_WINDOW:
+                _recent.popleft()
+            for index, (_, con_id) in enumerate(_recent):
+                if con_id not in _floated:
+                    del _recent[index]
+                    _floated.add(con_id)
+                    if len(_floated) > 512:      # long sessions; ids never repeat
+                        _floated.clear()
+                    return con_id
+        if time.monotonic() >= deadline:
+            return None
+        time.sleep(POLL)
+
+
+def float_window(con_id):
+    """Float and centre — deliberately without resizing.
+
+    A window.open popup keeps the dimensions the site asked for as its sway
+    `geometry` even while tiled (measured: geometry=500x634 on a popup tiled to
+    626x1150), and `floating enable` restores exactly that. Adding a `resize
+    set` would override the size the OAuth/payment provider chose, which is
+    usually the one its layout is built for. Only the main browser window lacks
+    a distinct natural size — and that window is never floated by this host.
+    """
+    subprocess.run(
+        ["swaymsg", "[con_id=%d] floating enable, move position center" % con_id],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+
+
+def handle(ping):
+    con_id = take_match(ping)
+    if con_id is not None:
+        float_window(con_id)
+
+
+def read_message():
+    """Read one native-messaging frame: 4-byte LE length, then JSON."""
+    header = sys.stdin.buffer.read(4)
+    if len(header) != 4:
+        return None
+    (length,) = struct.unpack("<I", header)
+    body = sys.stdin.buffer.read(length)
+    if len(body) != length:
+        return None
+    try:
+        return json.loads(body)
+    except ValueError:
+        return None
+
+
+def main():
+    ensure_swaysock()
+    threading.Thread(target=watch, daemon=True).start()
+    while True:
+        message = read_message()
+        if message is None:
+            break              # port closed: chromium exited, or MV3 reclaimed the worker
+        if not isinstance(message, dict) or message.get("action") != "float":
+            continue
+        # Off-thread so a ping arriving during another ping's 2s wait isn't queued
+        # behind it — two popups can open back to back.
+        threading.Thread(target=handle, args=(time.monotonic(),), daemon=True).start()
+
+
+if __name__ == "__main__":
+    main()

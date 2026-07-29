@@ -1,0 +1,9 @@
+{
+  "name": "live.morice.float_popups",
+  "description": "Float chromium popups in sway",
+  "path": "/home/valentin/.local/bin/chromium-float-host",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://bagfeaideajdfbchnmlonimgcljafbph/"
+  ]
+}
