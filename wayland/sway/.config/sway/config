@@ -267,28 +267,28 @@ for_window [shell="xwayland"] title_format "[X] %title"
 # Wayland-native here, so it's matched by app_id (window_type wouldn't apply).
 for_window [app_id="polkit-gnome-authentication-agent-1"] floating enable, move position center
 
-# Portal-rendered GTK dialogs — the file chooser (Open/Save) used by browsers,
-# Electron apps, and Flatpaks — tile by default. Float + centre them. The app_id
-# is stable and locale-independent, so no fragile title matching is needed.
+# Portal-rendered GTK dialogs — the file chooser (Open/Save) and the system
+# print dialog, used by browsers, Electron apps, and Flatpaks — tile by default.
+# Float + centre them. The app_id is stable and locale-independent, so no fragile
+# title matching is needed. (Chromium routes both here: its Ctrl+P preview is
+# tab-modal, and "Print using system dialog…" arrives as portal window "&Print…".)
 for_window [app_id="xdg-desktop-portal-gtk"] floating enable, move position center
 
 # Chromium's own auxiliary windows. Unlike the portal dialog above, these are
 # real xdg-shell toplevels sharing app_id=chromium with ordinary browser
-# windows, so only the title separates them. The `$` anchor is what keeps that
-# safe: chromium suffixes page titles with " - Chromium", so a web page titled
-# "Task Manager" maps as "Task Manager - Chromium" and cannot match the bare
-# dialog title. Titles are English here (LANG=en_US.UTF-8).
-for_window [app_id="chromium" title="^Task Manager$"] floating enable, resize set width 900 px height 600 px, move position center
+# windows, so only the title separates them — and chromium suffixes the task
+# manager's title with " - Chromium" exactly like a page title (the string is
+# literally "Task Manager - Chromium" in locales/en-US.pak). So a browser window
+# whose active tab is titled "Task Manager" collides with this rule and floats
+# too; there is no anchor that separates them. Rare enough to accept. Titles are
+# English here (LANG=en_US.UTF-8).
+#
+# Note there is no default Linux keybinding for the task manager — Shift+Esc is
+# Windows/ChromeOS only. It opens from ⋮ → More tools → Task manager.
+for_window [app_id="chromium" title="^Task Manager - Chromium$"] floating enable, resize set width 900 px height 600 px, move position center
 
-# Fallback for the system print dialog. Chromium's Ctrl+P preview is tab-modal
-# (not a window at all), but "Print using system dialog…" opens either the Print
-# portal — already caught by the xdg-desktop-portal-gtk rule above — or an
-# in-process GTK dialog titled bare "Print". This covers the second case.
-for_window [app_id="chromium" title="^Print$"] floating enable, move position center
-
-# Undocked DevTools. No `$` anchor is possible here since the title carries the
-# inspected URL, so unlike the rules above a page genuinely titled "DevTools - …"
-# would float too. Rare enough to accept.
+# Undocked DevTools. The title carries the inspected URL, so a page genuinely
+# titled "DevTools - …" would float too. Rare enough to accept.
 for_window [app_id="chromium" title="^DevTools - "] floating enable, resize set width 1200 px height 800 px, move position center
 
 # Popup windows (OAuth consent, SSO hand-off, payment flows) can't be matched

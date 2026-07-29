@@ -33,7 +33,17 @@ connect();
 chrome.windows.onCreated.addListener((win) => {
     if (win.type !== "popup") return;
     try {
-        connect().postMessage({ action: "float" });
+        // Ship the requested geometry with the ping. The host floats within
+        // ~1.5ms of the window mapping, and at that instant sway's notion of
+        // the view's natural size is still the size it configured when tiling
+        // it — chromium hasn't committed its preferred geometry yet. Floating
+        // on sway's numbers therefore reproduces the tiled dimensions. These
+        // are DIP, which equal sway logical pixels at output scale 1.
+        connect().postMessage({
+            action: "float",
+            width: win.width,
+            height: win.height,
+        });
     } catch (e) {
         // Worker resumed holding a stale port that hasn't fired onDisconnect
         // yet. Drop it; the next popup reconnects.
