@@ -1,6 +1,28 @@
-# Dotfiles override — hides this entry from all launchers (rofi drun, etc.).
-# Reason: printer admin. Shadows /usr/share/applications/system-config-printer.desktop.
+# Dotfiles override — un-hides this entry and renames it to "Printers", the word
+# you actually type into rofi (upstream calls it "Print Settings"). Shadows
+# /usr/share/applications/system-config-printer.desktop. Was NoDisplay=true here
+# until a printer existed on the network; cups.desktop (the CUPS web UI) stays
+# hidden, since this GUI covers the same ground.
+#
+# Floated by the for_window [app_id="system-config-printer"] rule in
+# ~/.config/sway/config.
 [Desktop Entry]
 Type=Application
-Name=Print Settings
-NoDisplay=true
+Name=Printers
+GenericName=Print Settings
+Comment=Add, remove, and configure printers
+Exec=system-config-printer
+# Icon=printer would be the obvious name, but rofi resolves it to Papirus'
+# 22x22/panel/printer.svg — a panel glyph whose ColorScheme-Text is #dfdfdf
+# painted via fill:currentColor, i.e. near-invisible on the light palette
+# (verified with grim). rofi prefers the panel/ variant over apps/ and devices/
+# regardless of index.theme's directory order, so the name has to be one that has
+# no panel/ variant at all. "cups" is exactly that: it exists only under apps/,
+# at every size, in both Papirus and Papirus-Dark (where it symlinks back to
+# Papirus) — and apps/printer.svg is itself just a symlink to cups.svg, so this
+# is the same full-colour artwork, readable on both palettes.
+Icon=cups
+Terminal=false
+StartupNotify=true
+Categories=System;Settings;HardwareSettings;Printing;GTK;
+Keywords=printer;printers;printing;cups;queue;

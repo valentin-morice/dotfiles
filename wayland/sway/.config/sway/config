@@ -284,6 +284,27 @@ for_window [app_id="polkit-gnome-authentication-agent-1"] floating enable, move 
 # tab-modal, and "Print using system dialog…" arrives as portal window "&Print…".)
 for_window [app_id="xdg-desktop-portal-gtk"] floating enable, move position center
 
+# Printer admin GUI — system-config-printer, launched from rofi as "Printers"
+# (see ~/.local/share/applications/system-config-printer.desktop). The rule above
+# floats the dialog that PRINTS; this one floats the tool that manages the queues.
+#
+# GTK3 + Python, but Wayland-native here: it maps as xdg_shell with app_id
+# "system-config-printer" (measured with `swaymsg -t subscribe '["window"]'`), so
+# no XWayland class fallback is needed. It maps tiled, hence the rule. Its
+# secondary windows — the Add-Printer wizard, printer properties — are toplevels
+# from the same process sharing that app_id, so they inherit this rule too.
+for_window [app_id="system-config-printer"] floating enable, resize set width 900 px height 600 px, move position center
+
+# Scanner GUI — simple-scan ("Document Scanner"), the eSCL/driverless counterpart
+# to the printer tool above; same Epson XP-6100 over the network.
+#
+# GTK4 + libadwaita, Wayland-native: app_id is the full application ID
+# "org.gnome.SimpleScan", NOT the prgname "simple-scan" (measured with
+# `swaymsg -t subscribe '["window"]'` — the "new" event reports class=null, so no
+# XWayland fallback is needed). It maps tiled, hence the rule. Its preferences
+# window is a toplevel from the same process, so it inherits this rule too.
+for_window [app_id="org.gnome.SimpleScan"] floating enable, resize set width 900 px height 600 px, move position center
+
 # Chromium's own auxiliary windows. Unlike the portal dialog above, these are
 # real xdg-shell toplevels sharing app_id=chromium with ordinary browser
 # windows, so only the title separates them — and chromium suffixes the task
