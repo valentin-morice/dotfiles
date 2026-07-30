@@ -182,8 +182,13 @@ bindgesture swipe:3:left workspace next
 # start a terminal
 bindsym $mod+Return exec alacritty
 
-# Browser (chromium) and file manager (thunar)
-bindsym $mod+Shift+Return exec chromium
+# Browser (chromium) and file manager (thunar). Chromium runs behind wl-relabel,
+# which rewrites the app_id of popups and DevTools before those windows map so
+# the for_window rules further down can float them without a tiled flash. The
+# desktop file is wrapped the same way, because chromium is single-instance: a
+# launch that bypasses the proxy attaches to the running browser and silently
+# gets no rewriting.
+bindsym $mod+Shift+Return exec wl-relabel -- chromium
 bindsym $mod+Shift+f exec thunar
 
 # Editor (vscodium)
@@ -245,9 +250,14 @@ for_window [class="Chromium"] inhibit_idle fullscreen
 # Picture-in-Picture: float it and make it sticky so a video pop-out follows you
 # across workspaces instead of tiling into the layout. Covers Wayland-native
 # (app_id) and XWayland (class); Chromium/Firefox title the window differently.
+#
+# Chromium's Wayland PiP window is the odd one out: it maps with an EMPTY app_id, not
+# "chromium", so no [app_id="chromium" title=...] rule could ever match it — measured
+# with `wl-relabel --log`, which reports app_id "" and title "Picture in picture".
+# wl-relabel gives it the identity below; see ~/.config/wl-relabel/rules.toml.
 for_window [app_id="firefox" title="Picture-in-Picture"] floating enable, sticky enable
 for_window [class="firefox" title="Picture-in-Picture"] floating enable, sticky enable
-for_window [app_id="chromium" title="^Picture[- ]in[- ]picture"] floating enable, sticky enable
+for_window [app_id="chromium-pip"] floating enable, sticky enable
 for_window [class="Chromium" title="^Picture[- ]in[- ]picture"] floating enable, sticky enable
 
 # Float transient XWayland windows — dialogs, pop-ups, splash screens — so they
@@ -291,11 +301,35 @@ for_window [app_id="chromium" title="^Task Manager - Chromium$"] floating enable
 # titled "DevTools - …" would float too. Rare enough to accept.
 for_window [app_id="chromium" title="^DevTools - "] floating enable, resize set width 1200 px height 800 px, move position center
 
-# Popup windows (OAuth consent, SSO hand-off, payment flows) can't be matched
-# here at all: window.open children map with app_id=chromium and a page-derived
-# title, identical to an ordinary window. They're floated imperatively instead,
-# by ~/.local/bin/chromium-float-host driven by the "Float popups (sway)"
-# extension in ~/.config/chromium-float/extension.
+# Popups (OAuth consent, SSO hand-off, payment flows) and undocked DevTools,
+# matched on the identity wl-relabel assigns before the window maps rather than
+# on a title. See ~/Projects/wl-relabel. A window.open child is indistinguishable
+# from an ordinary browser window over xdg-shell — same app_id, page-derived
+# title — so the proxy identifies it by the two signals it does emit: it asks the
+# compositor to draw its frame, and its minimum width is far below a main
+# window's. Floating lands on the first frame, so there is no tiled flash to
+# correct.
+#
+# The DevTools rule above is kept deliberately as a fallback: it stops matching
+# once the identity changes, but it still fires for a chromium started outside
+# the proxy.
+for_window [app_id="chromium-devtools"] floating enable, resize set width 1200 px height 800 px, move position center
+for_window [app_id="chromium-popup"] floating enable
+for_window [app_id="firefox-popup"] floating enable
+
+# Firefox needs no size or title fallback the way chromium does above: it reports
+# min_size (95, 95) for a window.open popup against (500, 120) for a main window,
+# measured on firefox 153.0, so the same two-signal rule catches it. There is no
+# pre-proxy rule to keep here, because there was never a way to write one.
+
+# The task manager. Measured: chromium gives it an EMPTY app_id, so the
+# ^Task Manager - Chromium$ rule above has never been able to match it — that is
+# chromium's own behaviour and has nothing to do with the proxy. Unlike the
+# DevTools rule it is not a fallback, it is dead. wl-relabel gives it a real
+# identity, which also removes the ambiguity that rule's comment describes: a
+# browser window whose tab is titled "Task Manager" keeps app_id=chromium and so
+# no longer collides.
+for_window [app_id="chromium-taskmanager"] floating enable, resize set width 900 px height 600 px, move position center
 
 # Screenshots (grim + slurp)
 bindsym Print exec ~/.local/bin/screenshot region
