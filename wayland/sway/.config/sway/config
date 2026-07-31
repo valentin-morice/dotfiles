@@ -328,6 +328,26 @@ for_window [app_id="system-config-printer" title="^Print Settings - "] floating 
 #   swaymsg -t get_tree | jq -r '..|objects|select(.app_id=="org.gnome.SimpleScan")|.name'
 for_window [app_id="org.gnome.SimpleScan"] floating enable, resize set width 900 px height 600 px, move position center
 
+# Scan-to-PDF GUI — gscan2pdf, kept alongside simple-scan above rather than
+# replacing it. It's GTK3, so it wears the same Adwaita/Papirus look as Thunar and
+# the printer tool; simple-scan is GTK4 + libadwaita, which only follows
+# color-scheme and can never take a gtk-theme-name, which is why it never blended.
+#
+# app_id is the reverse-DNS "net.sourceforge.gscan2pdf" (measured with
+# `swaymsg -t get_tree`), not the prgname "gscan2pdf". It maps tiled, hence the
+# rule — and so do its secondary windows: the startup "Messages" dialog came up
+# floating=auto_off, i.e. sway did NOT auto-float it. So unlike the printer
+# dialogs, which are parented toplevels sway floats on its own, these need the
+# explicit `floating enable`. One unscoped rule is right here for exactly the
+# reason an unscoped rule was wrong there.
+#
+# No `resize set`, deliberately. gscan2pdf saves and restores its own geometry,
+# separately per window — window_*, scan_window_* and message_window_* in
+# ~/.config/gscan2pdf/config (/usr/bin/gscan2pdf:1071 restores, :6522 saves). A
+# forced size would fight that and re-trigger the top-left pinning documented on
+# the printer rule above, since the app re-asserts its size after the rule runs.
+for_window [app_id="net.sourceforge.gscan2pdf"] floating enable, move position center
+
 # Chromium's own auxiliary windows. Unlike the portal dialog above, these are
 # real xdg-shell toplevels sharing app_id=chromium with ordinary browser
 # windows, so only the title separates them — and chromium suffixes the task
