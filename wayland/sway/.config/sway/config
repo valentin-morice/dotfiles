@@ -309,29 +309,11 @@ for_window [app_id="xdg-desktop-portal-gtk"] floating enable, move position cent
 # fine under LANG=en_US.UTF-8, revisit if that ever changes.
 for_window [app_id="system-config-printer" title="^Print Settings - "] floating enable, resize set width 900 px height 600 px, move position center
 
-# Scanner GUI — simple-scan ("Document Scanner"), the eSCL/driverless counterpart
-# to the printer tool above; same Epson XP-6100 over the network.
-#
-# GTK4 + libadwaita, Wayland-native: app_id is the full application ID
-# "org.gnome.SimpleScan", NOT the prgname "simple-scan" (measured with
-# `swaymsg -t subscribe '["window"]'` — the "new" event reports class=null, so no
-# XWayland fallback is needed). It maps tiled, hence the rule. Its preferences
-# window is a toplevel from the same process, so it inherits this rule too.
-#
-# That inheritance is the same hazard the printer rule above was just fixed for:
-# a secondary toplevel that refuses the forced 900x600 ends up anchored at the
-# main window's top-left instead of centred. Left unscoped here only because the
-# main window's title is unverified — simple-scan sets none in its sources, so it
-# falls back to whatever GTK derives, and guessing it would silently stop the
-# rule from matching at all. To scope it, read the real title off a running
-# instance and add it as a title= criterion like the printer rule:
-#   swaymsg -t get_tree | jq -r '..|objects|select(.app_id=="org.gnome.SimpleScan")|.name'
-for_window [app_id="org.gnome.SimpleScan"] floating enable, resize set width 900 px height 600 px, move position center
-
-# Scan-to-PDF GUI — gscan2pdf, kept alongside simple-scan above rather than
-# replacing it. It's GTK3, so it wears the same Adwaita/Papirus look as Thunar and
-# the printer tool; simple-scan is GTK4 + libadwaita, which only follows
-# color-scheme and can never take a gtk-theme-name, which is why it never blended.
+# Scanner GUI — gscan2pdf, the eSCL/driverless counterpart to the printer tool
+# above; same Epson XP-6100 over the network. It replaced simple-scan, whose rule
+# lived here: that one is GTK4 + libadwaita, which only follows color-scheme and
+# can never take a gtk-theme-name, so it could not wear the Adwaita/Papirus look
+# the rest of these utilities do. gscan2pdf is GTK3 and matches Thunar exactly.
 #
 # app_id is the reverse-DNS "net.sourceforge.gscan2pdf" (measured with
 # `swaymsg -t get_tree`), not the prgname "gscan2pdf". It maps tiled, hence the
