@@ -178,6 +178,34 @@ if [ "$reload" -eq 1 ]; then
         setsid dunst >/dev/null 2>&1 &
     fi
 
+    # GTK3 daemons that start at login and then go deaf to the theme. Short-lived
+    # GTK3 apps recolour live off the settings portal (see the gsettings block
+    # above); these two read the theme once at startup and keep it for the life of
+    # the process, so a switch leaves them wearing the old palette — the Thunar
+    # daemon and the polkit password prompt, which is why a dark auth dialog kept
+    # appearing over light apps. Restarting them is exactly what quitting and
+    # relaunching by hand always did; it replaces the After=dconf.service ordering
+    # the Thunar drop-in used to carry, which was never confirmed as the mechanism
+    # and did not hold.
+    #
+    # The cost, stated plainly: open Thunar windows close, and a polkit prompt
+    # open at this instant is cancelled. Both are fine at the moment you
+    # deliberately flip the theme, and neither daemon has state worth keeping.
+    if systemctl --user is-active --quiet thunar.service 2>/dev/null; then
+        systemctl --user restart thunar.service >/dev/null 2>&1 || true
+    fi
+
+    __polkit_agent=/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+    if [ -x "$__polkit_agent" ] && pgrep -f "$__polkit_agent" >/dev/null 2>&1; then
+        pkill -f "$__polkit_agent" 2>/dev/null || true
+        # Same reason as dunst above: let the old process drop its registration
+        # with polkitd before the new one tries to take it, or the session is left
+        # with no agent and auth prompts silently never appear.
+        for _ in $(seq 20); do pgrep -f "$__polkit_agent" >/dev/null 2>&1 || break; sleep 0.05; done
+        setsid "$__polkit_agent" >/dev/null 2>&1 &
+    fi
+    unset __polkit_agent
+
     # zathura (PDF reader, both sessions) reads zathurarc only at startup and
     # doesn't watch the file — but its D-Bus interface re-sources it live, so
     # every `set` (UI chrome + recolor colours) re-applies with no restart or

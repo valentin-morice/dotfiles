@@ -104,10 +104,12 @@ exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 # longer carries wifi/BT, which are waybar modules again (see waybar's config).
 
 # Thunar daemon (needed for thunar-volman to auto-mount removable media) is NOT
-# started here: an `exec` races xdg-desktop-portal and the daemon loses its theme
-# for the whole session. It's a systemd unit ordered after the portal instead —
-# see common/systemd/.config/systemd/user/thunar.service.d/theme-ordering.conf.
-# sway-session.target (started above) pulls it in.
+# started here: sway fires exec lines concurrently and mangles quoting on inline
+# shell gates, so it's a systemd unit that sway-session.target (started above)
+# pulls in — see common/systemd/.config/systemd/user/thunar.service.d/session.conf.
+# Like the polkit agent above, the daemon goes deaf to light/dark switches for the
+# life of the process; theme-render restarts both rather than ordering their
+# startup, which was tried and did not hold.
 
 # Lock + idle: swayidle owns idle-dim/lock, before-sleep lock, and the logind
 # lock signal (so loginctl lock-session / $mod+Shift+x route through it too).
@@ -290,10 +292,22 @@ for_window [app_id="xdg-desktop-portal-gtk"] floating enable, move position cent
 #
 # GTK3 + Python, but Wayland-native here: it maps as xdg_shell with app_id
 # "system-config-printer" (measured with `swaymsg -t subscribe '["window"]'`), so
-# no XWayland class fallback is needed. It maps tiled, hence the rule. Its
-# secondary windows — the Add-Printer wizard, printer properties — are toplevels
-# from the same process sharing that app_id, so they inherit this rule too.
-for_window [app_id="system-config-printer"] floating enable, resize set width 900 px height 600 px, move position center
+# no XWayland class fallback is needed. It maps tiled, hence the rule.
+#
+# The title criterion is load-bearing, and matching on app_id alone was a bug.
+# The app's secondary toplevels — server settings, the Add-Printer wizard,
+# printer properties — share that app_id, so they inherited the forced 900x600.
+# They refuse it and commit their own size, and sway shrinks a floating window
+# from its top-left, so every dialog landed pinned to the main window's top-left
+# corner rather than centred. Scoping the size to the main window is the whole
+# fix: those dialogs are parented toplevels, which sway auto-floats and centres
+# on its own — the same path that already gets ordinary GTK dialogs right.
+#
+# "Print Settings - <host>" is set (/usr/share/system-config-printer/system-
+# config-printer.py:772) before the window is shown, so it is already the title
+# at map time and there's no tiled flash. Unlike the app_id it IS translated —
+# fine under LANG=en_US.UTF-8, revisit if that ever changes.
+for_window [app_id="system-config-printer" title="^Print Settings - "] floating enable, resize set width 900 px height 600 px, move position center
 
 # Scanner GUI — simple-scan ("Document Scanner"), the eSCL/driverless counterpart
 # to the printer tool above; same Epson XP-6100 over the network.
@@ -303,6 +317,15 @@ for_window [app_id="system-config-printer"] floating enable, resize set width 90
 # `swaymsg -t subscribe '["window"]'` — the "new" event reports class=null, so no
 # XWayland fallback is needed). It maps tiled, hence the rule. Its preferences
 # window is a toplevel from the same process, so it inherits this rule too.
+#
+# That inheritance is the same hazard the printer rule above was just fixed for:
+# a secondary toplevel that refuses the forced 900x600 ends up anchored at the
+# main window's top-left instead of centred. Left unscoped here only because the
+# main window's title is unverified — simple-scan sets none in its sources, so it
+# falls back to whatever GTK derives, and guessing it would silently stop the
+# rule from matching at all. To scope it, read the real title off a running
+# instance and add it as a title= criterion like the printer rule:
+#   swaymsg -t get_tree | jq -r '..|objects|select(.app_id=="org.gnome.SimpleScan")|.name'
 for_window [app_id="org.gnome.SimpleScan"] floating enable, resize set width 900 px height 600 px, move position center
 
 # Chromium's own auxiliary windows. Unlike the portal dialog above, these are
