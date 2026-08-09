@@ -40,8 +40,15 @@ window#waybar {
     box-shadow: none;
     text-shadow: none;
 }
+/* .visible = displayed on some output but NOT holding keyboard focus, i.e. the
+ * other screen's current workspace. It needs its own fill, not just brighter
+ * text: with one bar per output, the unfocused screen's bar has no .focused
+ * button at all, so this block is the only thing marking where that screen is
+ * parked — and the accent/muted-accent contrast is what tells you at a glance
+ * which display your keyboard is on. */
 #workspaces button.visible {
     color: ${THEME_fg};
+    background-color: ${THEME_accent_muted};
 }
 #workspaces button.focused {
     color: ${THEME_bg};

@@ -119,9 +119,20 @@ exec_always ~/.config/sway/idle.sh
 # --not-when-audio; covers podcasts/music without a fullscreen window).
 exec sway-audio-idle-inhibit
 
-# Output profile switcher (per-profile layouts once an external display
-# exists; see ~/.config/kanshi/config).
+# Output profile switcher (per-profile layouts; see ~/.config/kanshi/config).
 exec kanshi
+
+# Re-apply the kanshi profile on every sway reload. A `swaymsg reload` re-reads
+# this file and re-runs its output configuration — and since no `output` block
+# here sets a position, sway resets the layout to its default left-to-right
+# arrangement, silently undoing kanshi's stacked positions. kanshi doesn't
+# notice, because it only reacts to outputs appearing/disappearing and the set
+# didn't change. So $mod+Shift+c would knock the external back beside the laptop
+# every time. exec_always (not exec) is the point: this fires on reload.
+#
+# At first launch this races kanshi's own startup and usually fails — harmless,
+# kanshi applies the matching profile itself when it comes up.
+exec_always kanshictl reload
 
 # Lid-switch handling — ONLY enable once a dock/external display exists (fill in
 # the kanshi `docked` profile too). Left commented on purpose: with no external
@@ -454,25 +465,61 @@ for_window [app_id="dropdown-term"] floating enable, resize set width 1600 px he
 bindsym $mod+grave exec ~/.local/bin/dropdown-term
 
 ### Workspaces ---------------------------------------------------------------
-# Capped at 4 workspaces so the waybar row is a fixed width and never layout-
-# shifts (waybar renders 1–4 persistently; see persistent-workspaces there). To
-# go back to 10, restore $ws5–$ws10 and the 5–0 binds below.
+# Eight workspaces, pinned four per screen: 1–4 on the laptop panel, 5–8 on the
+# external. Pinning is sway's own multi-monitor model (`workspace <name> output`
+# in sway(5)) and it's what stops a waybar click on one screen from yanking
+# focus to the other: sway workspaces are global and live wherever they were
+# created, so without this, clicking "2" on the external jumped to whichever
+# display happened to own ws2. Now every workspace has exactly one home and
+# $mod+N always lands on a known screen.
+#
+# Still a fixed FOUR buttons per bar, so the no-layout-shift property that the
+# old 4-workspace cap existed for is preserved — it's now enforced by splitting
+# persistent-workspaces per output in waybar's config rather than by the cap.
 set $ws1 "1"
 set $ws2 "2"
 set $ws3 "3"
 set $ws4 "4"
+set $ws5 "5"
+set $ws6 "6"
+set $ws7 "7"
+set $ws8 "8"
+
+# The external is matched by make/model/serial, not the DP-6 connector name that
+# the dock re-enumerates between ports and reboots (same identifier kanshi's
+# docked profile uses). eDP-1 is listed second as a FALLBACK: sway takes the
+# first *available* output from the list, so undocked, 5–8 collapse onto the
+# laptop instead of being unreachable, and migrate back when the monitor
+# returns. Note this only governs where a workspace is *created* — see sway(5),
+# it doesn't restack workspaces that already exist.
+workspace $ws1 output eDP-1
+workspace $ws2 output eDP-1
+workspace $ws3 output eDP-1
+workspace $ws4 output eDP-1
+workspace $ws5 output "Lenovo Group Limited L24i-4A URHNYW8T" eDP-1
+workspace $ws6 output "Lenovo Group Limited L24i-4A URHNYW8T" eDP-1
+workspace $ws7 output "Lenovo Group Limited L24i-4A URHNYW8T" eDP-1
+workspace $ws8 output "Lenovo Group Limited L24i-4A URHNYW8T" eDP-1
 
 # switch to workspace
 bindsym $mod+1 workspace number $ws1
 bindsym $mod+2 workspace number $ws2
 bindsym $mod+3 workspace number $ws3
 bindsym $mod+4 workspace number $ws4
+bindsym $mod+5 workspace number $ws5
+bindsym $mod+6 workspace number $ws6
+bindsym $mod+7 workspace number $ws7
+bindsym $mod+8 workspace number $ws8
 
 # move focused container to workspace
 bindsym $mod+Shift+1 move container to workspace number $ws1
 bindsym $mod+Shift+2 move container to workspace number $ws2
 bindsym $mod+Shift+3 move container to workspace number $ws3
 bindsym $mod+Shift+4 move container to workspace number $ws4
+bindsym $mod+Shift+5 move container to workspace number $ws5
+bindsym $mod+Shift+6 move container to workspace number $ws6
+bindsym $mod+Shift+7 move container to workspace number $ws7
+bindsym $mod+Shift+8 move container to workspace number $ws8
 
 # Bounce between the two most recent workspaces; pressing the current
 # workspace's own $mod+N does the same (auto_back_and_forth).

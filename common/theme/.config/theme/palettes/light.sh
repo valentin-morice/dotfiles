@@ -56,6 +56,11 @@ export THEME_ansi_bright_magenta=#74448a
 export THEME_ansi_bright_cyan=#237076
 export THEME_ansi_bright_white=#ffffff
 
+# "Visible but not focused" tint — see dark.sh for the full rationale. Opposite
+# polarity to dark's: the accent is blended into the light bg_section instead, so
+# the result is a pale blue that THEME_fg (near-black) reads on at ~9:1.
+export THEME_accent_muted=#a8c2dc
+
 # Borders
 export THEME_border=#d3dae0
 export THEME_border_inactive=#c2cad1

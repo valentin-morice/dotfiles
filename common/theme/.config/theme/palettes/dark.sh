@@ -60,6 +60,16 @@ export THEME_ansi_bright_magenta=#c8a0c8
 export THEME_ansi_bright_cyan=#7fc8d6
 export THEME_ansi_bright_white=#ffffff
 
+# "Visible but not focused" tint — the other screen's current workspace in
+# waybar, and sway's client.focused_inactive titlebar. One key for both so the
+# bar block and the window border carry the SAME cue: solid THEME_accent is the
+# screen holding keyboard focus, this dimmer accent is the one that isn't.
+# Roughly accent blended ~35% into bg_section, which keeps it unmistakably the
+# accent hue while sitting well below the focused block. THEME_fg is the text
+# colour over it in both consumers, so it must stay dark on the dark palette and
+# pale on the light one.
+export THEME_accent_muted=#31465f
+
 # Borders
 export THEME_border=#1f1f1f
 export THEME_border_inactive=#333333

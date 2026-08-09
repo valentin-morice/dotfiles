@@ -1,0 +1,27 @@
+#!/bin/bash
+# Re-paint the active theme's wallpaper on every output.
+#
+# awww (like swww) only paints outputs that existed when `awww img` last ran; an
+# output plugged in afterwards comes up as the daemon's default solid black. The
+# login-time paint in theme-render therefore never reaches a monitor hotplugged
+# later, so kanshi execs this on every profile switch (see ~/.config/kanshi/config).
+#
+# `awww img` with no --outputs targets all of them, so this is also correct (just
+# redundant) when nothing changed.
+set -eu
+
+command -v awww >/dev/null 2>&1 || exit 0
+
+# shellcheck disable=SC1091
+. "${XDG_CONFIG_HOME:-$HOME/.config}/theme/load.sh"
+[ -n "${THEME_wallpaper:-}" ] || exit 0
+
+# kanshi fires this the moment the profile applies, which can beat the daemon's
+# view of the new output (and at login it can beat the daemon existing at all).
+# Retry for ~2s, matching theme-render's readiness loop.
+i=0
+until awww img "$THEME_wallpaper" --transition-type none >/dev/null 2>&1; do
+    i=$((i + 1))
+    [ "$i" -ge 20 ] && exit 0
+    sleep 0.1
+done
