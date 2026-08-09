@@ -9,6 +9,11 @@
 profile laptop {
     output eDP-1 enable mode 1920x1200@60Hz position 0,0
     exec ~/.local/bin/wallpaper-apply
+    # Undocking strands the external's workspaces (5-8) on the laptop, where any
+    # that still hold a window show up as extra buttons past the fixed four.
+    # Fold them into 4. Only reached from this profile, i.e. only when the
+    # external is genuinely gone.
+    exec ~/.local/bin/undock-workspaces
 }
 
 # Lenovo L24i-4A over USB-C/DP. Matched by make/model/serial rather than the

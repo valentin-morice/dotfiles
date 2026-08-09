@@ -1,0 +1,46 @@
+#!/bin/bash
+# Fold the external's workspaces back into the laptop's set when the monitor
+# goes away. Run from kanshi's `laptop` profile (see ~/.config/kanshi/config),
+# which matches only when eDP-1 is the sole connected display.
+#
+# Why: 5-8 are pinned to the external with eDP-1 as a fallback, so unplugging
+# relocates them here rather than destroying them and their windows. sway drops
+# the empty ones automatically, but any workspace still holding a window (or
+# merely focused) survives and shows up as a fifth/sixth button on the laptop
+# bar — which breaks the fixed-width, exactly-four-buttons layout the
+# persistent-workspaces split is there to guarantee. So: everything stranded on
+# 5-8 lands on 4, the last laptop workspace, and those workspaces disappear.
+#
+# Nothing is folded back on re-dock — which window belonged to which screen
+# isn't recoverable once merged, and guessing would be worse than leaving them.
+set -eu
+
+command -v swaymsg >/dev/null 2>&1 || exit 0
+[ -n "${SWAYSOCK:-}" ] || exit 0
+
+# kanshi execs fire the moment the profile applies, which can beat sway's own
+# handling of the output going away. Give it a moment to settle so we aren't
+# acting while the external still counts as active; bail rather than fold if it
+# never does (i.e. this got run while genuinely docked).
+i=0
+until [ "$(swaymsg -t get_outputs | jq '[.[] | select(.active)] | length')" -le 1 ]; do
+    i=$((i + 1))
+    [ "$i" -ge 20 ] && exit 0
+    sleep 0.1
+done
+
+# If focus is sitting on one of the external's workspaces, move it to 4 as well.
+# An empty workspace is normally reaped, but the focused one is kept alive, so
+# without this an undock while parked on 7 leaves a stray "7" button behind even
+# with no windows in it.
+focused=$(swaymsg -t get_workspaces | jq -r '.[] | select(.focused) | .name')
+
+for ws in 5 6 7 8; do
+    # Criteria match every view on that workspace; the move empties it and sway
+    # reaps it. Harmless no-op when the workspace doesn't exist.
+    swaymsg "[workspace=\"^${ws}\$\"] move container to workspace number 4" >/dev/null 2>&1 || true
+done
+
+case "$focused" in
+    5|6|7|8) swaymsg workspace number 4 >/dev/null 2>&1 || true ;;
+esac
