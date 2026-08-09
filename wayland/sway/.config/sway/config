@@ -134,12 +134,26 @@ exec kanshi
 # kanshi applies the matching profile itself when it comes up.
 exec_always kanshictl reload
 
-# Lid-switch handling — ONLY enable once a dock/external display exists (fill in
-# the kanshi `docked` profile too). Left commented on purpose: with no external
-# output, closing the lid should suspend (logind's default) rather than just
-# blanking eDP-1, so activating this undocked would fight logind.
-#   bindswitch --locked --reload lid:on  output eDP-1 disable
-#   bindswitch --locked --reload lid:off output eDP-1 enable
+# Lid-switch handling. lid:on = lid CLOSED, lid:off = lid open.
+#
+# Enabled now that the dock exists. logind's HandleLidSwitchDocked defaults to
+# "ignore", and logind counts "more than one display connected" as docked — so
+# with the monitor attached, closing the lid otherwise does nothing at all and
+# eDP-1 sits lit inside a shut laptop. These turn the panel (and the keyboard
+# backlight) off instead, and the session keeps running on the external.
+# Workspaces 1–4 spill onto it while eDP-1 is down and migrate home on open,
+# since their `workspace ... output` assignment lists only eDP-1.
+#
+# Undocked the binding still fires, a moment before logind's default
+# HandleLidSwitch=suspend puts the machine to sleep — invisible in practice, and
+# lid:off restores both on wake.
+#
+# --locked so it still works over swaylock (the lock holds the seat and would
+# swallow a plain bind); --reload re-fires it on config reload so the state
+# can't drift out of sync. That re-fire is why the keyboard-backlight helper
+# guards its saved level instead of writing 0 over it.
+bindswitch --locked --reload lid:on  output eDP-1 disable, exec ~/.local/bin/kbd-backlight-lid close
+bindswitch --locked --reload lid:off output eDP-1 enable,  exec ~/.local/bin/kbd-backlight-lid open
 
 ### Theme toggle -------------------------------------------------------------
 bindsym $mod+Shift+t exec ~/.local/bin/theme-switch toggle

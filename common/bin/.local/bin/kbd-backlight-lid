@@ -1,0 +1,38 @@
+#!/bin/bash
+# Turn the keyboard backlight off while the lid is shut, and put it back at the
+# level it was at when the lid opens. Driven by the lid bindswitch in the sway
+# config; docked, the machine keeps running with the lid closed, so without this
+# the backlight sits there lighting the inside of a closed laptop.
+#
+# brightnessctl reaches tpacpi::kbd_backlight through logind's D-Bus
+# SetBrightness (it isn't setuid), so this works as the session user.
+set -eu
+
+dev=tpacpi::kbd_backlight
+state="${XDG_RUNTIME_DIR:-/tmp}/kbd-backlight-lid"
+
+case "${1:-}" in
+    close)
+        cur=$(brightnessctl -d "$dev" get 2>/dev/null || echo 0)
+        # Only record a level worth restoring. sway's `--reload` flag re-fires
+        # the bindswitch on every config reload, so `close` can run again with
+        # the lid ALREADY shut and the backlight already at 0 — saving that
+        # would restore 0 on open and leave the light dead until the next manual
+        # change. Same class of stale-save bug idle.sh guards against.
+        # A user who deliberately had it off keeps it off, for the same reason.
+        [ "$cur" -gt 0 ] && printf '%s\n' "$cur" > "$state"
+        brightnessctl -d "$dev" set 0 >/dev/null 2>&1 || true
+        ;;
+    open)
+        # No state file = we never turned it off (or already restored). Leave it
+        # alone rather than guessing a level.
+        [ -r "$state" ] || exit 0
+        read -r lvl < "$state"
+        rm -f "$state"
+        brightnessctl -d "$dev" set "$lvl" >/dev/null 2>&1 || true
+        ;;
+    *)
+        echo "usage: kbd-backlight-lid close|open" >&2
+        exit 2
+        ;;
+esac
