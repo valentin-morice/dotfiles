@@ -1,0 +1,33 @@
+[Unit]
+Description=Waybar (theme-rendered, style-overlay aware)
+Documentation=https://github.com/Alexays/Waybar/wiki/
+# Deliberately shadows /usr/lib/systemd/user/waybar.service (same unit name, and
+# ~/.config/systemd/user wins): the packaged unit runs a bare `waybar` with no
+# -s, so it would ignore style-live.css and break the flicker-free theme
+# recolour. Keeping the name means the packaged one can never be enabled by
+# accident and win the race.
+PartOf=graphical-session.target
+After=graphical-session.target
+# A bar that segfaults 5x inside a minute is a broken config, not the sporadic
+# crash below — restarting harder won't fix it, so stop and leave the failure
+# visible. Recover with: systemctl --user reset-failed waybar
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+# Guarantees the theme-rendered config + the style overlay exist before waybar
+# reads them, so this unit is self-sufficient when sway-session.target starts it
+# and launch.sh never runs. --prepare is the one mode that must not touch
+# systemctl: it executes inside this unit's own start job.
+ExecStartPre=%h/.config/waybar/launch.sh --prepare
+ExecStart=/usr/bin/waybar -s %h/.config/waybar/style-live.css
+ExecReload=kill -SIGUSR2 $MAINPID
+# The whole point of this unit. waybar 0.15.0 segfaults in the network module's
+# netlink thread (nl_recvmsgs dispatching a freed callback); under sway's bare
+# `exec_always` that left the bar gone until the next login or sway reload.
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=sway-session.target
