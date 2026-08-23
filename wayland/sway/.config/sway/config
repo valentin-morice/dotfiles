@@ -17,8 +17,10 @@ font pango:JetBrainsMono Nerd Font 10
 # which breaks live GTK3/Qt theme switching, screen-share, and the SNI tray.
 # XDG_CURRENT_DESKTOP (sway:wlroots, set from sway.desktop) is the portal's
 # backend selector and is load-bearing for live GTK3/Qt recolour.
-exec systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE SWAYSOCK && \
-     dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && \
+# DISPLAY is needed too: X11-only clients launched via dbus/systemd (e.g. nsxiv
+# opened from Thunar) exit immediately with "Error opening X display" without it.
+exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE SWAYSOCK && \
+     dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && \
      systemctl --user start sway-session.target
 
 ### Input / output / seat ----------------------------------------------------
