@@ -209,13 +209,13 @@ bindgesture swipe:3:left workspace next
 # start a terminal
 bindsym $mod+Return exec alacritty
 
-# Browser (chromium) and file manager (thunar). Chromium runs behind wl-relabel,
-# which rewrites the app_id of popups and DevTools before those windows map so
-# the for_window rules further down can float them without a tiled flash. The
-# desktop file is wrapped the same way, because chromium is single-instance: a
-# launch that bypasses the proxy attaches to the running browser and silently
-# gets no rewriting.
-bindsym $mod+Shift+Return exec wl-relabel -- chromium
+# Browser (firefox) and file manager (thunar). Firefox runs behind wl-relabel,
+# which rewrites the app_id of popups before those windows map so the for_window
+# rules further down can float them without a tiled flash. The desktop file is
+# wrapped the same way, because firefox is single-instance: a launch that
+# bypasses the proxy attaches to the running browser and silently gets no
+# rewriting.
+bindsym $mod+Shift+Return exec wl-relabel -- firefox
 bindsym $mod+Shift+f exec thunar
 
 # Editor (vscodium)

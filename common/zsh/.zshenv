@@ -62,5 +62,5 @@ export MOZ_ENABLE_WAYLAND=1
 export ELECTRON_OZONE_PLATFORM_HINT=auto
 
 # Default browser for terminal apps that honour $BROWSER (xdg-open already
-# resolves chromium via mimeapps.list). Keeps CLI tools off any stale fallback.
-export BROWSER=chromium
+# resolves firefox via mimeapps.list). Keeps CLI tools off any stale fallback.
+export BROWSER=firefox
