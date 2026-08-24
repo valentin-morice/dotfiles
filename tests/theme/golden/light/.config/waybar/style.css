@@ -113,7 +113,9 @@ window#waybar {
 }
 
 /* Battery states — urgent-tinted text at 20%, urgent block below 10%
- * (mirrors the urgent-workspace treatment). */
+ * (mirrors the urgent-workspace treatment). The `color` below only reaches the
+ * whole label because the config's format-critical drops the inline pango span
+ * on the BAT prefix (inline markup beats CSS colour) — see the note there. */
 #battery.warning {
     color: #c8332b;
 }

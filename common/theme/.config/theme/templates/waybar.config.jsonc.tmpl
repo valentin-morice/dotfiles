@@ -207,7 +207,22 @@
         "tooltip-format": "Battery: {capacity}%",
         "format": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%",
         "format-charging": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%+",
-        "format-full": "<span foreground='${THEME_accent_fixed}'>BAT</span> <span foreground='${THEME_muted_fixed}'>FULL</span>"
+        "format-full": "<span foreground='${THEME_accent_fixed}'>BAT</span> <span foreground='${THEME_muted_fixed}'>FULL</span>",
+        // Critical (<10%) drops the BAT span entirely. That block turns urgent-red
+        // in style.css, and inline pango markup beats CSS colour — so the frozen
+        // blue prefix would survive on the red fill and be unreadable, exactly the
+        // trap documented for #custom-mail.stale. With no span, the whole label
+        // inherits the CSS `color` and follows the palette (near-black on dark's
+        // #ff5555, near-white on light's #c8332b) while this file stays
+        // byte-identical across themes.
+        //
+        // Precedence is format-<status>-<state> > format-<state> > format-<status>,
+        // so format-critical would also swallow format-charging below 10%. It must
+        // not: only `.critical:not(.charging)` gets the red fill, so a charging
+        // battery keeps the normal bar bg — and there the blue prefix (and the "+")
+        // are still right. format-charging-critical restores it for that case.
+        "format-critical": "BAT {capacity}%",
+        "format-charging-critical": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%+"
     },
 
     // Positioned before volume in modules-right (not at the far right): the tray
