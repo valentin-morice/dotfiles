@@ -189,10 +189,10 @@
     },
 
     "bluetooth": {
-        "format": "<span foreground='#3a7bc8'></span>",
-        "format-off": "<span foreground='#808488'>󰂲</span>",
-        "format-disabled": "<span foreground='#808488'>󰂲</span>",
-        "format-connected": "<span foreground='#3a7bc8'></span> {device_alias}",
+        "format": "<span foreground='#3a7bc8'></span> ON",
+        "format-off": "<span foreground='#3a7bc8'></span> <span foreground='#808488'>OFF</span>",
+        "format-disabled": "<span foreground='#3a7bc8'></span> <span foreground='#808488'>OFF</span>",
+        "format-connected": "<span foreground='#3a7bc8'></span> {device_alias}",
         "tooltip-format": "Bluetooth: On — click for bluetui",
         "tooltip-format-connected": "Bluetooth: {device_alias} — click for bluetui",
         "tooltip-format-off": "Bluetooth: Off — click for bluetui",
@@ -208,7 +208,10 @@
         // in style.css like everything else theme-varying.
         "states": { "warning": 20, "critical": 10 },
         "tooltip-format": "Battery: {capacity}%",
-        "format-icons": ["", "", "", "", ""],
+        // Material's battery glyphs, which are drawn UPRIGHT — Font Awesome's
+        // (fa-battery_*) are the horizontal laptop-style cell. Low -> high;
+        // waybar splits capacity into len() equal buckets.
+        "format-icons": ["󰂎", "󰁻", "󰁾", "󰂀", "󰁹"],
         "format": "<span foreground='#3a7bc8'>{icon}</span> {capacity}%",
         "format-charging": "<span foreground='#3a7bc8'>{icon}</span> {capacity}%+",
         "format-full": "<span foreground='#3a7bc8'>{icon}</span> <span foreground='#808488'>FULL</span>",

@@ -3,7 +3,18 @@
  * JetBrainsMono, accent-tinted focused workspace, muted inactive ones. */
 
 * {
-    font-family: "JetBrainsMono Nerd Font";
+    /* The "Mono" variant, NOT the plain "JetBrainsMono Nerd Font" the rest of
+     * the setup uses, and the difference is load-bearing for the icons. In the
+     * non-Mono face the patched icon glyphs keep their natural width but still
+     * advance only one 600-unit cell, so they overhang whatever follows by up
+     * to 557 units — measured on the SemiBold face actually rendering here:
+     * right-side bearing runs -557 (wifi, eye-slash) to +57 (bluetooth), a
+     * 614-unit spread, so one literal space after the icon produced a visibly
+     * different gap per module. The Mono face fits every icon to the cell and
+     * cuts that spread to 62 units (~1px at 16px), which is what makes the
+     * icon-to-value gap uniform. Latin glyph metrics are identical between the
+     * two faces (A: adv 600, RSB 42), so the text is unaffected. */
+    font-family: "JetBrainsMono Nerd Font Mono";
     /* 16px matches alacritty's 12pt / rofi's 12: all three render against the
      * same logical 96 DPI baseline at scale 1.0, so px = pt * 4/3 keeps them
      * the same physical size. See the sizing note in alacritty.toml. */
