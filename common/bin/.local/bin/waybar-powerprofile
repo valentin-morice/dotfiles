@@ -28,7 +28,7 @@ esac
 # CSS), tooltip names the profile ("Power profile: Balanced") to match the other
 # module tooltips, since the icon alone is ambiguous.
 #
-# size='140%' matches every other bar icon (see waybar.config.jsonc.tmpl). The span
+# size='155%' matches every other bar icon (see waybar.config.jsonc.tmpl). The span
 # sets ONLY the size — colour still comes from #custom-powerprofile in style.css,
 # which is what keeps this glyph tracking the theme.
-printf '{"text":"<span size=\\"140%%\\">%s</span>","tooltip":"Power profile: %s","class":"%s"}\n' "$g" "$name" "$p"
+printf '{"text":"<span size=\\"155%%\\">%s</span>","tooltip":"Power profile: %s","class":"%s"}\n' "$g" "$name" "$p"

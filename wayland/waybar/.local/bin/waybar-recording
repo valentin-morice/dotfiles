@@ -20,7 +20,7 @@ THEME_urgent_fixed="${THEME_urgent_fixed:-#d63b30}"
 icon=$(printf '\363\260\273\202')  # U+F0EC2 md-record_circle
 
 if pgrep -x wf-recorder >/dev/null 2>&1; then
-    printf '{"text":"<span foreground=\\"%s\\" size=\\"140%%\\">%s</span>","tooltip":"Screen recording in progress — click to stop","class":"recording"}\n' \
+    printf '{"text":"<span foreground=\\"%s\\" size=\\"155%%\\">%s</span>","tooltip":"Screen recording in progress — click to stop","class":"recording"}\n' \
         "$THEME_urgent_fixed" "$icon"
 else
     printf '{"text":""}\n'
