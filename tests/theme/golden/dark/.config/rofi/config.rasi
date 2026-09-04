@@ -4,21 +4,20 @@
    palettes/{light,dark}.sh). rofi reads #RRGGBB directly, so the plain
    ${THEME_*} forms are used here (no _bare/ff hack, unlike fuzzel).
 
-   Faithful port of the retired fuzzel launcher look: JetBrainsMono 12, 2px
+   Faithful port of the retired fuzzel launcher look: JetBrainsMono 11.5, 2px
    border (radius 0), "❯" prompt, "Search" placeholder, 11 visible rows, no
    icons, 720px wide. rofi is spawned fresh per keypress (no daemon), so it
    re-reads this file on every launch — theme-render needs NO reload hook for
    rofi, unlike the daemons it also renders.
 
-   Font size is matched across alacritty/rofi/waybar — see the sizing note in
-   alacritty.toml: all three render against the same logical 96 DPI baseline
-   at scale 1.0, so a pt size here means the same physical size as alacritty's.
+   Font size tracks alacritty's (also 11.5) — by-eye values, not a computed
+   match; see the note in alacritty.toml.
 
    drun is $mod+d; the ~/.local/bin/rofi-* menus drive rofi in -dmenu mode and
    each passes its own "<name> ❯" via -p. */
 
 configuration {
-    font:                "JetBrainsMono Nerd Font 12";
+    font:                "JetBrainsMono Nerd Font 11.5";
     /* show-icons stays off by default so the clip/profile dmenu wrappers have
        no empty icon column; the drun bind and rofi-window flip it on with
        -show-icons (drun from .desktop icons, rofi-window from per-row app_id
@@ -95,7 +94,7 @@ listview {
     background-color: transparent;
 }
 
-/* row pitch ~35px: 6px vertical padding + the font's line box, matching the
+/* row pitch ~34px: 6px vertical padding + the font's line box, matching the
    metric fuzzel's line-height=26 was reverse-engineered from. */
 element {
     padding:          6px 10px;

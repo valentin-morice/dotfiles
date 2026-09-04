@@ -18,7 +18,7 @@ icon=$(printf '\363\260\226\224')  # U+F0594 md-weather_night
 
 flag="${XDG_RUNTIME_DIR:-/tmp}/nightlight.off"
 if [ -e "$flag" ]; then
-    printf '{"text":"<span foreground=\\"%s\\" size=\\"139%%\\">%s</span>","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
+    printf '{"text":"<span foreground=\\"%s\\" size=\\"159%%\\">%s</span>","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
         "$THEME_muted_fixed" "$icon"
 else
     printf '{"text":""}\n'

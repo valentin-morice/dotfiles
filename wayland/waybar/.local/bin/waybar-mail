@@ -35,7 +35,7 @@ count_field() {
     # $1 (the unread count) is deliberately NOT printed: the bar is icon-only
     # now, and the icon appearing at all already means "unread". The count and
     # the subject live in the tooltip instead.
-    printf '{"text":"<span foreground=\\"%s\\" size=\\"155%%\\">%s</span>","tooltip":"%s unread — %s","class":"%s"}\n' \
+    printf '{"text":"<span foreground=\\"%s\\" size=\\"177%%\\">%s</span>","tooltip":"%s unread — %s","class":"%s"}\n' \
         "$accent" "$icon" "$1" "$2" "$3"
 }
 

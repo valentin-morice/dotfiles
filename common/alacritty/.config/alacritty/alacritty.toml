@@ -1,12 +1,13 @@
 [font]
-# 12 on the ~165 DPI panel at scale 1.0. The desktop stays unscaled/crisp, so
-# type is sized per-app rather than via output scale; fractional sizes render
-# fine. (The old X11 6.5 only looked right because X rendered at the panel's
-# native DPI; Wayland at scale 1.0 is logical ~96 DPI — the same baseline
-# waybar's raw CSS px and rofi's pt size both render against, which is why
-# `size = 12` here lines up with waybar's `16px` and rofi's `12`: all three
-# convert through 96 DPI, so px = pt * 4/3 is what keeps them matched.)
-size = 12
+# 11.5 on the ~165 DPI panel at scale 1.0 — tuned by eye. The desktop stays
+# unscaled/crisp, so type is sized per-app rather than via output scale;
+# fractional sizes render fine. (The old X11 6.5 only looked right because X
+# rendered at the panel's native DPI; Wayland at scale 1.0 is logical ~96 DPI.)
+#
+# This is deliberately NOT the px = pt * 4/3 match with waybar's 14px (11.5pt
+# would be 15.3px there). The exact match was tried and disliked; these are
+# by-eye values. rofi tracks this same 11.5.
+size = 11.5
 normal = { family = "JetBrainsMono Nerd Font", style = "Regular" }
 bold = { family = "JetBrainsMono Nerd Font", style = "Bold" }
 italic = { family = "JetBrainsMono Nerd Font", style = "Italic" }
