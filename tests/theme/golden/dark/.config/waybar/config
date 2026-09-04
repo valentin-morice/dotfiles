@@ -206,9 +206,9 @@
         "format-wifi": "<span size='177%'>󰖩</span>",
         "format-ethernet": "<span size='177%'>󰈀</span>",
         "format-disconnected": "<span size='177%'>󰖪</span>",
-        "tooltip-format-wifi": "Network: {essid} ({signalStrength}%) — click for nmtui",
-        "tooltip-format-ethernet": "Network: {ifname} — click for nmtui",
-        "tooltip-format-disconnected": "Network: Disconnected — click for nmtui",
+        "tooltip-format-wifi": "Network: {essid} ({signalStrength}%)",
+        "tooltip-format-ethernet": "Network: {ifname}",
+        "tooltip-format-disconnected": "Network: Disconnected",
         "on-click": "alacritty --class netmenu-float -e nmtui"
     },
 
@@ -221,10 +221,10 @@
         "format-off": "<span size='142%'>󰂲</span>",
         "format-disabled": "<span size='142%'>󰂲</span>",
         "format-connected": "<span size='114%'>󰂯</span>",
-        "tooltip-format": "Bluetooth: On — click for bluetui",
-        "tooltip-format-connected": "Bluetooth: {device_alias} — click for bluetui",
-        "tooltip-format-off": "Bluetooth: Off — click for bluetui",
-        "tooltip-format-disabled": "Bluetooth: Off — click for bluetui",
+        "tooltip-format": "Bluetooth: On",
+        "tooltip-format-connected": "Bluetooth: {device_alias}",
+        "tooltip-format-off": "Bluetooth: Off",
+        "tooltip-format-disabled": "Bluetooth: Off",
         "on-click": "alacritty --class btmenu-float -e bluetui"
     },
 
