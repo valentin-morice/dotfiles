@@ -149,15 +149,15 @@
     // Click-to-caffeinate: inhibits the swayidle timers while activated.
     "idle_inhibitor": {
         "format": "{icon}",
-        // Distinct ICON per state (not just colour) so caffeination is readable
-        // at a glance and for colour-blind users — and the metaphor matches the
-        // feature's own name: a coffee cup while idle is inhibited, a crossed-out
-        // cup for normal idle/lock behaviour. Both glyphs are grid 600, so the
-        // icon does not change size when the state flips. Prominence comes from
-        // style.css (fg when activated, muted when not).
+        // Distinct ICON per state (not just colour) so the state is readable at a
+        // glance and for colour-blind users. These name the thing being
+        // controlled rather than a metaphor for it: "sleep off" while idle is
+        // inhibited, plain "sleep" for normal idle/lock behaviour. Both glyphs
+        // are grid 600, so the icon does not change size when the state flips.
+        // Prominence comes from style.css (fg when activated, muted when not).
         "format-icons": {
-            "activated": "<span size='177%'>󰅶</span>",
-            "deactivated": "<span size='177%'>󰾪</span>"
+            "activated": "<span size='177%'>󰒳</span>",
+            "deactivated": "<span size='177%'>󰒲</span>"
         },
         "tooltip-format-activated": "Idle inhibitor: On",
         "tooltip-format-deactivated": "Idle inhibitor: Off"
@@ -262,11 +262,13 @@
     // is the only right-side module whose width changes at runtime, so keeping the
     // fixed labels (volume/brightness/wifi/bt/battery) anchored to its right stops them
     // layout-shifting when an icon appears — the tray grows leftward instead.
-    // The gray fill (matching the inactive workspace blocks) lives in style.css.
-    // spacing matches the block's 9px edge padding (#tray in style.css) so the
-    // gap between icons equals the gap at the edges — a uniform 9px throughout.
     "tray": {
-        "spacing": 9,
+        // 18, not 9: every other module is separated from its neighbour by its
+        // own 9px left padding plus the neighbour's 9px right padding = 18px.
+        // The tray draws its icons itself, so this spacing is the ONLY gap
+        // between them — at 9 they sat at half the pitch of the rest of the bar
+        // and the tray read as a tighter cluster. 18 makes one even row.
+        "spacing": 18,
         "icon-size": 19
     }
 }
