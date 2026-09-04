@@ -13,7 +13,7 @@ THEME_muted_fixed="${THEME_muted_fixed:-#808488}"
 icon=$(printf '\357\207\266')  # U+F1F6 fa-bell_slash
 
 if [ "$(dunstctl is-paused 2>/dev/null)" = "true" ]; then
-    printf '{"text":"<span foreground=\\"%s\\">%s</span>","tooltip":"Do Not Disturb — notifications paused; click to resume","class":"dnd"}\n' \
+    printf '{"text":"<span foreground=\\"%s\\" size=\\"125%%\\">%s</span>","tooltip":"Do Not Disturb — notifications paused; click to resume","class":"dnd"}\n' \
         "$THEME_muted_fixed" "$icon"
 else
     printf '{"text":""}\n'

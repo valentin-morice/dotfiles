@@ -23,4 +23,8 @@ esac
 # return-type json: text = the glyph, class = raw profile (for optional per-profile
 # CSS), tooltip names the profile ("Power profile: Balanced") to match the other
 # module tooltips, since the icon alone is ambiguous.
-printf '{"text":"%s","tooltip":"Power profile: %s","class":"%s"}\n' "$g" "$name" "$p"
+#
+# size='125%' matches every other bar icon (see waybar.config.jsonc.tmpl). The span
+# sets ONLY the size — colour still comes from #custom-powerprofile in style.css,
+# which is what keeps this glyph tracking the theme.
+printf '{"text":"<span size=\\"125%%\\">%s</span>","tooltip":"Power profile: %s","class":"%s"}\n' "$g" "$name" "$p"

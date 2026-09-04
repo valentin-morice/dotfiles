@@ -97,9 +97,10 @@ window#waybar {
 }
 
 /* Power-profile icon + its centring counterweight — both pinned to the same
- * width so the clock stays centred with the icon on its left. The icon is the
- * sole glyph in the bar (a deliberate exception to the text-label rule);
- * accent-coloured so it reads like a status label and tracks the theme. */
+ * width so the clock stays centred with the icon on its left. min-width holds
+ * even at the icons' size='125%' (0.6em advance = 12px at 20px, under the 16px
+ * floor), so the bump can't push the clock off-centre. Accent-coloured so it
+ * tracks the theme. */
 #custom-powerprofile,
 #custom-clockpad {
     min-width: 16px;

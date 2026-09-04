@@ -141,16 +141,16 @@
         // at a glance and for colour-blind users: eye = idle inhibited (screen
         // forced on, "being watched"), eye-slash = normal idle/lock behaviour.
         "format-icons": {
-            "activated": "<span foreground='#c0851f'></span>",
-            "deactivated": "<span foreground='#808488'></span>"
+            "activated": "<span foreground='#c0851f' size='125%'></span>",
+            "deactivated": "<span foreground='#808488' size='125%'></span>"
         },
         "tooltip-format-activated": "Idle inhibitor: On",
         "tooltip-format-deactivated": "Idle inhibitor: Off"
     },
 
     "pulseaudio": {
-        "format": "<span foreground='#3a7bc8'></span> {volume}%",
-        "format-muted": "<span foreground='#808488'></span>",
+        "format": "<span foreground='#3a7bc8' size='125%'></span> {volume}%",
+        "format-muted": "<span foreground='#808488' size='125%'></span>",
         "tooltip-format": "Volume: {volume}%",
         // Scroll to change volume, click to mute — reuse the same helpers the
         // XF86Audio keys use (so the OSD toast + 100% clamp behave identically).
@@ -164,7 +164,7 @@
     // battery module stays adapter-agnostic (here it'd be the amdgpu-specific
     // "amdgpu_bl1"). udev-driven, so no polling interval is needed.
     "backlight": {
-        "format": "<span foreground='#3a7bc8'></span> {percent}%",
+        "format": "<span foreground='#3a7bc8' size='125%'></span> {percent}%",
         "tooltip-format": "Brightness: {percent}%",
         // Scroll to adjust — reuses the helper the XF86MonBrightness keys call,
         // so the OSD toast and the 5% floor behave identically either way.
@@ -179,9 +179,9 @@
     // --app-id), and it must stay in sync with sway's for_window rules.
     "network": {
         "interval": 5,
-        "format-wifi": "<span foreground='#3a7bc8'></span> {essid}",
-        "format-ethernet": "<span foreground='#3a7bc8'></span> {ifname}",
-        "format-disconnected": "<span foreground='#808488'>󰖪</span>",
+        "format-wifi": "<span foreground='#3a7bc8' size='125%'></span> {essid}",
+        "format-ethernet": "<span foreground='#3a7bc8' size='125%'></span> {ifname}",
+        "format-disconnected": "<span foreground='#808488' size='125%'>󰖪</span>",
         "tooltip-format-wifi": "Network: {essid} ({signalStrength}%) — click for nmtui",
         "tooltip-format-ethernet": "Network: {ifname} — click for nmtui",
         "tooltip-format-disconnected": "Network: Disconnected — click for nmtui",
@@ -189,10 +189,10 @@
     },
 
     "bluetooth": {
-        "format": "<span foreground='#3a7bc8'></span> ON",
-        "format-off": "<span foreground='#3a7bc8'></span> <span foreground='#808488'>OFF</span>",
-        "format-disabled": "<span foreground='#3a7bc8'></span> <span foreground='#808488'>OFF</span>",
-        "format-connected": "<span foreground='#3a7bc8'></span> {device_alias}",
+        "format": "<span foreground='#3a7bc8' size='125%'></span> ON",
+        "format-off": "<span foreground='#3a7bc8' size='125%'></span> <span foreground='#808488'>OFF</span>",
+        "format-disabled": "<span foreground='#3a7bc8' size='125%'></span> <span foreground='#808488'>OFF</span>",
+        "format-connected": "<span foreground='#3a7bc8' size='125%'></span> {device_alias}",
         "tooltip-format": "Bluetooth: On — click for bluetui",
         "tooltip-format-connected": "Bluetooth: {device_alias} — click for bluetui",
         "tooltip-format-off": "Bluetooth: Off — click for bluetui",
@@ -212,9 +212,9 @@
         // (fa-battery_*) are the horizontal laptop-style cell. Low -> high;
         // waybar splits capacity into len() equal buckets.
         "format-icons": ["󰂎", "󰁻", "󰁾", "󰂀", "󰁹"],
-        "format": "<span foreground='#3a7bc8'>{icon}</span> {capacity}%",
-        "format-charging": "<span foreground='#3a7bc8'>{icon}</span> {capacity}%+",
-        "format-full": "<span foreground='#3a7bc8'>{icon}</span> <span foreground='#808488'>FULL</span>",
+        "format": "<span foreground='#3a7bc8' size='125%'>{icon}</span> {capacity}%",
+        "format-charging": "<span foreground='#3a7bc8' size='125%'>{icon}</span> {capacity}%+",
+        "format-full": "<span foreground='#3a7bc8' size='125%'>{icon}</span> <span foreground='#808488'>FULL</span>",
         // Critical (<10%) drops the icon's span entirely. That block turns urgent-red
         // in style.css, and inline pango markup beats CSS colour — so the frozen
         // blue icon would survive on the red fill and be unreadable, exactly the
@@ -228,8 +228,8 @@
         // not: only `.critical:not(.charging)` gets the red fill, so a charging
         // battery keeps the normal bar bg — and there the blue icon (and the "+")
         // are still right. format-charging-critical restores it for that case.
-        "format-critical": "{icon} {capacity}%",
-        "format-charging-critical": "<span foreground='#3a7bc8'>{icon}</span> {capacity}%+"
+        "format-critical": "<span size='125%'>{icon}</span> {capacity}%",
+        "format-charging-critical": "<span foreground='#3a7bc8' size='125%'>{icon}</span> {capacity}%+"
     },
 
     // Positioned before volume in modules-right (not at the far right): the tray

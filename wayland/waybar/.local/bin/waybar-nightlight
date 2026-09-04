@@ -18,7 +18,7 @@ icon=$(printf '\357\206\206')  # U+F186 fa-moon_o
 
 flag="${XDG_RUNTIME_DIR:-/tmp}/nightlight.off"
 if [ -e "$flag" ]; then
-    printf '{"text":"<span foreground=\\"%s\\">%s</span>","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
+    printf '{"text":"<span foreground=\\"%s\\" size=\\"125%%\\">%s</span>","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
         "$THEME_muted_fixed" "$icon"
 else
     printf '{"text":""}\n'

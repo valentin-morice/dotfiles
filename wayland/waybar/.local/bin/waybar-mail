@@ -32,7 +32,7 @@ esc() {
 }
 
 count_field() {
-    printf '{"text":"<span foreground=\\"%s\\">%s</span> %s","tooltip":"%s","class":"%s"}\n' \
+    printf '{"text":"<span foreground=\\"%s\\" size=\\"125%%\\">%s</span> %s","tooltip":"%s","class":"%s"}\n' \
         "$accent" "$icon" "$1" "$2" "$3"
 }
 
