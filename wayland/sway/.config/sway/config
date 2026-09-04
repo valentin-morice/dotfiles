@@ -194,6 +194,11 @@ bindsym --locked XF86AudioPrev exec playerctl --player=playerctld previous
 bindsym $mod+m exec ~/.local/bin/toggle-mic-mute
 
 ### Window management --------------------------------------------------------
+# Switch straight to a window that requests activation from another workspace,
+# instead of the default "smart" behaviour (mark it urgent / red in waybar and
+# leave focus alone).
+focus_on_window_activation focus
+
 # Use Mouse+$mod to drag floating windows to their wanted position
 floating_modifier $mod
 
@@ -288,6 +293,14 @@ for_window [app_id="firefox" title="Picture-in-Picture"] floating enable, sticky
 for_window [class="firefox" title="Picture-in-Picture"] floating enable, sticky enable
 for_window [app_id="chromium-pip"] floating enable, sticky enable
 for_window [class="Chromium" title="^Picture[- ]in[- ]picture"] floating enable, sticky enable
+
+# Thunderbird's compose window shares its main window's app_id
+# (org.mozilla.Thunderbird), so app_id alone can't tell them apart. Unlike a
+# firefox/chromium popup, though, no wl-relabel proxy is needed here: measured
+# with `wl-relabel --log`, Thunderbird sets the title ("Write: (no subject)")
+# before the window maps, so a plain title match sees it in time. The title
+# keeps the "Write:" prefix as the user edits the subject.
+for_window [app_id="org.mozilla.Thunderbird" title="^Write:"] floating enable
 
 # Float transient XWayland windows — dialogs, pop-ups, splash screens — so they
 # pop over the layout instead of tiling in. window_type/window_role are X11-only
