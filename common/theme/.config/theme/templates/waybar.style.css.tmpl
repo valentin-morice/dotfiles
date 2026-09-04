@@ -73,15 +73,12 @@ window#waybar {
     background-color: ${THEME_urgent};
 }
 
-/* Binding-mode indicator and the AWAKE (idle_inhibitor) toggle — both sit in
- * modules-left next to the workspaces, so they carry the same horizontal
- * padding as a workspace block rather than the 9px the center/right modules use. */
+/* Right-side modules (module-margin spacing, padding-right 2 on the bar).
+ * #mode and #idle_inhibitor are in here now: they moved out of modules-left
+ * (workspaces sit there alone), so they take the 9px right-side padding rather
+ * than the 11px that matches a workspace block. */
 #mode,
-#idle_inhibitor {
-    padding: 0 11px;
-}
-
-/* Center + right modules (module-margin spacing, padding-right 2 on the bar). */
+#idle_inhibitor,
 #clock,
 #custom-mail,
 #custom-recording,
@@ -96,25 +93,17 @@ window#waybar {
     padding: 0 9px;
 }
 
-/* Power-profile icon + its centring counterweight — both pinned to the same
- * width so the clock stays centred with the icon on its left. min-width holds
- * even at the icons' size='125%' (0.6em advance = 12px at 20px, under the 16px
- * floor), so the bump can't push the clock off-centre. Accent-coloured so it
- * tracks the theme. */
-#custom-powerprofile,
-#custom-clockpad {
-    min-width: 16px;
-    padding: 0 9px;
-}
-/* Slide the glyph toward the date (less right / more left padding). Total padding
- * stays 18px, so the module keeps its width and the clock stays centred. */
+/* Power-profile icon. The clock is no longer centred (macOS layout: it sits at
+ * the right end), so the old custom/clockpad counterweight and the min-width
+ * pinning that balanced it are both gone — this is now an ordinary right-side
+ * module. Accent-coloured so it tracks the theme. */
 #custom-powerprofile {
     color: ${THEME_accent};
-    padding: 0 3px 0 15px;
+    padding: 0 9px;
 }
-/* Battery is the right-most module now (tray moved to the left of volume), so it
- * carries the extra right-edge breathing room the tray used to hold. */
-#battery {
+/* The clock is the right-most module now, so it carries the extra right-edge
+ * breathing room (battery held it while it was last). */
+#clock {
     padding-right: 14px;
 }
 

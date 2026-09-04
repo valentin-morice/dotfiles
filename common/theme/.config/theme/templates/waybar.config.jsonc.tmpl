@@ -8,23 +8,32 @@
 // Mixing the two was the original mistake: they are drawn on different grids,
 // so at one size some glyphs read tiny and others huge.
 //
-// Every icon span also carries an explicit size, and there are exactly TWO
-// values. Measured with fontTools on JetBrainsMonoNerdFontMono-SemiBold (the
-// face that actually renders here), the md- glyphs fall into two groups:
+// Every icon span also carries an explicit size, computed — never guessed —
+// from the glyph's own metrics in JetBrainsMonoNerdFontMono-SemiBold (the face
+// that actually renders here):
 //
-//   group A  ink box  60..660 (600 units) — the native md grid, 15 glyphs
-//   group B  ink box -104..824 (928 units) — bluetooth + the battery ramp
+//     size% = 140 * 600 / max(ink_width, ink_height)
 //
-// Group B is a Nerd Fonts patcher artifact, not an md design choice: those six
-// glyphs were scaled 928/600 = 1.55x larger than the rest of the set. At a flat
-// 125% they render 18.6px tall against the text's 11.7px cap height, which is
-// why the battery towered. 125% * 600/928 = 81% undoes it, landing group B on
-// the same 12.0px ink height as group A.
+// 600 units is md's native grid and 140% is the size of a glyph that fills it.
+// The Nerd Fonts patcher scaled some glyphs past that grid, which is what made
+// the battery tower and the bluetooth rune look wrong; the formula undoes it:
 //
-// So: group A = size='125%', group B = size='81%'. Adding an icon means
-// measuring its ink box and picking the matching bucket — do not guess.
-// Within group A the remaining variation (eye 410 .. moon 669) is intrinsic
-// shape on a shared grid, which is md's intended rhythm; leave it alone.
+//     most md- glyphs   600 units -> 140%
+//     bell_off          610       -> 138%
+//     weather_night     669       -> 126%
+//     bluetooth_off     748       -> 112%
+//     bluetooth, battery(discharging) 928 -> 91%
+//
+// Normalising on max(w,h) — the grid extent — rather than on height is the
+// point: it corrects the over-scaled glyphs while leaving genuinely FLAT icons
+// (eye 410, envelope 482) flat, since scaling those to a common height would
+// blow them up sideways. Their shorter ink is md's intended rhythm, not a bug.
+//
+// Watch out for state pairs drawn at different scales — battery charging (570)
+// vs discharging (928), bluetooth (928) vs bluetooth_off (748) — where each
+// state's format string needs its own size or the icon jumps when state flips.
+//
+// To add an icon: measure it, apply the formula. Do not eyeball it.
 // Deliberate: per-theme colour lives entirely in style.css, which waybar
 // live-applies via reload_style_on_change (below) with no reset/flicker. The
 // config has no in-place reload, so anything theme-varying here would force the
@@ -39,52 +48,32 @@
     // 34 keeps the same proportion to the bar font (16px) that 30 had to the
     // old 14px, now that the font size is matched to alacritty/rofi.
     "height": 34,
-    "modules-left": ["sway/workspaces", "idle_inhibitor", "sway/mode"],
-    // clock is flanked by the power-profile icon (left) and an equal-width
-    // invisible pad (right) so the date itself stays centred despite the icon.
-    "modules-center": ["custom/powerprofile", "clock", "custom/clockpad"],
-    // tray sits left of volume (not last) so a newly-added icon grows it
-    // leftward into the mostly-hidden signal labels rather than shoving the
-    // volume/brightness/wifi/bt/battery block. See the "tray" note below.
-    "modules-right": ["custom/recording", "custom/dnd", "custom/nightlight", "custom/mail", "tray", "pulseaudio", "backlight", "network", "bluetooth", "battery"],
+    // macOS menu-bar layout: workspaces alone on the left, every status icon
+    // collected on the right, clock last (right-most). Nothing is centred any
+    // more, so the old custom/clockpad counterweight is gone.
+    "modules-left": ["sway/workspaces"],
+    "modules-center": [],
+    // Ordered like macOS: transient indicators, tray, then the fixed system
+    // icons, then the clock. tray still sits left of the fixed icons so a
+    // newly-added tray icon grows leftward instead of shoving them.
+    "modules-right": ["sway/mode", "custom/recording", "custom/dnd", "custom/nightlight", "custom/mail", "tray", "idle_inhibitor", "custom/powerprofile", "pulseaudio", "backlight", "network", "bluetooth", "battery", "clock"],
 
     "sway/workspaces": {
         "disable-scroll": true,
         "format": "{name}",
-        // Always render the workspaces (even when empty) so each block is a
-        // fixed width and the bar never layout-shifts.
+        // DYNAMIC: no persistent-workspaces, so a workspace appears when it has
+        // a window and disappears when it empties. The bar therefore changes
+        // width as you work — that is the point, not a regression.
         //
-        // Split per output rather than the old blanket `[]` (= "show on every
-        // output"): with two screens, `[]` put all of them on BOTH bars, and
-        // since only one workspace session-wide carries sway's focused flag,
-        // both bars then painted the accent on the same button — so the
-        // external's bar highlighted a workspace living on the laptop. Now each
-        // bar lists only its own four (matching the sway pinning), which also
-        // means the unfocused screen's bar has no .focused button at all. That
-        // absence, plus the .visible fill in style.css, is the "which screen am
-        // I typing on" cue.
+        // This only changes what is DISPLAYED. Which screen a workspace opens on
+        // is sway's own pinning (`workspace $wsN output ...` in the sway config),
+        // which is untouched, so the docked layout still behaves the same.
         //
-        // all-outputs is left at its default of false, which this relies on.
-        //
-        // These must be CONNECTOR names. Unlike the bar-level "output" key,
-        // persistent-workspaces does NOT accept sway's make/model/serial
-        // identifier — tested, and 5-8 simply never rendered. The external is
-        // DP-6 today but the dock re-enumerates it between ports and reboots,
-        // so 5-8 list every DP connector this GPU exposes (DP-1..DP-7, from
-        // /sys/class/drm) and the workspaces land on whichever one it comes up
-        // as. A workspace is only forced onto outputs that actually exist, so
-        // the unused six cost nothing. Caveat: plug in a SECOND external and
-        // both would show 5-8.
-        "persistent-workspaces": {
-            "1": ["eDP-1"],
-            "2": ["eDP-1"],
-            "3": ["eDP-1"],
-            "4": ["eDP-1"],
-            "5": ["DP-1", "DP-2", "DP-3", "DP-4", "DP-5", "DP-6", "DP-7"],
-            "6": ["DP-1", "DP-2", "DP-3", "DP-4", "DP-5", "DP-6", "DP-7"],
-            "7": ["DP-1", "DP-2", "DP-3", "DP-4", "DP-5", "DP-6", "DP-7"],
-            "8": ["DP-1", "DP-2", "DP-3", "DP-4", "DP-5", "DP-6", "DP-7"]
-        }
+        // all-outputs stays at its default of false: each bar lists only the
+        // workspaces living on its own output, so the unfocused screen's bar has
+        // no .focused button at all. That absence, plus the .visible fill in
+        // style.css, is the "which screen am I typing on" cue.
+        "all-outputs": false
     },
 
     // Binding-mode indicator (e.g. "resize"); auto-hidden in the default mode,
@@ -101,9 +90,8 @@
         "tooltip-format": "<tt>{calendar}</tt>"
     },
 
-    // Power-profile icon — the single glyph in the bar (a deliberate exception
-    // to the text-label rule). Shows fast-forward/adjust/minus-circle for performance/balanced/
-    // power-saver; click opens the rofi-profile card panel. Refreshed instantly
+    // Power-profile icon — md-speedometer / _medium / _slow for performance /
+    // balanced / power-saver; click opens the rofi-profile card panel. Refreshed instantly
     // by rofi-profile (pkill -RTMIN+11 waybar); interval is the external-change
     // fallback. Colour is theme-varying, so it lives in style.css.
     "custom/powerprofile": {
@@ -112,12 +100,6 @@
         "interval": 30,
         "signal": 11,
         "on-click": "$HOME/.local/bin/rofi-profile"
-    },
-
-    // Invisible counterweight, forced to the same width as custom/powerprofile in
-    // style.css so the clock stays truly centred with the icon to its left.
-    "custom/clockpad": {
-        "format": ""
     },
 
     "custom/mail": {
@@ -163,16 +145,16 @@
         // at a glance and for colour-blind users: eye = idle inhibited (screen
         // forced on, "being watched"), eye-slash = normal idle/lock behaviour.
         "format-icons": {
-            "activated": "<span foreground='${THEME_secondary_fixed}' size='125%'>󰈈</span>",
-            "deactivated": "<span foreground='${THEME_muted_fixed}' size='125%'>󰈉</span>"
+            "activated": "<span foreground='${THEME_secondary_fixed}' size='140%'>󰈈</span>",
+            "deactivated": "<span foreground='${THEME_muted_fixed}' size='140%'>󰈉</span>"
         },
         "tooltip-format-activated": "Idle inhibitor: On",
         "tooltip-format-deactivated": "Idle inhibitor: Off"
     },
 
     "pulseaudio": {
-        "format": "<span foreground='${THEME_accent_fixed}' size='125%'>󰕾</span> {volume}%",
-        "format-muted": "<span foreground='${THEME_muted_fixed}' size='125%'>󰖁</span>",
+        "format": "<span foreground='${THEME_accent_fixed}' size='140%'>󰕾</span>",
+        "format-muted": "<span foreground='${THEME_muted_fixed}' size='140%'>󰖁</span>",
         "tooltip-format": "Volume: {volume}%",
         // Scroll to change volume, click to mute — reuse the same helpers the
         // XF86Audio keys use (so the OSD toast + 100% clamp behave identically).
@@ -186,7 +168,7 @@
     // battery module stays adapter-agnostic (here it'd be the amdgpu-specific
     // "amdgpu_bl1"). udev-driven, so no polling interval is needed.
     "backlight": {
-        "format": "<span foreground='${THEME_accent_fixed}' size='125%'>󰃠</span> {percent}%",
+        "format": "<span foreground='${THEME_accent_fixed}' size='140%'>󰃠</span>",
         "tooltip-format": "Brightness: {percent}%",
         // Scroll to adjust — reuses the helper the XF86MonBrightness keys call,
         // so the OSD toast and the 5% floor behave identically either way.
@@ -201,9 +183,9 @@
     // --app-id), and it must stay in sync with sway's for_window rules.
     "network": {
         "interval": 5,
-        "format-wifi": "<span foreground='${THEME_accent_fixed}' size='125%'>󰖩</span> {essid}",
-        "format-ethernet": "<span foreground='${THEME_accent_fixed}' size='125%'>󰈀</span> {ifname}",
-        "format-disconnected": "<span foreground='${THEME_muted_fixed}' size='125%'>󰖪</span>",
+        "format-wifi": "<span foreground='${THEME_accent_fixed}' size='140%'>󰖩</span>",
+        "format-ethernet": "<span foreground='${THEME_accent_fixed}' size='140%'>󰈀</span>",
+        "format-disconnected": "<span foreground='${THEME_muted_fixed}' size='140%'>󰖪</span>",
         "tooltip-format-wifi": "Network: {essid} ({signalStrength}%) — click for nmtui",
         "tooltip-format-ethernet": "Network: {ifname} — click for nmtui",
         "tooltip-format-disconnected": "Network: Disconnected — click for nmtui",
@@ -211,10 +193,14 @@
     },
 
     "bluetooth": {
-        "format": "<span foreground='${THEME_accent_fixed}' size='81%'>󰂯</span> ON",
-        "format-off": "<span foreground='${THEME_accent_fixed}' size='81%'>󰂯</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
-        "format-disabled": "<span foreground='${THEME_accent_fixed}' size='81%'>󰂯</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
-        "format-connected": "<span foreground='${THEME_accent_fixed}' size='81%'>󰂯</span> {device_alias}",
+        // On/off is carried by a DIFFERENT GLYPH (plain rune vs slashed) plus the
+        // muted colour, rather than the words ON/OFF — the bar is icon-only now.
+        // Sizes differ because the two glyphs are drawn at different scales:
+        // bluetooth ink is 928 units, bluetooth_off is 748 (see the icon note).
+        "format": "<span foreground='${THEME_accent_fixed}' size='91%'>󰂯</span>",
+        "format-off": "<span foreground='${THEME_muted_fixed}' size='112%'>󰂲</span>",
+        "format-disabled": "<span foreground='${THEME_muted_fixed}' size='112%'>󰂲</span>",
+        "format-connected": "<span foreground='${THEME_accent_fixed}' size='91%'>󰂯</span>",
         "tooltip-format": "Bluetooth: On — click for bluetui",
         "tooltip-format-connected": "Bluetooth: {device_alias} — click for bluetui",
         "tooltip-format-off": "Bluetooth: Off — click for bluetui",
@@ -233,10 +219,18 @@
         // Material's battery glyphs, which are drawn UPRIGHT — Font Awesome's
         // (fa-battery_*) are the horizontal laptop-style cell. Low -> high;
         // waybar splits capacity into len() equal buckets.
-        "format-icons": ["󰂎", "󰁻", "󰁾", "󰂀", "󰁹"],
-        "format": "<span foreground='${THEME_accent_fixed}' size='81%'>{icon}</span> {capacity}%",
-        "format-charging": "<span foreground='${THEME_accent_fixed}' size='81%'>{icon}</span> {capacity}%+",
-        "format-full": "<span foreground='${THEME_accent_fixed}' size='81%'>{icon}</span> <span foreground='${THEME_muted_fixed}'>FULL</span>",
+        "format-icons": {
+            // Keyed by STATE. The charging glyphs are drawn at a different scale
+            // to the discharging ones (570 vs 928 ink units), which is why the
+            // charging format strings below carry size='140%' and the
+            // discharging ones size='91%' — without that the icon would visibly
+            // jump size the moment you plug in.
+            "charging": ["󰢟", "󰂆", "󰂈", "󰂊", "󰂅"],
+            "default": ["󰂎", "󰁻", "󰁾", "󰂀", "󰁹"]
+        },
+        "format": "<span foreground='${THEME_accent_fixed}' size='91%'>{icon}</span>",
+        "format-charging": "<span foreground='${THEME_accent_fixed}' size='140%'>{icon}</span>",
+        "format-full": "<span foreground='${THEME_accent_fixed}' size='91%'>{icon}</span>",
         // Critical (<10%) drops the icon's span entirely. That block turns urgent-red
         // in style.css, and inline pango markup beats CSS colour — so the frozen
         // blue icon would survive on the red fill and be unreadable, exactly the
@@ -250,8 +244,8 @@
         // not: only `.critical:not(.charging)` gets the red fill, so a charging
         // battery keeps the normal bar bg — and there the blue icon (and the "+")
         // are still right. format-charging-critical restores it for that case.
-        "format-critical": "<span size='81%'>{icon}</span> {capacity}%",
-        "format-charging-critical": "<span foreground='${THEME_accent_fixed}' size='81%'>{icon}</span> {capacity}%+"
+        "format-critical": "<span size='91%'>{icon}</span>",
+        "format-charging-critical": "<span foreground='${THEME_accent_fixed}' size='140%'>{icon}</span>"
     },
 
     // Positioned before volume in modules-right (not at the far right): the tray
