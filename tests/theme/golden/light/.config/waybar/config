@@ -223,9 +223,11 @@
         // No hardcoded "bat"/"adapter": waybar autodetects the first battery +
         // adapter, so this stays portable (adapters vary: AC / AC0 / ADP1 ...).
         "interval": 5,
-        // States only stamp CSS classes (warning/critical); the colour lives
-        // in style.css like everything else theme-varying.
-        "states": { "warning": 20, "critical": 10 },
+        // Stamps the .critical CSS class under 10%, which style.css turns red —
+        // the one icon in the bar that changes colour. The old "warning": 20 step
+        // is gone with the amber it drove; a threshold that styles nothing would
+        // just be dead config.
+        "states": { "critical": 10 },
         "tooltip-format": "Battery: {capacity}%",
         // Material's battery glyphs, which are drawn UPRIGHT — Font Awesome's
         // (fa-battery_*) are the horizontal laptop-style cell. Low -> high;
@@ -242,18 +244,18 @@
         "format": "<span size='114%'>{icon}</span>",
         "format-charging": "<span size='177%'>{icon}</span>",
         "format-full": "<span size='114%'>{icon}</span>",
-        // Critical (<10%) used to need a special colour-free span here, because
-        // an inline pango foreground beats CSS and would have survived
-        // unreadably on the urgent-red fill. Now that NO span in this file
-        // carries a foreground, that is simply the default everywhere and this
-        // state needs nothing special — the icon inherits the CSS `color`
-        // (near-black on dark's #ff5555, near-white on light's #c8332b).
+        // The two *-critical entries below carry no colour and never did anything
+        // visual on their own — style.css has no battery state colour at all now
+        // (one colour for every icon, always). They exist purely for SIZE.
         //
-        // Precedence is format-<status>-<state> > format-<state> > format-<status>,
-        // so format-critical would also swallow format-charging below 10%. It must
-        // not: only `.critical:not(.charging)` gets the red fill, so a charging
-        // battery keeps the normal bar bg — and there the blue icon (and the "+")
-        // are still right. format-charging-critical restores it for that case.
+        // Precedence is format-<status>-<state> > format-<state> > format-<status>.
+        // Below 10% the "critical" state applies, and without an explicit
+        // format-charging-critical a CHARGING battery under 10% would fall back to
+        // format-critical. Its {icon} would still resolve from the "charging" ramp
+        // (that follows status, not the format string), but it would be wrapped in
+        // format-critical's 114% span — the charging glyphs are grid 600 and need
+        // 177%, so the icon would shrink to ~65% exactly when plugged in at low
+        // charge. format-charging-critical is what keeps the pair matched.
         "format-critical": "<span size='114%'>{icon}</span>",
         "format-charging-critical": "<span size='177%'>{icon}</span>"
     },

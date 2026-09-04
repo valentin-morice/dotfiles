@@ -104,10 +104,22 @@ window#waybar {
 }
 
 /* ICON COLOUR — all of it, for every module, lives here and nowhere else.
- * The config template emits size-only pango spans now (no inline foreground),
+ * The config template emits size-only pango spans (no inline foreground),
  * because inline markup beats CSS colour and would pin an icon to one value
- * across both themes. Plain foreground: white-ish on dark, near-black on light,
- * following the palette. No accent blue on the icons.
+ * across both themes. White-ish on dark, near-black on light, following the
+ * palette. No accent blue on the icons.
+ *
+ * ONE COLOUR for every state icon — sleep, bluetooth, wifi, volume, dnd, night
+ * light, recording and the rest never change colour with their state. There are
+ * deliberately no .muted / .disconnected / .off colour rules: those states are
+ * carried entirely by the GLYPH (crossed-out speaker, slashed wifi and
+ * bluetooth, sleep vs sleep-off), the same distinct-shape-not-just-colour rule
+ * the config follows for colour-blind readability. A state colour on any of
+ * them would single that module out of the row.
+ *
+ * BATTERY IS THE ONE EXEMPTION (below), and only at critical: it turns red
+ * under 10%. That is an alarm worth breaking the rule for; anything short of
+ * it stays the same colour as every other icon.
  *
  * The workspace blocks keep the accent fill — that is the bar's one colour
  * accent and a different thing from an icon. */
@@ -117,6 +129,7 @@ window#waybar {
 #custom-mail,
 #custom-dnd,
 #custom-nightlight,
+#custom-recording,
 #pulseaudio,
 #backlight,
 #network,
@@ -126,40 +139,26 @@ window#waybar {
     color: ${THEME_fg};
 }
 
-/* Dimmed states — "this thing is off/idle". Each selector matches a class
- * waybar stamps on the module itself, so the icon dims without the script or
- * the config knowing anything about colour. */
-#pulseaudio.muted,
-#network.disconnected,
-#bluetooth.off,
-#bluetooth.disabled,
-#idle_inhibitor.deactivated,
-#custom-dnd,
-#custom-nightlight {
-    color: ${THEME_muted};
-}
-
-/* Alarm states stay red on purpose — they are not ordinary icons.
- * (battery.warning / .critical are handled further down.) */
-#custom-recording {
+/* Battery — the ONLY icon allowed to change colour, and only at critical
+ * (<10%, the threshold in the config's `states` block, which is what stamps
+ * this class). No amber warning step: one alarm, not a gradient. Text colour
+ * only, no urgent background block — the icon is the gauge, and a filled block
+ * would re-introduce exactly the single-module standout the rule above removes.
+ *
+ * Deliberately NOT scoped :not(.charging) — the reading is the charge level,
+ * which is just as low the moment you plug in; the charging glyph ramp already
+ * says power is connected. Higher specificity than the rule above (id+class),
+ * so it wins regardless of source order.
+ *
+ * This is presentation, not alerting: batsignal.service raises dunst warnings
+ * at 20/10% and suspends at 5%, independently of the bar. */
+#battery.critical {
     color: ${THEME_urgent};
 }
 /* The clock is the right-most module now, so it carries the extra right-edge
  * breathing room (battery held it while it was last). */
 #clock {
     padding-right: 14px;
-}
-
-/* Battery states — urgent-tinted text at 20%, urgent block below 10%
- * (mirrors the urgent-workspace treatment). These reach the icon because no
- * span in the config carries an inline foreground any more — inline pango
- * markup would beat CSS colour and survive unreadably on the red fill. */
-#battery.warning {
-    color: ${THEME_urgent};
-}
-#battery.critical:not(.charging) {
-    color: ${THEME_bg};
-    background-color: ${THEME_urgent};
 }
 
 /* Mail error state. imap-daemon only writes "?" once an outage has outlived its
