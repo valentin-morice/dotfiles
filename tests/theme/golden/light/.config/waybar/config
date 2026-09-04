@@ -13,7 +13,9 @@
 
     "layer": "top",
     "position": "bottom",
-    "height": 30,
+    // 34 keeps the same proportion to the bar font (16px) that 30 had to the
+    // old 14px, now that the font size is matched to alacritty/rofi.
+    "height": 34,
     "modules-left": ["sway/workspaces", "idle_inhibitor", "sway/mode"],
     // clock is flanked by the power-profile icon (left) and an equal-width
     // invisible pad (right) so the date itself stays centred despite the icon.

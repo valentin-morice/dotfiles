@@ -4,7 +4,10 @@
 
 * {
     font-family: "JetBrainsMono Nerd Font";
-    font-size: 14px;
+    /* 16px matches alacritty's 12pt / rofi's 12: all three render against the
+     * same logical 96 DPI baseline at scale 1.0, so px = pt * 4/3 keeps them
+     * the same physical size. See the sizing note in alacritty.toml. */
+    font-size: 16px;
     font-weight: 600;
     min-height: 0;
 }
@@ -152,6 +155,6 @@ tooltip label {
     color: ${THEME_fg};
     font-family: sans-serif;
     font-weight: normal;
-    font-size: 13px;
+    font-size: 15px;
     transition: color 500ms ease;
 }
