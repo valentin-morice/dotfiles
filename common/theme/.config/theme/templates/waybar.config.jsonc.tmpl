@@ -1,7 +1,8 @@
 // waybar config — rendered by theme-render from the active palette.
-// The accent/muted text prefixes (VOL/BRI/WIFI/BT/BAT/MAIL) use pango <span> with
-// the FROZEN colours (THEME_accent_fixed/THEME_muted_fixed), which are equal in
-// every theme — so this rendered file is byte-identical between light and dark.
+// The module icons (volume/brightness/wifi/bluetooth/battery/mail) use pango
+// <span> with the FROZEN colours (THEME_accent_fixed/THEME_muted_fixed), which
+// are equal in every theme — so this rendered file is byte-identical between
+// light and dark.
 // Deliberate: per-theme colour lives entirely in style.css, which waybar
 // live-applies via reload_style_on_change (below) with no reset/flicker. The
 // config has no in-place reload, so anything theme-varying here would force the
@@ -136,20 +137,20 @@
     // config stays byte-identical across themes.
     "idle_inhibitor": {
         "format": "{icon}",
-        // Distinct TEXT per state (not just colour) so caffeination is readable
-        // at a glance and for colour-blind users: AWAKE = idle inhibited (screen
-        // forced on), AUTO = normal idle/lock behaviour.
+        // Distinct ICON per state (not just colour) so caffeination is readable
+        // at a glance and for colour-blind users: eye = idle inhibited (screen
+        // forced on, "being watched"), eye-slash = normal idle/lock behaviour.
         "format-icons": {
-            "activated": "<span foreground='${THEME_secondary_fixed}'>AWAKE</span>",
-            "deactivated": "<span foreground='${THEME_muted_fixed}'>AUTO</span>"
+            "activated": "<span foreground='${THEME_secondary_fixed}'></span>",
+            "deactivated": "<span foreground='${THEME_muted_fixed}'></span>"
         },
         "tooltip-format-activated": "Idle inhibitor: On",
         "tooltip-format-deactivated": "Idle inhibitor: Off"
     },
 
     "pulseaudio": {
-        "format": "<span foreground='${THEME_accent_fixed}'>VOL</span> {volume}%",
-        "format-muted": "<span foreground='${THEME_accent_fixed}'>VOL</span> <span foreground='${THEME_muted_fixed}'>MUTED</span>",
+        "format": "<span foreground='${THEME_accent_fixed}'></span> {volume}%",
+        "format-muted": "<span foreground='${THEME_muted_fixed}'></span>",
         "tooltip-format": "Volume: {volume}%",
         // Scroll to change volume, click to mute — reuse the same helpers the
         // XF86Audio keys use (so the OSD toast + 100% clamp behave identically).
@@ -163,7 +164,7 @@
     // battery module stays adapter-agnostic (here it'd be the amdgpu-specific
     // "amdgpu_bl1"). udev-driven, so no polling interval is needed.
     "backlight": {
-        "format": "<span foreground='${THEME_accent_fixed}'>BRI</span> {percent}%",
+        "format": "<span foreground='${THEME_accent_fixed}'></span> {percent}%",
         "tooltip-format": "Brightness: {percent}%",
         // Scroll to adjust — reuses the helper the XF86MonBrightness keys call,
         // so the OSD toast and the 5% floor behave identically either way.
@@ -178,9 +179,9 @@
     // --app-id), and it must stay in sync with sway's for_window rules.
     "network": {
         "interval": 5,
-        "format-wifi": "<span foreground='${THEME_accent_fixed}'>WIFI</span> {essid}",
-        "format-ethernet": "<span foreground='${THEME_accent_fixed}'>ETH</span> {ifname}",
-        "format-disconnected": "<span foreground='${THEME_accent_fixed}'>WIFI</span> <span foreground='${THEME_muted_fixed}'>OFFLINE</span>",
+        "format-wifi": "<span foreground='${THEME_accent_fixed}'></span> {essid}",
+        "format-ethernet": "<span foreground='${THEME_accent_fixed}'></span> {ifname}",
+        "format-disconnected": "<span foreground='${THEME_muted_fixed}'>󰖪</span>",
         "tooltip-format-wifi": "Network: {essid} ({signalStrength}%) — click for nmtui",
         "tooltip-format-ethernet": "Network: {ifname} — click for nmtui",
         "tooltip-format-disconnected": "Network: Disconnected — click for nmtui",
@@ -188,10 +189,10 @@
     },
 
     "bluetooth": {
-        "format": "<span foreground='${THEME_accent_fixed}'>BT</span> ON",
-        "format-off": "<span foreground='${THEME_accent_fixed}'>BT</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
-        "format-disabled": "<span foreground='${THEME_accent_fixed}'>BT</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
-        "format-connected": "<span foreground='${THEME_accent_fixed}'>BT</span> {device_alias}",
+        "format": "<span foreground='${THEME_accent_fixed}'></span>",
+        "format-off": "<span foreground='${THEME_muted_fixed}'>󰂲</span>",
+        "format-disabled": "<span foreground='${THEME_muted_fixed}'>󰂲</span>",
+        "format-connected": "<span foreground='${THEME_accent_fixed}'></span> {device_alias}",
         "tooltip-format": "Bluetooth: On — click for bluetui",
         "tooltip-format-connected": "Bluetooth: {device_alias} — click for bluetui",
         "tooltip-format-off": "Bluetooth: Off — click for bluetui",
@@ -207,24 +208,25 @@
         // in style.css like everything else theme-varying.
         "states": { "warning": 20, "critical": 10 },
         "tooltip-format": "Battery: {capacity}%",
-        "format": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%",
-        "format-charging": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%+",
-        "format-full": "<span foreground='${THEME_accent_fixed}'>BAT</span> <span foreground='${THEME_muted_fixed}'>FULL</span>",
-        // Critical (<10%) drops the BAT span entirely. That block turns urgent-red
+        "format-icons": ["", "", "", "", ""],
+        "format": "<span foreground='${THEME_accent_fixed}'>{icon}</span> {capacity}%",
+        "format-charging": "<span foreground='${THEME_accent_fixed}'>{icon}</span> {capacity}%+",
+        "format-full": "<span foreground='${THEME_accent_fixed}'>{icon}</span> <span foreground='${THEME_muted_fixed}'>FULL</span>",
+        // Critical (<10%) drops the icon's span entirely. That block turns urgent-red
         // in style.css, and inline pango markup beats CSS colour — so the frozen
-        // blue prefix would survive on the red fill and be unreadable, exactly the
+        // blue icon would survive on the red fill and be unreadable, exactly the
         // trap documented for #custom-mail.stale. With no span, the whole label
-        // inherits the CSS `color` and follows the palette (near-black on dark's
-        // #ff5555, near-white on light's #c8332b) while this file stays
-        // byte-identical across themes.
+        // (icon included) inherits the CSS `color` and follows the palette
+        // (near-black on dark's #ff5555, near-white on light's #c8332b) while this
+        // file stays byte-identical across themes.
         //
         // Precedence is format-<status>-<state> > format-<state> > format-<status>,
         // so format-critical would also swallow format-charging below 10%. It must
         // not: only `.critical:not(.charging)` gets the red fill, so a charging
-        // battery keeps the normal bar bg — and there the blue prefix (and the "+")
+        // battery keeps the normal bar bg — and there the blue icon (and the "+")
         // are still right. format-charging-critical restores it for that case.
-        "format-critical": "BAT {capacity}%",
-        "format-charging-critical": "<span foreground='${THEME_accent_fixed}'>BAT</span> {capacity}%+"
+        "format-critical": "{icon} {capacity}%",
+        "format-charging-critical": "<span foreground='${THEME_accent_fixed}'>{icon}</span> {capacity}%+"
     },
 
     // Positioned before volume in modules-right (not at the far right): the tray

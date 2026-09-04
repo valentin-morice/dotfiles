@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# waybar custom/dnd module — prints a DND label (frozen muted) while dunst is
-# paused, and nothing otherwise (empty → module hidden). Refreshed by the DND
-# keybind, which sends `pkill -RTMIN+9 waybar`.
-# Emits waybar JSON (return-type json) so the label carries a "click to resume"
+# waybar custom/dnd module — prints a bell-slash icon (frozen muted) while
+# dunst is paused, and nothing otherwise (empty → module hidden). Refreshed by
+# the DND keybind, which sends `pkill -RTMIN+9 waybar`.
+# Emits waybar JSON (return-type json) so the icon carries a "click to resume"
 # tooltip; empty text otherwise so waybar hides the module.
 # shellcheck disable=SC1091
 . "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_muted_fixed="#808488"
 THEME_muted_fixed="${THEME_muted_fixed:-#808488}"
 
+# Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
+# convention in waybar-powerprofile.
+icon=$(printf '\357\207\266')  # U+F1F6 fa-bell_slash
+
 if [ "$(dunstctl is-paused 2>/dev/null)" = "true" ]; then
-    printf '{"text":"<span foreground=\\"%s\\">DND</span>","tooltip":"Do Not Disturb — notifications paused; click to resume","class":"dnd"}\n' \
-        "$THEME_muted_fixed"
+    printf '{"text":"<span foreground=\\"%s\\">%s</span>","tooltip":"Do Not Disturb — notifications paused; click to resume","class":"dnd"}\n' \
+        "$THEME_muted_fixed" "$icon"
 else
     printf '{"text":""}\n'
 fi

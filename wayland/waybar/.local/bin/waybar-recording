@@ -1,23 +1,27 @@
 #!/usr/bin/env bash
-# waybar custom/recording module — prints a REC label (frozen red) while
+# waybar custom/recording module — prints a record icon (frozen red) while
 # wf-recorder is running, and nothing otherwise (empty output → waybar hides the
 # module, so it adds no gap when idle). Refreshed on demand by screenrecord,
 # which sends `pkill -RTMIN+8 waybar` on start and stop.
 #
-# The frozen red (THEME_urgent_fixed, equal across themes) keeps this label
+# The frozen red (THEME_urgent_fixed, equal across themes) keeps this icon
 # theme-invariant, like the bar's other *_fixed prefixes.
 #
 # Emits waybar JSON (return-type json) so the module carries a tooltip alongside
-# the label. The tooltip is an action hint, not a live duration: this module only
+# the icon. The tooltip is an action hint, not a live duration: this module only
 # re-runs on the RTMIN+8 signal (interval: once), so a ticking timer would freeze
 # at its start value — a "click to stop" hint is the honest affordance instead.
 # shellcheck disable=SC1091
 . "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_urgent_fixed="#d63b30"
 THEME_urgent_fixed="${THEME_urgent_fixed:-#d63b30}"
 
+# Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
+# convention in waybar-powerprofile.
+icon=$(printf '\363\260\273\202')  # U+F0EC2 md-record_circle
+
 if pgrep -x wf-recorder >/dev/null 2>&1; then
-    printf '{"text":"<span foreground=\\"%s\\">REC</span>","tooltip":"Screen recording in progress — click to stop","class":"recording"}\n' \
-        "$THEME_urgent_fixed"
+    printf '{"text":"<span foreground=\\"%s\\">%s</span>","tooltip":"Screen recording in progress — click to stop","class":"recording"}\n' \
+        "$THEME_urgent_fixed" "$icon"
 else
     printf '{"text":""}\n'
 fi

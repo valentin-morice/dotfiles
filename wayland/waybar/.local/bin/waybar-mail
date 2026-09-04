@@ -3,7 +3,7 @@
 # unread count, line 2 = subject) and emits waybar JSON. The IMAP backend is
 # display-agnostic — it just writes a file, this just reads it.
 #
-# The "MAIL" prefix uses the FROZEN accent (THEME_accent_fixed, identical across
+# The envelope icon uses the FROZEN accent (THEME_accent_fixed, identical across
 # palettes by design), so the JSON is theme-independent and a theme switch needs
 # no module re-exec — only style.css recolours. Because that value never varies
 # we hardcode it here rather than sourcing the palette every tick (that source
@@ -19,6 +19,10 @@ state="${XDG_RUNTIME_DIR:-/tmp}/imap.txt"
 accent="#3a7bc8"   # THEME_accent_fixed — frozen across themes
 stale_after=5400   # seconds; > 2x the daemon's 25-min IDLE ceiling
 
+# Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
+# convention in waybar-powerprofile.
+icon=$(printf '\357\203\240')  # U+F0E0 fa-envelope
+
 # The tooltip is rendered as pango markup, so &, <, > must be entity-escaped
 # BEFORE the JSON \ and " escaping — otherwise a subject like `A & B <x>` yields
 # invalid markup and a broken/empty tooltip.
@@ -28,8 +32,8 @@ esc() {
 }
 
 count_field() {
-    printf '{"text":"<span foreground=\\"%s\\">MAIL</span> %s","tooltip":"%s","class":"%s"}\n' \
-        "$accent" "$1" "$2" "$3"
+    printf '{"text":"<span foreground=\\"%s\\">%s</span> %s","tooltip":"%s","class":"%s"}\n' \
+        "$accent" "$icon" "$1" "$2" "$3"
 }
 
 c=$(awk 'NR==1' "$state" 2>/dev/null)

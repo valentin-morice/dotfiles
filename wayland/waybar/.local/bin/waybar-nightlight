@@ -3,16 +3,23 @@
 # shift has been turned OFF (the flag file nightlight-toggle sets); prints
 # nothing while night-light is in its normal enabled state (empty → module
 # hidden). Refreshed by nightlight-toggle, which sends `pkill -RTMIN+10 waybar`.
-# Emits waybar JSON (return-type json) so the label carries a "click to re-enable"
+# Emits waybar JSON (return-type json) so the icon carries a "click to re-enable"
 # tooltip; empty text otherwise so waybar hides the module.
 # shellcheck disable=SC1091
 . "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_muted_fixed="#808488"
 THEME_muted_fixed="${THEME_muted_fixed:-#808488}"
 
+# Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
+# convention in waybar-powerprofile. Plain moon (not a "disabled" variant — none
+# exists in this font) reads as "night mode" here; the muted colour plus this
+# module only ever appearing while OFF is what signals the state, same as the
+# other signal-driven modules.
+icon=$(printf '\357\206\206')  # U+F186 fa-moon_o
+
 flag="${XDG_RUNTIME_DIR:-/tmp}/nightlight.off"
 if [ -e "$flag" ]; then
-    printf '{"text":"<span foreground=\\"%s\\">NIGHT OFF</span>","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
-        "$THEME_muted_fixed"
+    printf '{"text":"<span foreground=\\"%s\\">%s</span>","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
+        "$THEME_muted_fixed" "$icon"
 else
     printf '{"text":""}\n'
 fi
