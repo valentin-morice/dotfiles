@@ -1,13 +1,18 @@
-// waybar config — rendered by theme-render from the active palette.
-// The module icons (volume/brightness/wifi/bluetooth/battery/mail) use pango
-// <span> with the FROZEN colours (THEME_accent_fixed/THEME_muted_fixed), which
-// are equal in every theme — so this rendered file is byte-identical between
-// light and dark.
+// waybar config — rendered by theme-render, though it now interpolates NOTHING:
+// this file contains no colour at all, so it is byte-identical in every theme.
 //
-// Deliberate: per-theme colour lives entirely in style.css, which waybar
-// live-applies via reload_style_on_change (below) with no reset/flicker. The
-// config has no in-place reload, so anything theme-varying here would force the
-// flickery SIGUSR2 reset. Layout/spacing live in style.css.
+// It used to carry "frozen" palette values (THEME_accent_fixed/_muted_fixed) as
+// inline pango foregrounds, chosen precisely because they were equal in light
+// and dark. That is gone: the icons follow the theme foreground now, so every
+// colour — including each module's muted/alert state — lives in style.css,
+// which waybar live-applies via reload_style_on_change with no reset/flicker.
+// This config has no in-place reload, so keeping colour out of it entirely is
+// what avoids the flickery SIGUSR2 restart on a theme switch.
+//
+// Consequence worth remembering: pango markup beats CSS colour. Re-adding an
+// inline foreground to any span below would pin that icon to one colour and
+// break the theme switch — and, on battery, would survive on top of the urgent
+// red fill and be unreadable. Spans here carry size and NOTHING else.
 //
 // ICONS: one family only — Material Design (md-*), never Font Awesome (fa-*).
 // Mixing the two was the original mistake: they are drawn on different grids,
@@ -85,7 +90,7 @@
     // mirroring polybar's internal/i3 mode label. Accent-coloured like the
     // other text labels, hence rendered from the palette.
     "sway/mode": {
-        "format": "<span foreground='#3a7bc8'>{}</span>",
+        "format": "{}",
         "tooltip": false
     },
 
@@ -142,24 +147,25 @@
     },
 
     // Click-to-caffeinate: inhibits the swayidle timers while activated.
-    // Both states use frozen colours (accent on, muted off), so the rendered
-    // config stays byte-identical across themes.
     "idle_inhibitor": {
         "format": "{icon}",
         // Distinct ICON per state (not just colour) so caffeination is readable
-        // at a glance and for colour-blind users: eye = idle inhibited (screen
-        // forced on, "being watched"), eye-slash = normal idle/lock behaviour.
+        // at a glance and for colour-blind users — and the metaphor matches the
+        // feature's own name: a coffee cup while idle is inhibited, a crossed-out
+        // cup for normal idle/lock behaviour. Both glyphs are grid 600, so the
+        // icon does not change size when the state flips. Prominence comes from
+        // style.css (fg when activated, muted when not).
         "format-icons": {
-            "activated": "<span foreground='#c0851f' size='177%'>󰈈</span>",
-            "deactivated": "<span foreground='#808488' size='177%'>󰈉</span>"
+            "activated": "<span size='177%'>󰅶</span>",
+            "deactivated": "<span size='177%'>󰾪</span>"
         },
         "tooltip-format-activated": "Idle inhibitor: On",
         "tooltip-format-deactivated": "Idle inhibitor: Off"
     },
 
     "pulseaudio": {
-        "format": "<span foreground='#3a7bc8' size='177%'>󰕾</span>",
-        "format-muted": "<span foreground='#808488' size='177%'>󰖁</span>",
+        "format": "<span size='177%'>󰕾</span>",
+        "format-muted": "<span size='177%'>󰖁</span>",
         "tooltip-format": "Volume: {volume}%",
         // Scroll to change volume, click to mute — reuse the same helpers the
         // XF86Audio keys use (so the OSD toast + 100% clamp behave identically).
@@ -173,7 +179,7 @@
     // battery module stays adapter-agnostic (here it'd be the amdgpu-specific
     // "amdgpu_bl1"). udev-driven, so no polling interval is needed.
     "backlight": {
-        "format": "<span foreground='#3a7bc8' size='177%'>󰃠</span>",
+        "format": "<span size='177%'>󰃠</span>",
         "tooltip-format": "Brightness: {percent}%",
         // Scroll to adjust — reuses the helper the XF86MonBrightness keys call,
         // so the OSD toast and the 5% floor behave identically either way.
@@ -188,9 +194,9 @@
     // --app-id), and it must stay in sync with sway's for_window rules.
     "network": {
         "interval": 5,
-        "format-wifi": "<span foreground='#3a7bc8' size='177%'>󰖩</span>",
-        "format-ethernet": "<span foreground='#3a7bc8' size='177%'>󰈀</span>",
-        "format-disconnected": "<span foreground='#808488' size='177%'>󰖪</span>",
+        "format-wifi": "<span size='177%'>󰖩</span>",
+        "format-ethernet": "<span size='177%'>󰈀</span>",
+        "format-disconnected": "<span size='177%'>󰖪</span>",
         "tooltip-format-wifi": "Network: {essid} ({signalStrength}%) — click for nmtui",
         "tooltip-format-ethernet": "Network: {ifname} — click for nmtui",
         "tooltip-format-disconnected": "Network: Disconnected — click for nmtui",
@@ -202,10 +208,10 @@
         // muted colour, rather than the words ON/OFF — the bar is icon-only now.
         // Sizes differ because the two glyphs are drawn at different scales:
         // bluetooth ink is 928 units, bluetooth_off is 748 (see the icon note).
-        "format": "<span foreground='#3a7bc8' size='114%'>󰂯</span>",
-        "format-off": "<span foreground='#808488' size='142%'>󰂲</span>",
-        "format-disabled": "<span foreground='#808488' size='142%'>󰂲</span>",
-        "format-connected": "<span foreground='#3a7bc8' size='114%'>󰂯</span>",
+        "format": "<span size='114%'>󰂯</span>",
+        "format-off": "<span size='142%'>󰂲</span>",
+        "format-disabled": "<span size='142%'>󰂲</span>",
+        "format-connected": "<span size='114%'>󰂯</span>",
         "tooltip-format": "Bluetooth: On — click for bluetui",
         "tooltip-format-connected": "Bluetooth: {device_alias} — click for bluetui",
         "tooltip-format-off": "Bluetooth: Off — click for bluetui",
@@ -233,16 +239,15 @@
             "charging": ["󰢟", "󰂆", "󰂈", "󰂊", "󰂅"],
             "default": ["󰂎", "󰁻", "󰁾", "󰂀", "󰁹"]
         },
-        "format": "<span foreground='#3a7bc8' size='114%'>{icon}</span>",
-        "format-charging": "<span foreground='#3a7bc8' size='177%'>{icon}</span>",
-        "format-full": "<span foreground='#3a7bc8' size='114%'>{icon}</span>",
-        // Critical (<10%) drops the icon's span entirely. That block turns urgent-red
-        // in style.css, and inline pango markup beats CSS colour — so the frozen
-        // blue icon would survive on the red fill and be unreadable, exactly the
-        // trap documented for #custom-mail.stale. With no span, the whole label
-        // (icon included) inherits the CSS `color` and follows the palette
-        // (near-black on dark's #ff5555, near-white on light's #c8332b) while this
-        // file stays byte-identical across themes.
+        "format": "<span size='114%'>{icon}</span>",
+        "format-charging": "<span size='177%'>{icon}</span>",
+        "format-full": "<span size='114%'>{icon}</span>",
+        // Critical (<10%) used to need a special colour-free span here, because
+        // an inline pango foreground beats CSS and would have survived
+        // unreadably on the urgent-red fill. Now that NO span in this file
+        // carries a foreground, that is simply the default everywhere and this
+        // state needs nothing special — the icon inherits the CSS `color`
+        // (near-black on dark's #ff5555, near-white on light's #c8332b).
         //
         // Precedence is format-<status>-<state> > format-<state> > format-<status>,
         // so format-critical would also swallow format-charging below 10%. It must
@@ -250,7 +255,7 @@
         // battery keeps the normal bar bg — and there the blue icon (and the "+")
         // are still right. format-charging-critical restores it for that case.
         "format-critical": "<span size='114%'>{icon}</span>",
-        "format-charging-critical": "<span foreground='#3a7bc8' size='177%'>{icon}</span>"
+        "format-charging-critical": "<span size='177%'>{icon}</span>"
     },
 
     // Positioned before volume in modules-right (not at the far right): the tray

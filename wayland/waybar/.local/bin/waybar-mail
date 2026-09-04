@@ -3,11 +3,8 @@
 # unread count, line 2 = subject) and emits waybar JSON. The IMAP backend is
 # display-agnostic — it just writes a file, this just reads it.
 #
-# The envelope icon uses the FROZEN accent (THEME_accent_fixed, identical across
-# palettes by design), so the JSON is theme-independent and a theme switch needs
-# no module re-exec — only style.css recolours. Because that value never varies
-# we hardcode it here rather than sourcing the palette every tick (that source
-# was pure per-poll churn).
+# No colour is emitted: style.css colours #custom-mail (and its .stale state),
+# so the JSON is theme-independent and a theme switch needs no module re-exec.
 set -u
 
 # Prefer the daemon's new per-user runtime path; fall back to the legacy /tmp
@@ -16,7 +13,6 @@ set -u
 state="${XDG_RUNTIME_DIR:-/tmp}/imap.txt"
 [ -e "$state" ] || state="/tmp/imap-$USER.txt"
 
-accent="#3a7bc8"   # THEME_accent_fixed — frozen across themes
 stale_after=5400   # seconds; > 2x the daemon's 25-min IDLE ceiling
 
 # Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
@@ -35,8 +31,8 @@ count_field() {
     # $1 (the unread count) is deliberately NOT printed: the bar is icon-only
     # now, and the icon appearing at all already means "unread". The count and
     # the subject live in the tooltip instead.
-    printf '{"text":"<span foreground=\\"%s\\" size=\\"177%%\\">%s</span>","tooltip":"%s unread — %s","class":"%s"}\n' \
-        "$accent" "$icon" "$1" "$2" "$3"
+    printf '{"text":"<span size=\\"177%%\\">%s</span>","tooltip":"%s unread — %s","class":"%s"}\n' \
+        "$icon" "$1" "$2" "$3"
 }
 
 c=$(awk 'NR==1' "$state" 2>/dev/null)

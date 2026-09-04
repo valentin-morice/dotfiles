@@ -98,10 +98,51 @@ window#waybar {
 /* Power-profile icon. The clock is no longer centred (macOS layout: it sits at
  * the right end), so the old custom/clockpad counterweight and the min-width
  * pinning that balanced it are both gone — this is now an ordinary right-side
- * module. Accent-coloured so it tracks the theme. */
+ * module. */
 #custom-powerprofile {
-    color: #5294e2;
     padding: 0 9px;
+}
+
+/* ICON COLOUR — all of it, for every module, lives here and nowhere else.
+ * The config template emits size-only pango spans now (no inline foreground),
+ * because inline markup beats CSS colour and would pin an icon to one value
+ * across both themes. Plain foreground: white-ish on dark, near-black on light,
+ * following the palette. No accent blue on the icons.
+ *
+ * The workspace blocks keep the accent fill — that is the bar's one colour
+ * accent and a different thing from an icon. */
+#mode,
+#idle_inhibitor,
+#custom-powerprofile,
+#custom-mail,
+#custom-dnd,
+#custom-nightlight,
+#pulseaudio,
+#backlight,
+#network,
+#bluetooth,
+#battery,
+#clock {
+    color: #ffffff;
+}
+
+/* Dimmed states — "this thing is off/idle". Each selector matches a class
+ * waybar stamps on the module itself, so the icon dims without the script or
+ * the config knowing anything about colour. */
+#pulseaudio.muted,
+#network.disconnected,
+#bluetooth.off,
+#bluetooth.disabled,
+#idle_inhibitor.deactivated,
+#custom-dnd,
+#custom-nightlight {
+    color: #888888;
+}
+
+/* Alarm states stay red on purpose — they are not ordinary icons.
+ * (battery.warning / .critical are handled further down.) */
+#custom-recording {
+    color: #ff5555;
 }
 /* The clock is the right-most module now, so it carries the extra right-edge
  * breathing room (battery held it while it was last). */
@@ -109,19 +150,10 @@ window#waybar {
     padding-right: 14px;
 }
 
-/* System tray — same light-gray fill as the inactive workspace blocks so a
- * populated tray reads as its own region. It sits left of volume in
- * modules-right (see config), so a newly-added icon grows the tray leftward
- * into the mostly-hidden signal labels instead of shifting volume/brightness/
- * wifi/bt/battery. */
-#tray {
-    background-color: #202020;
-}
-
 /* Battery states — urgent-tinted text at 20%, urgent block below 10%
- * (mirrors the urgent-workspace treatment). The `color` below only reaches the
- * icon because the config's format-critical drops the inline pango foreground
- * (inline markup beats CSS colour) — see the note there. */
+ * (mirrors the urgent-workspace treatment). These reach the icon because no
+ * span in the config carries an inline foreground any more — inline pango
+ * markup would beat CSS colour and survive unreadably on the red fill. */
 #battery.warning {
     color: #ff5555;
 }
@@ -135,10 +167,10 @@ window#waybar {
  * DNS-not-up-yet after a resume — those now leave the last good count in place
  * and never reach the bar. Dimmed so it reads as information rather than alarm.
  *
- * opacity, not color: the envelope icon carries an inline pango <span> with the
- * frozen accent, and inline markup beats CSS colour, so `color` here would not
- * reach it. opacity dims the whole module uniformly. It takes no palette var, so it stays byte-identical across
- * light and dark like the rest of the theme-invariant rules. */
+ * opacity, not color: `color` would collide with the #custom-mail foreground
+ * rule above at equal specificity and depend on source order. opacity dims the
+ * whole module regardless of what colours it. It takes no palette var, so it
+ * stays byte-identical across light and dark like the other invariant rules. */
 #custom-mail.stale {
     opacity: 0.55;
 }

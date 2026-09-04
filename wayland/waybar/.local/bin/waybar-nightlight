@@ -5,9 +5,9 @@
 # hidden). Refreshed by nightlight-toggle, which sends `pkill -RTMIN+10 waybar`.
 # Emits waybar JSON (return-type json) so the icon carries a "click to re-enable"
 # tooltip; empty text otherwise so waybar hides the module.
-# shellcheck disable=SC1091
-. "$HOME/.config/theme/load.sh" 2>/dev/null || THEME_muted_fixed="#808488"
-THEME_muted_fixed="${THEME_muted_fixed:-#808488}"
+#
+# No colour and no palette sourcing: style.css colours the "nightlight" class,
+# so a theme switch needs no module re-exec.
 
 # Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
 # convention in waybar-powerprofile. Plain moon (not a "disabled" variant — none
@@ -18,8 +18,8 @@ icon=$(printf '\363\260\226\224')  # U+F0594 md-weather_night
 
 flag="${XDG_RUNTIME_DIR:-/tmp}/nightlight.off"
 if [ -e "$flag" ]; then
-    printf '{"text":"<span foreground=\\"%s\\" size=\\"159%%\\">%s</span>","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
-        "$THEME_muted_fixed" "$icon"
+    printf '{"text":"<span size=\\"159%%\\">%s</span>","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
+        "$icon"
 else
     printf '{"text":""}\n'
 fi
