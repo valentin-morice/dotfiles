@@ -66,7 +66,13 @@
     // Ordered like macOS: transient indicators, tray, then the fixed system
     // icons, then the clock. tray still sits left of the fixed icons so a
     // newly-added tray icon grows leftward instead of shoving them.
-    "modules-right": ["sway/mode", "custom/recording", "custom/dnd", "custom/nightlight", "custom/mail", "tray", "idle_inhibitor", "custom/powerprofile", "pulseaudio", "backlight", "network", "bluetooth", "battery", "clock"],
+    //
+    // custom/mail is the one transient module deliberately kept OUT of that
+    // left group: it heads the fixed icon row (mail, zzz, powerprofile, ...) so
+    // the envelope reads as a system icon instead of being mistaken for a tray
+    // icon. The cost is accepted: unlike the other transients, mail appearing
+    // does shove the icons to its right (idle_inhibitor onward) by its width.
+    "modules-right": ["sway/mode", "custom/recording", "custom/dnd", "custom/nightlight", "tray", "custom/mail", "idle_inhibitor", "custom/powerprofile", "pulseaudio", "backlight", "network", "bluetooth", "battery", "clock"],
 
     "sway/workspaces": {
         "disable-scroll": true,
@@ -112,6 +118,9 @@
         "on-click": "$HOME/.local/bin/rofi-profile"
     },
 
+    // Sits at the head of the fixed icon row in modules-right (before
+    // idle_inhibitor), not with the other transient indicators left of the
+    // tray — see the note there.
     "custom/mail": {
         "exec": "$HOME/.local/bin/waybar-mail",
         "interval": 5,
