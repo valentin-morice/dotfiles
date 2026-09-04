@@ -9,15 +9,18 @@
 # switching; the module's interval catches any external change. Colour lives in
 # style.css (#custom-powerprofile) so it tracks the theme.
 #
-# Glyphs are UTF-8 octal escapes (pure-ASCII source, unmanglable).
+# Glyphs are UTF-8 octal escapes (pure-ASCII source, unmanglable). All four are
+# Material Design (md-*), matching the rest of the bar — see the icon note in
+# waybar.config.jsonc.tmpl — and all four are group A, hence size='125%' below.
+# The speedometer trio maps onto the profiles directly: needle high / mid / low.
 set -eu
 
 p=$(powerprofilesctl get 2>/dev/null || echo balanced)
 case "$p" in
-    performance) g=$(printf '\357\201\216'); name=Performance  ;;  # U+F04E fast-forward
-    balanced)    g=$(printf '\357\201\202'); name=Balanced     ;;  # U+F042 adjust (half circle)
-    power-saver) g=$(printf '\357\201\226'); name='Power Saver' ;; # U+F056 minus-circle
-    *)           g=$(printf '\357\203\244'); name=$p           ;;  # U+F0E4 gauge (fallback)
+    performance) g=$(printf '\363\260\223\205'); name=Performance  ;;  # U+F04C5 md-speedometer
+    balanced)    g=$(printf '\363\260\276\205'); name=Balanced     ;;  # U+F0F85 md-speedometer_medium
+    power-saver) g=$(printf '\363\260\276\206'); name='Power Saver' ;; # U+F0F86 md-speedometer_slow
+    *)           g=$(printf '\363\260\212\232'); name=$p           ;;  # U+F029A md-gauge (fallback)
 esac
 
 # return-type json: text = the glyph, class = raw profile (for optional per-profile

@@ -3,6 +3,28 @@
 // <span> with the FROZEN colours (THEME_accent_fixed/THEME_muted_fixed), which
 // are equal in every theme — so this rendered file is byte-identical between
 // light and dark.
+//
+// ICONS: one family only — Material Design (md-*), never Font Awesome (fa-*).
+// Mixing the two was the original mistake: they are drawn on different grids,
+// so at one size some glyphs read tiny and others huge.
+//
+// Every icon span also carries an explicit size, and there are exactly TWO
+// values. Measured with fontTools on JetBrainsMonoNerdFontMono-SemiBold (the
+// face that actually renders here), the md- glyphs fall into two groups:
+//
+//   group A  ink box  60..660 (600 units) — the native md grid, 15 glyphs
+//   group B  ink box -104..824 (928 units) — bluetooth + the battery ramp
+//
+// Group B is a Nerd Fonts patcher artifact, not an md design choice: those six
+// glyphs were scaled 928/600 = 1.55x larger than the rest of the set. At a flat
+// 125% they render 18.6px tall against the text's 11.7px cap height, which is
+// why the battery towered. 125% * 600/928 = 81% undoes it, landing group B on
+// the same 12.0px ink height as group A.
+//
+// So: group A = size='125%', group B = size='81%'. Adding an icon means
+// measuring its ink box and picking the matching bucket — do not guess.
+// Within group A the remaining variation (eye 410 .. moon 669) is intrinsic
+// shape on a shared grid, which is md's intended rhythm; leave it alone.
 // Deliberate: per-theme colour lives entirely in style.css, which waybar
 // live-applies via reload_style_on_change (below) with no reset/flicker. The
 // config has no in-place reload, so anything theme-varying here would force the
@@ -141,16 +163,16 @@
         // at a glance and for colour-blind users: eye = idle inhibited (screen
         // forced on, "being watched"), eye-slash = normal idle/lock behaviour.
         "format-icons": {
-            "activated": "<span foreground='${THEME_secondary_fixed}' size='125%'></span>",
-            "deactivated": "<span foreground='${THEME_muted_fixed}' size='125%'></span>"
+            "activated": "<span foreground='${THEME_secondary_fixed}' size='125%'>󰈈</span>",
+            "deactivated": "<span foreground='${THEME_muted_fixed}' size='125%'>󰈉</span>"
         },
         "tooltip-format-activated": "Idle inhibitor: On",
         "tooltip-format-deactivated": "Idle inhibitor: Off"
     },
 
     "pulseaudio": {
-        "format": "<span foreground='${THEME_accent_fixed}' size='125%'></span> {volume}%",
-        "format-muted": "<span foreground='${THEME_muted_fixed}' size='125%'></span>",
+        "format": "<span foreground='${THEME_accent_fixed}' size='125%'>󰕾</span> {volume}%",
+        "format-muted": "<span foreground='${THEME_muted_fixed}' size='125%'>󰖁</span>",
         "tooltip-format": "Volume: {volume}%",
         // Scroll to change volume, click to mute — reuse the same helpers the
         // XF86Audio keys use (so the OSD toast + 100% clamp behave identically).
@@ -164,7 +186,7 @@
     // battery module stays adapter-agnostic (here it'd be the amdgpu-specific
     // "amdgpu_bl1"). udev-driven, so no polling interval is needed.
     "backlight": {
-        "format": "<span foreground='${THEME_accent_fixed}' size='125%'></span> {percent}%",
+        "format": "<span foreground='${THEME_accent_fixed}' size='125%'>󰃠</span> {percent}%",
         "tooltip-format": "Brightness: {percent}%",
         // Scroll to adjust — reuses the helper the XF86MonBrightness keys call,
         // so the OSD toast and the 5% floor behave identically either way.
@@ -179,8 +201,8 @@
     // --app-id), and it must stay in sync with sway's for_window rules.
     "network": {
         "interval": 5,
-        "format-wifi": "<span foreground='${THEME_accent_fixed}' size='125%'></span> {essid}",
-        "format-ethernet": "<span foreground='${THEME_accent_fixed}' size='125%'></span> {ifname}",
+        "format-wifi": "<span foreground='${THEME_accent_fixed}' size='125%'>󰖩</span> {essid}",
+        "format-ethernet": "<span foreground='${THEME_accent_fixed}' size='125%'>󰈀</span> {ifname}",
         "format-disconnected": "<span foreground='${THEME_muted_fixed}' size='125%'>󰖪</span>",
         "tooltip-format-wifi": "Network: {essid} ({signalStrength}%) — click for nmtui",
         "tooltip-format-ethernet": "Network: {ifname} — click for nmtui",
@@ -189,10 +211,10 @@
     },
 
     "bluetooth": {
-        "format": "<span foreground='${THEME_accent_fixed}' size='125%'></span> ON",
-        "format-off": "<span foreground='${THEME_accent_fixed}' size='125%'></span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
-        "format-disabled": "<span foreground='${THEME_accent_fixed}' size='125%'></span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
-        "format-connected": "<span foreground='${THEME_accent_fixed}' size='125%'></span> {device_alias}",
+        "format": "<span foreground='${THEME_accent_fixed}' size='81%'>󰂯</span> ON",
+        "format-off": "<span foreground='${THEME_accent_fixed}' size='81%'>󰂯</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
+        "format-disabled": "<span foreground='${THEME_accent_fixed}' size='81%'>󰂯</span> <span foreground='${THEME_muted_fixed}'>OFF</span>",
+        "format-connected": "<span foreground='${THEME_accent_fixed}' size='81%'>󰂯</span> {device_alias}",
         "tooltip-format": "Bluetooth: On — click for bluetui",
         "tooltip-format-connected": "Bluetooth: {device_alias} — click for bluetui",
         "tooltip-format-off": "Bluetooth: Off — click for bluetui",
@@ -212,9 +234,9 @@
         // (fa-battery_*) are the horizontal laptop-style cell. Low -> high;
         // waybar splits capacity into len() equal buckets.
         "format-icons": ["󰂎", "󰁻", "󰁾", "󰂀", "󰁹"],
-        "format": "<span foreground='${THEME_accent_fixed}' size='125%'>{icon}</span> {capacity}%",
-        "format-charging": "<span foreground='${THEME_accent_fixed}' size='125%'>{icon}</span> {capacity}%+",
-        "format-full": "<span foreground='${THEME_accent_fixed}' size='125%'>{icon}</span> <span foreground='${THEME_muted_fixed}'>FULL</span>",
+        "format": "<span foreground='${THEME_accent_fixed}' size='81%'>{icon}</span> {capacity}%",
+        "format-charging": "<span foreground='${THEME_accent_fixed}' size='81%'>{icon}</span> {capacity}%+",
+        "format-full": "<span foreground='${THEME_accent_fixed}' size='81%'>{icon}</span> <span foreground='${THEME_muted_fixed}'>FULL</span>",
         // Critical (<10%) drops the icon's span entirely. That block turns urgent-red
         // in style.css, and inline pango markup beats CSS colour — so the frozen
         // blue icon would survive on the red fill and be unreadable, exactly the
@@ -228,8 +250,8 @@
         // not: only `.critical:not(.charging)` gets the red fill, so a charging
         // battery keeps the normal bar bg — and there the blue icon (and the "+")
         // are still right. format-charging-critical restores it for that case.
-        "format-critical": "<span size='125%'>{icon}</span> {capacity}%",
-        "format-charging-critical": "<span foreground='${THEME_accent_fixed}' size='125%'>{icon}</span> {capacity}%+"
+        "format-critical": "<span size='81%'>{icon}</span> {capacity}%",
+        "format-charging-critical": "<span foreground='${THEME_accent_fixed}' size='81%'>{icon}</span> {capacity}%+"
     },
 
     // Positioned before volume in modules-right (not at the far right): the tray

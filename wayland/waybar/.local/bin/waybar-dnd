@@ -10,7 +10,7 @@ THEME_muted_fixed="${THEME_muted_fixed:-#808488}"
 
 # Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
 # convention in waybar-powerprofile.
-icon=$(printf '\357\207\266')  # U+F1F6 fa-bell_slash
+icon=$(printf '\363\260\202\233')  # U+F009B md-bell_off
 
 if [ "$(dunstctl is-paused 2>/dev/null)" = "true" ]; then
     printf '{"text":"<span foreground=\\"%s\\" size=\\"125%%\\">%s</span>","tooltip":"Do Not Disturb — notifications paused; click to resume","class":"dnd"}\n' \

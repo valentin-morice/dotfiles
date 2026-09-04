@@ -21,7 +21,7 @@ stale_after=5400   # seconds; > 2x the daemon's 25-min IDLE ceiling
 
 # Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
 # convention in waybar-powerprofile.
-icon=$(printf '\357\203\240')  # U+F0E0 fa-envelope
+icon=$(printf '\363\260\207\256')  # U+F01EE md-email
 
 # The tooltip is rendered as pango markup, so &, <, > must be entity-escaped
 # BEFORE the JSON \ and " escaping — otherwise a subject like `A & B <x>` yields

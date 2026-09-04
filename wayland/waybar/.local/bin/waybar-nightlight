@@ -14,7 +14,7 @@ THEME_muted_fixed="${THEME_muted_fixed:-#808488}"
 # exists in this font) reads as "night mode" here; the muted colour plus this
 # module only ever appearing while OFF is what signals the state, same as the
 # other signal-driven modules.
-icon=$(printf '\357\206\206')  # U+F186 fa-moon_o
+icon=$(printf '\363\260\226\224')  # U+F0594 md-weather_night
 
 flag="${XDG_RUNTIME_DIR:-/tmp}/nightlight.off"
 if [ -e "$flag" ]; then
