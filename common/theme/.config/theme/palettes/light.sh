@@ -74,10 +74,6 @@ export THEME_urgent_text=#f4f6f8
 # deeper blue, so here near-white reads best (~4.9:1) where near-black (THEME_fg)
 # was only ~3:1. Opposite polarity to dark's accent_text by design. See dark.sh.
 export THEME_accent_text=#f4f6f8
-# Text on a SECONDARY (gold-fill) block — tmux's PREFIX pill. The light gold is
-# a mid tone where neither pole is great: near-black (THEME_fg) is ~4.3:1, the
-# near-white THEME_accent_text only ~3.4:1, so opposite polarity to accent_text.
-export THEME_secondary_text=#1d2329
 
 # Bare (no #) RRGGBBAA forms — swaynag.config.tmpl appends an alpha byte to each
 # (bar bg, message text, and the accent/urgent bottom stroke + flat button

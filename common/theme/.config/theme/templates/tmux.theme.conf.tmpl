@@ -4,8 +4,9 @@
 # which tmux expands at draw time — so on a theme switch theme-render just
 # re-sources this file into the running server and every client redraws.
 set -g @theme_accent         "${THEME_accent}"
+# Text on every filled pill (accent, green and secondary alike) — one colour so
+# the pills read as a set; the palette picks its polarity per theme.
 set -g @theme_accent_text    "${THEME_accent_text}"
 set -g @theme_green          "${THEME_ansi_green}"
 set -g @theme_secondary      "${THEME_secondary}"
-set -g @theme_secondary_text "${THEME_secondary_text}"
 set -g @theme_muted          "${THEME_muted}"
