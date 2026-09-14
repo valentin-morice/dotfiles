@@ -84,6 +84,10 @@ export THEME_urgent_text=#ffffff
 # The near-black bg colour on that lighter blue is ~6:1 — the same bg-on-accent
 # trick waybar uses for its active workspace pill.
 export THEME_accent_text=#0d0d0d
+# Text on a SECONDARY (gold-fill) block — tmux's PREFIX pill. Near-black reads
+# ~9:1 on the dark theme's bright gold; the light theme's deeper gold needs its
+# own value (see light.sh), which is why this isn't just THEME_accent_text.
+export THEME_secondary_text=#0d0d0d
 
 # Bare (no #) RRGGBBAA forms — swaynag.config.tmpl appends an alpha byte to each
 # (bar bg, message text, and the accent/urgent bottom stroke + flat button

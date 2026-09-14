@@ -96,6 +96,7 @@ render gtk3.settings.ini.tmpl         "$HOME/.config/gtk-3.0/settings.ini"
 render gtk4.settings.ini.tmpl         "$HOME/.config/gtk-4.0/settings.ini"
 render delta.gitconfig.tmpl           "$HOME/.config/git/delta-theme.gitconfig"
 render nvim.palette.lua.tmpl          "$HOME/.config/nvim/lua/theme/palette.lua"
+render tmux.theme.conf.tmpl           "$HOME/.config/tmux/theme.conf"
 
 # bluetuith (Bluetooth TUI). Rendered as a whole file rather than patched in
 # place (cf. VSCodium below): it renders via tcell in truecolor, so named colors
@@ -231,6 +232,14 @@ if [ "$reload" -eq 1 ]; then
                 --remote-expr 'v:lua.require("theme").reload()' >/dev/null 2>&1 || true
         done
         unset __nvim_sock
+    fi
+
+    # tmux (like nvim above): the rendered theme.conf only sets @theme_* user
+    # options, which the status/border styles in .tmux.conf read at draw time,
+    # so re-sourcing it into the running server recolours every attached client
+    # on its next redraw — no restart. Errors (no server up) are ignored.
+    if command -v tmux >/dev/null; then
+        tmux source-file "$HOME/.config/tmux/theme.conf" >/dev/null 2>&1 || true
     fi
 
     if [ -n "${SWAYSOCK:-}" ]; then
