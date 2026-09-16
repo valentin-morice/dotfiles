@@ -20,7 +20,6 @@
       "effortLevel": "high"
     }
   },
-  "tui": "fullscreen",
   "theme": "auto",
   "skipAutoPermissionPrompt": true
 }

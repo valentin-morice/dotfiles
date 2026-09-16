@@ -188,3 +188,16 @@ fi
 
 # sentry
 fpath=("/home/valentin/.local/share/zsh/site-functions" $fpath)
+
+# claude: fullscreen TUI only outside tmux. Inside tmux the fullscreen renderer
+# sizes itself from the outer terminal and draws its bottom rows (statusline,
+# working indicator) under the tmux bar — anthropics/claude-code#51497, closed
+# not-planned. `tui` is a global setting with no per-terminal switch, so it's
+# left out of ~/.claude/settings.json and merged in here via --settings.
+claude() {
+  if [[ -z $TMUX ]]; then
+    command claude --settings '{"tui":"fullscreen"}' "$@"
+  else
+    command claude "$@"
+  fi
+}
