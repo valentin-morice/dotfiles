@@ -1,0 +1,41 @@
+#!/bin/bash
+# Pull dunst notifications up to the screen edge while a window is fullscreen.
+#
+# dunst measures its offset from below waybar's exclusive zone, and that zone
+# stays reserved even when a fullscreen window covers the bar. So the normal
+# (20, 14) offset leaves notifications floating ~56px down over a fullscreen
+# video. While anything is fullscreen, a dunstrc.d drop-in overrides the offset
+# with a negative y that cancels the 42px bar, putting the notification 20px
+# from the top, same as from the right. A drop-in (not `dunstctl reload FILE`)
+# so theme-render's plain `dunstctl reload` keeps the override.
+# Requires: sway, jq, dunst 1.13+ (dunstctl reload).
+
+DROPIN="$HOME/.config/dunst/dunstrc.d/90-fullscreen.conf"
+mkdir -p "${DROPIN%/*}"
+
+# Any visible fullscreen container on any output?
+fullscreen_now() {
+    swaymsg -t get_tree | jq -e \
+        '[.. | objects | select(.fullscreen_mode? == 1 and .visible? == true)] | length > 0' \
+        >/dev/null
+}
+
+apply() {
+    local want=0
+    fullscreen_now && want=1
+    [ "$want" = "$state" ] && return
+    state=$want
+    if [ "$want" = 1 ]; then
+        printf '[global]\n    offset = (20, -22)\n' > "$DROPIN"
+    else
+        rm -f "$DROPIN"
+    fi
+    dunstctl reload
+}
+
+state=unset
+apply
+# window: fullscreen toggles, closes; workspace: switching away from/to one.
+swaymsg -t subscribe -m '["window", "workspace"]' | while read -r _; do
+    apply
+done

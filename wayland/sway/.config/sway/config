@@ -81,6 +81,10 @@ exec_always ~/.config/waybar/launch.sh
 # Notifications.
 exec dunst
 
+# Moves notifications up to the screen edge while a window is fullscreen
+# (waybar's reserved space would otherwise push them ~56px down).
+exec ~/.local/bin/dunst-fullscreen-offset
+
 # Clipboard-copy notifications + history capture (wl-clipboard).
 exec ~/.local/bin/clip-notify
 
