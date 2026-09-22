@@ -243,8 +243,26 @@
         // the one icon in the bar that changes colour. The old "warning": 20 step
         // is gone with the amber it drove; a threshold that styles nothing would
         // just be dead config.
-        "states": { "critical": 10 },
+        //
+        // "below-cap"/"at-cap" exist only to pin the display at the 81 charge cap
+        // (see ~/.local/bin/battery-charge-cap). The EC doesn't stop at the same
+        // spot every time — it settles anywhere from ~79.3% to ~81.x%, so the
+        // floored capacity read 79 one day and 81 the next, and the icon flipped
+        // between the 60-79 and 80+ glyphs with it. While parked on AC (not
+        // charging) within 79-82, the *-at-cap entries below show a flat 80% and
+        // the 80+ glyph. States take the LOWEST threshold >= capacity, so
+        // "below-cap" fences 11-78 off from "at-cap"; neither is styled in CSS.
+        "states": { "critical": 10, "below-cap": 78, "at-cap": 82 },
         "tooltip-format": "Battery: {capacity}%",
+        // Waybar lowercases the sysfs status and hyphenates it ("Not charging" ->
+        // not-charging). The Z13 reports "Not charging" at the cap; plugged/full
+        // are covered too in case a kernel/EC update renames it.
+        "tooltip-format-not-charging-at-cap": "Battery: 80%",
+        "tooltip-format-plugged-at-cap": "Battery: 80%",
+        "tooltip-format-full-at-cap": "Battery: 80%",
+        "format-not-charging-at-cap": "<span size='114%'>󰁹</span>",
+        "format-plugged-at-cap": "<span size='114%'>󰁹</span>",
+        "format-full-at-cap": "<span size='114%'>󰁹</span>",
         // Material's battery glyphs, which are drawn UPRIGHT — Font Awesome's
         // (fa-battery_*) are the horizontal laptop-style cell. Low -> high;
         // waybar splits capacity into len() equal buckets.
