@@ -208,7 +208,12 @@
         "format-wifi": "<span size='177%'>󰖩</span>",
         "format-ethernet": "<span size='177%'>󰈀</span>",
         "format-disconnected": "<span size='177%'>󰖪</span>",
+        // "linked" = carrier up but no IPv4 (waybar only looks at IPv4 by
+        // default). Happens on IPv6-only networks like an iPhone hotspot;
+        // without this the built-in fallback prints "wlp1s0 (No IP)" as text.
+        "format-linked": "<span size='177%'>󰖩</span>",
         "tooltip-format-wifi": "Network: {essid} ({signalStrength}%)",
+        "tooltip-format-linked": "Network: {ifname} (no IPv4)",
         "tooltip-format-ethernet": "Network: {ifname}",
         "tooltip-format-disconnected": "Network: Disconnected",
         "on-click": "alacritty --class netmenu-float -e nmtui"
