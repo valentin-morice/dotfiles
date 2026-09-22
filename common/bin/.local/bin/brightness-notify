@@ -5,7 +5,7 @@
 set -eu
 command -v brightnessctl >/dev/null || { echo "brightness-notify: brightnessctl not found" >&2; exit 1; }
 
-WIDTH=30
+WIDTH=44
 
 case "${1:-}" in
     up)   brightnessctl set +5% >/dev/null ;;
@@ -24,7 +24,11 @@ pct=$(brightnessctl -m | awk -F, '{print $4}' | tr -d '%')
 left="󰃠 Brightness"
 right="${pct}%"
 
-title=$(printf '%-*s%s' $((WIDTH - ${#right})) "$left" "$right")
+# Pad by visible characters: printf's %-*s counts bytes, so the 4-byte Nerd
+# Font icon would leave the title 3 columns short of the box edge. ${#var}
+# counts characters only in a UTF-8 locale, hence the LC_CTYPE pin.
+LC_CTYPE=C.UTF-8
+title="$left$(printf '%*s' $((WIDTH - ${#left} - ${#right})) '')$right"
 
 notify-send -t 1500 \
             -h string:x-canonical-private-synchronous:brightness \

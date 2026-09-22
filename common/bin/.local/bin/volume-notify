@@ -10,7 +10,7 @@ sink="@DEFAULT_SINK@"
 
 # Width target (in monospace chars) for the title row. Tune if the percentage
 # doesn't sit flush right against the box edge.
-WIDTH=30
+WIDTH=44
 
 case "${1:-}" in
     up)   pactl set-sink-mute "$sink" 0
@@ -47,7 +47,11 @@ else
 fi
 
 left="$icon Volume"
-title=$(printf '%-*s%s' $((WIDTH - ${#right})) "$left" "$right")
+# Pad by visible characters: printf's %-*s counts bytes, so the 4-byte Nerd
+# Font icon would leave the title 3 columns short of the box edge. ${#var}
+# counts characters only in a UTF-8 locale, hence the LC_CTYPE pin.
+LC_CTYPE=C.UTF-8
+title="$left$(printf '%*s' $((WIDTH - ${#left} - ${#right})) '')$right"
 
 notify-send -t 1500 \
             -h string:x-canonical-private-synchronous:volume \

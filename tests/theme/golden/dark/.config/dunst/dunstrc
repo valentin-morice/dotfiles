@@ -2,7 +2,7 @@
     monitor = 0
     follow = mouse
 
-    width = (250, 400)
+    width = 380
     height = (0, 200)
     origin = top-right
     offset = (20, 14)
@@ -10,8 +10,8 @@
     progress_bar = true
     progress_bar_height = 10
     progress_bar_frame_width = 1
-    progress_bar_min_width = 150
-    progress_bar_max_width = 300
+    progress_bar_min_width = 348
+    progress_bar_max_width = 348
 
     indicate_hidden = yes
     transparency = 0
