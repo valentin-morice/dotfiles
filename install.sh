@@ -95,6 +95,10 @@ AUR_PKGS=(
     vscodium-bin                    # editor
     sway-audio-idle-inhibit-git     # inhibit idle while audio plays
     1password 1password-cli         # secrets + SSH commit signing
+    ttf-material-symbols-variable-git  # waybar + rofi card icons (Material
+                                    # Symbols Outlined); without it those
+                                    # glyphs fall back to unrelated Nerd Font
+                                    # Private Use Area glyphs
 )
 # Install-time view: the helper handles repo + AUR uniformly. --needed keeps it
 # idempotent on re-runs.

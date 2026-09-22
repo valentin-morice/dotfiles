@@ -16,8 +16,10 @@ state="${XDG_RUNTIME_DIR:-/tmp}/imap.txt"
 stale_after=5400   # seconds; > 2x the daemon's 25-min IDLE ceiling
 
 # Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
-# convention in waybar-powerprofile.
-icon=$(printf '\363\260\207\256')  # U+F01EE md-email
+# convention in waybar-powerprofile. It is a Material Symbols Private Use Area
+# codepoint,
+# emitted bare: style.css gives this module its font and size.
+icon=$(printf '\356\205\231')  # U+E159 mail
 
 # The tooltip is rendered as pango markup, so &, <, > must be entity-escaped
 # BEFORE the JSON \ and " escaping — otherwise a subject like `A & B <x>` yields
@@ -32,7 +34,7 @@ esc() {
 # The count and the subject live in the tooltip instead, prefixed "Mail: " to
 # match the other module tooltips ("Bluetooth: Off", "Power profile: Balanced").
 emit() {
-    printf '{"text":"<span size=\\"177%%\\">%s</span>","tooltip":"Mail: %s","class":"%s"}\n' \
+    printf '{"text":"%s","tooltip":"Mail: %s","class":"%s"}\n' \
         "$icon" "$1" "$2"
 }
 

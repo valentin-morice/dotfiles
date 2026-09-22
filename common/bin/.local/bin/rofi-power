@@ -1,7 +1,7 @@
 #!/bin/bash
 # rofi power menu as a 2x2 card grid — four uniform actions: shutdown, lock,
-# reboot, logout. Each card is a big Nerd Font glyph + label — glyphs are TEXT,
-# so they take the palette text-color and adapt to light/dark automatically
+# reboot, logout. Each card is a big Material Symbols glyph + label — glyphs are
+# TEXT, so they take the palette text-color and adapt to light/dark automatically
 # (image icons carry baked-in colours that would break on theme-switch). The
 # grid + card styling is layered onto the base config.rasi via -theme-str, so the
 # drun/clip/window/profile launchers keep their plain vertical-list look.
@@ -22,27 +22,33 @@ set -euo pipefail
 # dropped: closing the laptop lid already suspends.)
 actions=(shutdown   reboot     lock       logout)
 labels=( Shutdown   Reboot     Lock       Logout)
-# Nerd Font glyphs as UTF-8 octal escapes (pure-ASCII source, unmanglable — same
-# technique as rofi-profile). Order matches actions above.
+# Shared card theme + card_glyph (see rofi-card-theme.sh).
+# shellcheck source=/dev/null
+. "$HOME/.local/bin/rofi-card-theme.sh"
+
+# Material Symbols glyphs as UTF-8 octal escapes (pure-ASCII source, unmanglable
+# — same technique as rofi-profile), each wrapped by card_glyph so it renders in
+# the icon font. Order matches actions above.
 glyphs=(
-    "$(printf '\357\200\221')"   # shutdown  U+F011 power-off
-    "$(printf '\357\200\241')"   # reboot    U+F021 refresh
-    "$(printf '\357\200\243')"   # lock      U+F023
-    "$(printf '\357\202\213')"   # logout    U+F08B sign-out
+    "$(card_glyph "$(printf '\357\243\207')")"   # shutdown  U+F8C7 power_settings_new
+    "$(card_glyph "$(printf '\357\201\223')")"   # reboot    U+F053 restart_alt
+    "$(card_glyph "$(printf '\356\242\231')")"   # lock      U+E899 lock
+    "$(card_glyph "$(printf '\356\246\272')")"   # logout    U+E9BA logout
 )
 
 # Each row: glyph, a sized-space gap (so it doesn't inherit the big 21px icon
 # width), then the label lifted to the glyph's optical centre via rise (pango's
-# flex align-items: center). rise units are 1/1024pt.
+# flex align-items: center). rise units are 1/1024pt. ONE space, not two: the
+# Material glyphs carry ~5px of built-in side padding the old Font Awesome ones
+# didn't, and one space brings the icon-to-label gap back to ~16px (FA: 13-17).
+# rofi-profile and rofi-confirm use the same spacer — keep all three in step.
 rows=""
 for i in "${!actions[@]}"; do
-    rows+="${glyphs[i]}<span size='60%'>  </span><span rise='4000' size='55%'>${labels[i]}</span>"$'\n'
+    rows+="${glyphs[i]}<span size='60%'> </span><span rise='3000' size='55%'>${labels[i]}</span>"$'\n'
 done
 
 # 2x2 grid card theme (shared with rofi-profile — see rofi-card-theme.sh for the
 # per-card styling and why the state-qualified selectors are required).
-# shellcheck source=/dev/null
-. "$HOME/.local/bin/rofi-card-theme.sh"
 theme=$(rofi_card_theme 440px 2 2)
 
 idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -format i -theme-str "$theme") || exit 0

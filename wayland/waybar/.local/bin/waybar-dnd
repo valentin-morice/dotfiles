@@ -9,11 +9,13 @@
 # output is theme-independent and a theme switch needs no module re-exec.
 
 # Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
-# convention in waybar-powerprofile.
-icon=$(printf '\363\260\202\233')  # U+F009B md-bell_off
+# convention in waybar-powerprofile. It is a Material Symbols Private Use Area
+# codepoint,
+# emitted bare: style.css gives this module its font and size.
+icon=$(printf '\356\237\266')  # U+E7F6 notifications_off
 
 if [ "$(dunstctl is-paused 2>/dev/null)" = "true" ]; then
-    printf '{"text":"<span size=\\"174%%\\">%s</span>","tooltip":"Do Not Disturb — notifications paused; click to resume","class":"dnd"}\n' \
+    printf '{"text":"%s","tooltip":"Do Not Disturb — notifications paused; click to resume","class":"dnd"}\n' \
         "$icon"
 else
     printf '{"text":""}\n'

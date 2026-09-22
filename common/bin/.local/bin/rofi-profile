@@ -1,20 +1,26 @@
 #!/bin/bash
 # rofi power-profiles-daemon switcher as a one-row card grid (performance /
 # balanced / power-saver), matching the rofi-power grid style. Each card is a big
-# Nerd Font glyph + label; the ACTIVE profile is pre-selected (accent highlight)
+# Material Symbols glyph + label; the ACTIVE profile is pre-selected (accent highlight)
 # via -selected-row, and picking a card sets that profile — instant, no confirm.
 #
 # Cards are built from `powerprofilesctl list`, so the menu adapts if a profile
 # is unavailable; glyph + display label are mapped per known profile name.
 set -euo pipefail
 
-# Nerd Font glyphs as UTF-8 octal escapes (pure-ASCII source, unmanglable).
+# Shared card theme + card_glyph (see rofi-card-theme.sh).
+# shellcheck source=/dev/null
+. "$HOME/.local/bin/rofi-card-theme.sh"
+
+# Material Symbols glyphs as UTF-8 octal escapes (pure-ASCII source,
+# unmanglable) — the same four as the waybar power-profile icon
+# (waybar-powerprofile), so the bar and this panel always agree.
 glyph_for() {
     case "$1" in
-        performance) printf '\357\201\216' ;;  # U+F04E fast-forward
-        balanced)    printf '\357\201\202' ;;  # U+F042 adjust (half circle)
-        power-saver) printf '\357\201\226' ;;  # U+F056 minus-circle
-        *)           printf '\357\203\244' ;;  # U+F0E4 gauge (fallback)
+        performance) card_glyph "$(printf '\356\250\213')" ;;  # U+EA0B bolt
+        balanced)    card_glyph "$(printf '\356\254\267')" ;;  # U+EB37 contrast
+        power-saver) card_glyph "$(printf '\356\250\265')" ;;  # U+EA35 eco
+        *)           card_glyph "$(printf '\356\247\244')" ;;  # U+E9E4 speed (fallback)
     esac
 }
 label_for() {
@@ -37,14 +43,12 @@ mapfile -t profiles < <(powerprofilesctl list | awk '
 rows=""; sel_row=0
 for i in "${!profiles[@]}"; do
     p="${profiles[i]}"
-    rows+="$(glyph_for "$p")<span size='60%'>  </span><span rise='4000' size='55%'>$(label_for "$p")</span>"$'\n'
+    rows+="$(glyph_for "$p")<span size='60%'> </span><span rise='3000' size='55%'>$(label_for "$p")</span>"$'\n'
     [ "$p" = "$cur" ] && sel_row=$i
 done
 
 # Same card styling as rofi-power (shared via rofi-card-theme.sh), but a single
 # row of three (columns:3, lines:1) and a wider window.
-# shellcheck source=/dev/null
-. "$HOME/.local/bin/rofi-card-theme.sh"
 theme=$(rofi_card_theme 640px 3 1)
 
 idx=$(printf '%s' "$rows" | rofi -dmenu -markup-rows -selected-row "$sel_row" -format i -theme-str "$theme") || exit 0

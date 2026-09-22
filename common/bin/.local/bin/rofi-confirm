@@ -11,6 +11,8 @@
 #
 # Callers pass a glyph NAME (logout|reboot|shutdown); the octal escapes live
 # here so sources stay pure ASCII (same technique as rofi-power/rofi-profile).
+# They are Material Symbols glyphs, the same ones rofi-power shows for each
+# action, wrapped by card_glyph so they render in the icon font.
 #
 # Safety: Cancel is pre-selected, so Enter never fires the action — a destructive
 # command takes a deliberate Left-arrow (or click) first. Escape cancels too.
@@ -23,26 +25,27 @@ cmd="${2:?usage: rofi-confirm <label> <command> [glyph-name] [message]}"
 glyph_name="${3:-}"
 mesg="${4:-}"
 
-# Nerd Font glyphs as UTF-8 octal escapes (pure-ASCII source, unmanglable).
+# shellcheck source=/dev/null
+. "$HOME/.local/bin/rofi-card-theme.sh"
+
+# Material Symbols glyphs as UTF-8 octal escapes (pure-ASCII source, unmanglable).
 case "$glyph_name" in
-    logout)   glyph="$(printf '\357\202\213')" ;;  # U+F08B sign-out
-    reboot)   glyph="$(printf '\357\200\241')" ;;  # U+F021 refresh
-    shutdown) glyph="$(printf '\357\200\221')" ;;  # U+F011 power-off
-    *)        glyph="$(printf '\357\201\261')" ;;  # U+F071 warning triangle
+    logout)   glyph="$(card_glyph "$(printf '\356\246\272')")" ;;  # U+E9BA logout
+    reboot)   glyph="$(card_glyph "$(printf '\357\201\223')")" ;;  # U+F053 restart_alt
+    shutdown) glyph="$(card_glyph "$(printf '\357\243\207')")" ;;  # U+F8C7 power_settings_new
+    *)        glyph="$(card_glyph "$(printf '\357\202\203')")" ;;  # U+F083 warning
 esac
-cancel_glyph="$(printf '\357\200\215')"            # U+F00D times
+cancel_glyph="$(card_glyph "$(printf '\356\227\215')")"            # U+E5CD close
 
 # Rows in rofi-power's card grammar: glyph, a sized-space gap, label lifted to
 # the glyph's optical centre via rise. Row 0 = action, row 1 = Cancel. The
 # newline is concatenated as $'\n' (NOT via command substitution, which strips
 # trailing newlines and would fuse both entries into one row/card).
-row() { printf "%s<span size='60%%'>  </span><span rise='4000' size='55%%'>%s</span>" "$1" "$2"; }
+row() { printf "%s<span size='60%%'> </span><span rise='3000' size='55%%'>%s</span>" "$1" "$2"; }
 rows="$(row "$glyph" "$label")"$'\n'"$(row "$cancel_glyph" "Cancel")"
 
 # Two cards side by side, rofi-power's window width. The message line slots in
 # above the listview; textbox styling matches the base list look (fg, centred).
-# shellcheck source=/dev/null
-. "$HOME/.local/bin/rofi-card-theme.sh"
 theme="$(rofi_card_theme 440px 2 1)
 mainbox { children: [ message, listview ]; spacing: 18px; }
 message { border: 0; background-color: transparent; }

@@ -12,42 +12,30 @@
 // Consequence worth remembering: pango markup beats CSS colour. Re-adding an
 // inline foreground to any span below would pin that icon to one colour and
 // break the theme switch — and, on battery, would survive on top of the urgent
-// red fill and be unreadable. Spans here carry size and NOTHING else.
+// red fill and be unreadable. There are no spans at all now: see ICONS.
 //
-// ICONS: one family only — Material Design (md-*), never Font Awesome (fa-*).
-// Mixing the two was the original mistake: they are drawn on different grids,
-// so at one size some glyphs read tiny and others huge.
+// ICONS: one family only — Google's Material Symbols Outlined (the variable
+// font from github.com/google/material-design-icons), which replaced the Nerd
+// Font Material Design (md-*) set. md was community-drawn on inconsistent
+// scales, so every glyph needed its own size% span to look even; Material
+// Symbols draws every icon on one 24dp grid, so there is ONE size for all of
+// them and it lives in style.css (font-family + font-size + font-weight on the
+// icon modules), not here. Outlined, Rounded and Sharp share every codepoint,
+// so the style is a CSS-only choice.
 //
-// Every icon span also carries an explicit size, computed — never guessed —
-// from the glyph's own metrics in JetBrainsMonoNerdFontMono-SemiBold (the face
-// that actually renders here):
+// That CSS font-family is load-bearing, not cosmetic: Material Symbols'
+// codepoints (U+E000-U+F8FF) sit in the Private Use Area the Nerd Font also
+// fills (powerline, seti, devicons ...), so with the bar's JetBrainsMono first
+// in the stack these characters would render as unrelated Nerd Font glyphs.
+// Anything that emits a Material Symbols glyph must be a module listed in that
+// style.css rule.
 //
-//     size% = 177 * 600 / max(ink_width, ink_height)
+// Codepoints come from the font's own .codepoints file (name -> hex). The
+// literal glyphs below are that PUA, so they look blank or wrong in an editor
+// without the font — the name is noted beside each one.
 //
-// 600 units is md's native grid and 177% is the size of a glyph that fills it.
-// The percentages are relative to the bar font (14px), so they were rescaled
-// from 155% when that dropped 16 -> 14 — the icons keep the same physical size.
-// 177 is near the ceiling: the font's line box is 1.32em, so at the bar's 34px
-// height and 14px base, 177% needs 32.7px and ~184% would start clipping.
-// The Nerd Fonts patcher scaled some glyphs past that grid, which is what made
-// the battery tower and the bluetooth rune look wrong; the formula undoes it:
-//
-//     most md- glyphs   600 units -> 177%
-//     bell_off          610       -> 174%
-//     weather_night     669       -> 159%
-//     bluetooth_off     748       -> 142%
-//     bluetooth, battery(discharging) 928 -> 114%
-//
-// Normalising on max(w,h) — the grid extent — rather than on height is the
-// point: it corrects the over-scaled glyphs while leaving genuinely FLAT icons
-// (eye 410, envelope 482) flat, since scaling those to a common height would
-// blow them up sideways. Their shorter ink is md's intended rhythm, not a bug.
-//
-// Watch out for state pairs drawn at different scales — battery charging (570)
-// vs discharging (928), bluetooth (928) vs bluetooth_off (748) — where each
-// state's format string needs its own size or the icon jumps when state flips.
-//
-// To add an icon: measure it, apply the formula. Do not eyeball it.
+// To add an icon: look its codepoint up in that file and add the module to the
+// style.css icon rule. No sizing maths any more.
 {
     // Watch style.css and hot-apply CSS changes in place (no widget reset) —
     // this is what makes a theme switch recolour smoothly instead of flickering.
@@ -55,11 +43,12 @@
 
     "layer": "top",
     "position": "top",
-    // 34 keeps the same proportion to the bar font (16px) that 30 had to the
-    // old 14px, now that the font size is matched to alacritty/rofi.
-    // 42 = the 34px bar + an 8px transparent strip for its drop shadow (see
-    // window#waybar > box in style.css); the visible bar is still 34.
-    "height": 42,
+    // 32px visible bar, picked over 34 (the old height) and 30 after trying
+    // all three live. With the ~15px icons that is an icon:bar ratio of ~0.47,
+    // between GNOME's top bar (0.5) and a notched MacBook's menu bar (0.43).
+    // 40 = the 32px bar + an 8px transparent strip for its drop shadow (see
+    // window#waybar > box in style.css); the visible bar is still 32.
+    "height": 40,
     // macOS menu-bar layout: workspaces alone on the left, every status icon
     // collected on the right, clock last (right-most). Nothing is centred any
     // more, so the old custom/clockpad counterweight is gone.
@@ -70,11 +59,22 @@
     // newly-added tray icon grows leftward instead of shoving them.
     //
     // custom/mail is the one transient module deliberately kept OUT of that
-    // left group: it heads the fixed icon row (mail, zzz, powerprofile, ...) so
+    // left group: it heads the fixed icon row (mail, idle, brightness, ...) so
     // the envelope reads as a system icon instead of being mistaken for a tray
     // icon. The cost is accepted: unlike the other transients, mail appearing
     // does shove the icons to its right (idle_inhibitor onward) by its width.
-    "modules-right": ["sway/mode", "custom/recording", "custom/dnd", "custom/nightlight", "tray", "custom/mail", "idle_inhibitor", "custom/powerprofile", "pulseaudio", "backlight", "network", "bluetooth", "battery", "clock"],
+    //
+    // The fixed row is grouped by what each icon is ABOUT, left to right:
+    //   screen        idle_inhibitor, backlight   (does it sleep, how bright)
+    //   audio         pulseaudio                  (the one you scroll most)
+    //   connectivity  bluetooth, network
+    //   power         custom/powerprofile, battery (spend vs. what's left)
+    //   clock
+    // wifi / battery / clock end the row in the order every desktop uses, so
+    // they're found without looking. Spacing stays uniform: a wider gap between
+    // groups was tried and rejected, so the grouping is carried by adjacency
+    // alone.
+    "modules-right": ["sway/mode", "custom/recording", "custom/dnd", "custom/nightlight", "tray", "custom/mail", "idle_inhibitor", "backlight", "pulseaudio", "bluetooth", "network", "custom/powerprofile", "battery", "clock"],
 
     "sway/workspaces": {
         "disable-scroll": true,
@@ -108,9 +108,9 @@
         "tooltip-format": "<tt>{calendar}</tt>"
     },
 
-    // Power-profile icon — md-speedometer / _medium / _slow for performance /
-    // balanced / power-saver; click opens the rofi-profile card panel. Refreshed instantly
-    // by rofi-profile (pkill -RTMIN+11 waybar); interval is the external-change
+    // Power-profile icon — bolt / contrast / eco for performance / balanced /
+    // power-saver; click opens the rofi-profile card panel. Refreshed instantly by
+    // rofi-profile (pkill -RTMIN+11 waybar); interval is the external-change
     // fallback. Colour is theme-varying, so it lives in style.css.
     "custom/powerprofile": {
         "exec": "$HOME/.local/bin/waybar-powerprofile",
@@ -129,8 +129,8 @@
         "return-type": "json"
     },
 
-    // Signal-driven status labels — each prints a frozen-colour span when active
-    // and nothing (module hidden) when not, so they add no gap when idle and the
+    // Signal-driven status icons — each prints a bare glyph when active and
+    // nothing (module hidden) when not, so they add no gap when idle and the
     // rendered config stays theme-invariant. Refreshed on demand: screenrecord
     // sends RTMIN+8, the DND bind RTMIN+9, nightlight-toggle RTMIN+10.
     // These labels only appear while active, which makes them ideal click
@@ -162,21 +162,19 @@
         "format": "{icon}",
         // Distinct ICON per state (not just colour) so the state is readable at a
         // glance and for colour-blind users. These name the thing being
-        // controlled rather than a metaphor for it: "sleep off" while idle is
-        // inhibited, plain "sleep" for normal idle/lock behaviour. Both glyphs
-        // are grid 600, so the icon does not change size when the state flips.
-        // Prominence comes from style.css (fg when activated, muted when not).
+        // controlled rather than a metaphor for it: "bedtime off" while idle is
+        // inhibited, plain "bedtime" for normal idle/lock behaviour.
         "format-icons": {
-            "activated": "<span size='177%'>󰒳</span>",
-            "deactivated": "<span size='177%'>󰒲</span>"
+            "activated": "",
+            "deactivated": ""
         },
         "tooltip-format-activated": "Idle inhibitor: On",
         "tooltip-format-deactivated": "Idle inhibitor: Off"
     },
 
     "pulseaudio": {
-        "format": "<span size='177%'>󰕾</span>",
-        "format-muted": "<span size='177%'>󰖁</span>",
+        "format": "",
+        "format-muted": "",
         "tooltip-format": "Volume: {volume}%",
         // Scroll to change volume, click to mute — reuse the same helpers the
         // XF86Audio keys use (so the OSD toast + 100% clamp behave identically).
@@ -190,7 +188,11 @@
     // battery module stays adapter-agnostic (here it'd be the amdgpu-specific
     // "amdgpu_bl1"). udev-driven, so no polling interval is needed.
     "backlight": {
-        "format": "<span size='177%'>󰃠</span>",
+        // Level ramp: brightness_low / _medium / _high (the sun's centre fills
+        // up). waybar splits percent into len() equal buckets: 0-32, 33-65,
+        // 66-100.
+        "format": "{icon}",
+        "format-icons": ["", "", ""],
         "tooltip-format": "Brightness: {percent}%",
         // Scroll to adjust — reuses the helper the XF86MonBrightness keys call,
         // so the OSD toast and the 5% floor behave identically either way.
@@ -205,13 +207,19 @@
     // --app-id), and it must stay in sync with sway's for_window rules.
     "network": {
         "interval": 5,
-        "format-wifi": "<span size='177%'>󰖩</span>",
-        "format-ethernet": "<span size='177%'>󰈀</span>",
-        "format-disconnected": "<span size='177%'>󰖪</span>",
+        // Signal-strength ramp: waybar splits signalStrength into len() equal
+        // buckets (0-19 ... 80-100), bars filling up like the phone indicator.
+        // Disconnected is signal_wifi_off, the slashed WEDGE, not wifi_off (the
+        // slashed arcs): same drawing style as the ramp, so losing the link
+        // changes the state, not the icon family.
+        "format-wifi": "{icon}",
+        "format-icons": ["", "", "", "", ""],
+        "format-ethernet": "",
+        "format-disconnected": "",
         // "linked" = carrier up but no IPv4 (waybar only looks at IPv4 by
         // default). Happens on IPv6-only networks like an iPhone hotspot;
         // without this the built-in fallback prints "wlp1s0 (No IP)" as text.
-        "format-linked": "<span size='177%'>󰖩</span>",
+        "format-linked": "",
         "tooltip-format-wifi": "Network: {essid} ({signalStrength}%)",
         "tooltip-format-linked": "Network: {ifname} (no IPv4)",
         "tooltip-format-ethernet": "Network: {ifname}",
@@ -222,12 +230,10 @@
     "bluetooth": {
         // On/off is carried by a DIFFERENT GLYPH (plain rune vs slashed) plus the
         // muted colour, rather than the words ON/OFF — the bar is icon-only now.
-        // Sizes differ because the two glyphs are drawn at different scales:
-        // bluetooth ink is 928 units, bluetooth_off is 748 (see the icon note).
-        "format": "<span size='114%'>󰂯</span>",
-        "format-off": "<span size='142%'>󰂲</span>",
-        "format-disabled": "<span size='142%'>󰂲</span>",
-        "format-connected": "<span size='114%'>󰂯</span>",
+        "format": "",
+        "format-off": "",
+        "format-disabled": "",
+        "format-connected": "",
         "tooltip-format": "Bluetooth: On",
         "tooltip-format-connected": "Bluetooth: {device_alias}",
         "tooltip-format-off": "Bluetooth: Off",
@@ -247,10 +253,10 @@
         // "below-cap"/"at-cap" exist only to pin the display at the 81 charge cap
         // (see ~/.local/bin/battery-charge-cap). The EC doesn't stop at the same
         // spot every time — it settles anywhere from ~79.3% to ~81.x%, so the
-        // floored capacity read 79 one day and 81 the next, and the icon flipped
-        // between the 60-79 and 80+ glyphs with it. While parked on AC (not
-        // charging) within 79-82, the *-at-cap entries below show a flat 80% and
-        // the 80+ glyph. States take the LOWEST threshold >= capacity, so
+        // floored capacity read 79 one day and 81 the next. While parked on AC
+        // (not charging) within 79-82, the *-at-cap entries below show a flat
+        // 80% and pin the glyph to battery_android_frame_6, the ramp step 80
+        // lands on, so the icon can't flip at a bucket edge either. States take the LOWEST threshold >= capacity, so
         // "below-cap" fences 11-78 off from "at-cap"; neither is styled in CSS.
         "states": { "critical": 10, "below-cap": 78, "at-cap": 82 },
         "tooltip-format": "Battery: {capacity}%",
@@ -260,51 +266,48 @@
         "tooltip-format-not-charging-at-cap": "Battery: 80%",
         "tooltip-format-plugged-at-cap": "Battery: 80%",
         "tooltip-format-full-at-cap": "Battery: 80%",
-        "format-not-charging-at-cap": "<span size='114%'>󰁹</span>",
-        "format-plugged-at-cap": "<span size='114%'>󰁹</span>",
-        "format-full-at-cap": "<span size='114%'>󰁹</span>",
-        // Material's battery glyphs, which are drawn UPRIGHT — Font Awesome's
-        // (fa-battery_*) are the horizontal laptop-style cell. Low -> high;
-        // waybar splits capacity into len() equal buckets.
+        "format-not-charging-at-cap": "",
+        "format-plugged-at-cap": "",
+        "format-full-at-cap": "",
+        // Material's Android-style battery, FRAME variant: an outline cell with
+        // 1-6 bars inside, then full. The plain battery_android_* set is a solid
+        // block whose charging/alert glyphs are outlines, so plugging in made the
+        // icon visibly lose weight; the frame set draws levels, charging and
+        // alert as one family. There is no frame_0, so the ramp starts at one
+        // bar. Low -> high; waybar splits capacity into len() equal buckets, so
+        // the seven steps are 14 wide (0-13, 14-27, ... 70-83, 84+).
         "format-icons": {
-            // Keyed by STATE. The charging glyphs are drawn at a different scale
-            // to the discharging ones (570 vs 928 ink units), which is why the
-            // charging format strings below carry size='177%' and the
-            // discharging ones size='114%' — without that the icon would visibly
-            // jump size the moment you plug in.
-            "charging": ["󰢟", "󰂆", "󰂈", "󰂊", "󰂅"],
-            "default": ["󰂎", "󰁻", "󰁾", "󰂀", "󰁹"]
+            // Keyed by STATE. There is a single charging cell (no level ramp),
+            // so charging is one glyph at every capacity.
+            "charging": [""],
+            "default": ["", "", "", "", "", "", ""]
         },
-        "format": "<span size='114%'>{icon}</span>",
-        "format-charging": "<span size='177%'>{icon}</span>",
-        "format-full": "<span size='114%'>{icon}</span>",
-        // The two *-critical entries below carry no colour and never did anything
-        // visual on their own — style.css has no battery state colour at all now
-        // (one colour for every icon, always). They exist purely for SIZE.
+        "format": "{icon}",
+        // Under 10% the glyph becomes battery_android_frame_alert, on top of the red that
+        // style.css gives .critical — the alarm is carried by shape as well as
+        // colour, like every other state in the bar.
         //
-        // Precedence is format-<status>-<state> > format-<state> > format-<status>.
-        // Below 10% the "critical" state applies, and without an explicit
-        // format-charging-critical a CHARGING battery under 10% would fall back to
-        // format-critical. Its {icon} would still resolve from the "charging" ramp
-        // (that follows status, not the format string), but it would be wrapped in
-        // format-critical's 114% span — the charging glyphs are grid 600 and need
-        // 177%, so the icon would shrink to ~65% exactly when plugged in at low
-        // charge. format-charging-critical is what keeps the pair matched.
-        "format-critical": "<span size='114%'>{icon}</span>",
-        "format-charging-critical": "<span size='177%'>{icon}</span>"
+        // Precedence is format-<status>-<state> > format-<state> > format-<status>,
+        // so without format-charging-critical a CHARGING battery under 10% would
+        // fall back to format-critical and show the alert cell instead of the
+        // charging one. That entry is what keeps "plugged in" readable at low
+        // charge.
+        "format-critical": "",
+        "format-charging-critical": "{icon}"
     },
 
-    // Positioned before volume in modules-right (not at the far right): the tray
-    // is the only right-side module whose width changes at runtime, so keeping the
-    // fixed labels (volume/brightness/wifi/bt/battery) anchored to its right stops them
+    // Positioned before the fixed icon row in modules-right (not at the far
+    // right): the tray is the only right-side module whose width changes at
+    // runtime, so keeping the fixed icons anchored to its right stops them
     // layout-shifting when an icon appears — the tray grows leftward instead.
     "tray": {
-        // 18, not 9: every other module is separated from its neighbour by its
-        // own 9px left padding plus the neighbour's 9px right padding = 18px.
+        // 12, not 6: every other module is separated from its neighbour by its
+        // own 6px left padding plus the neighbour's 6px right padding = 12px.
         // The tray draws its icons itself, so this spacing is the ONLY gap
-        // between them — at 9 they sat at half the pitch of the rest of the bar
-        // and the tray read as a tighter cluster. 18 makes one even row.
-        "spacing": 18,
+        // between them — at 6 they would sit at half the pitch of the rest of
+        // the bar and the tray would read as a tighter cluster. 12 makes one
+        // even row.
+        "spacing": 12,
         "icon-size": 19
     }
 }

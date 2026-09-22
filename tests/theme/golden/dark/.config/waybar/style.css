@@ -17,16 +17,15 @@
     font-family: "JetBrainsMono Nerd Font Mono";
     /* 14px — the long-standing by-eye value, restored. Deliberately NOT the
      * px = pt * 4/3 match with alacritty/rofi's 11.5pt (that would be 15.3px);
-     * the computed match was tried and disliked. NOTE the icon sizes in
-     * waybar.config.jsonc.tmpl are percentages OF THIS, so they were rescaled
-     * when this dropped 16 -> 14, to keep the icons the same physical size. */
+     * the computed match was tried and disliked. The icon modules set their
+     * own font and size (ICON FONT below), so this only sizes the text. */
     font-size: 14px;
     font-weight: 600;
     min-height: 0;
 }
 
 /* Drop shadow: a layer surface can't paint outside itself, so the surface is
- * made transparent and 8px taller than the bar (height 42 in the config), and
+ * made transparent and 8px taller than the bar (height 40 in the config), and
  * the visible bar is the inner box, which casts its shadow into that strip. */
 window#waybar {
     background-color: transparent;
@@ -85,8 +84,12 @@ window#waybar > box {
 
 /* Right-side modules (module-margin spacing, padding-right 2 on the bar).
  * #mode and #idle_inhibitor are in here now: they moved out of modules-left
- * (workspaces sit there alone), so they take the 9px right-side padding rather
- * than the 11px that matches a workspace block. */
+ * (workspaces sit there alone), so they take the 6px right-side padding rather
+ * than the 11px that matches a workspace block.
+ *
+ * 6px a side = a 12px module gap (~15px between icon inks once the glyphs'
+ * side bearings are added), about one icon width, like the macOS menu bar.
+ * It was 9px (≈21px between inks); tightened with the 34 -> 32px bar. */
 #mode,
 #idle_inhibitor,
 #clock,
@@ -100,7 +103,7 @@ window#waybar > box {
 #bluetooth,
 #battery,
 #tray {
-    padding: 0 9px;
+    padding: 0 6px;
 }
 /* Nudge tray icons 1px down: their pixmaps sit optically high in the bar.
  * 2px, not 1, because the icon is centred in what's left of the height, so
@@ -114,12 +117,46 @@ window#waybar > box {
  * pinning that balanced it are both gone — this is now an ordinary right-side
  * module. */
 #custom-powerprofile {
-    padding: 0 9px;
+    padding: 0 6px;
+}
+
+/* ICON FONT — every icon-only module renders in Material Symbols Outlined, at
+ * one size. This is the whole sizing story now: the font draws every glyph on
+ * the same 24dp grid, so there are no per-glyph size% spans in the config or
+ * the custom module scripts any more (that was the md-* Nerd Font set's
+ * workaround).
+ *
+ * The family is not optional. Material Symbols' codepoints sit in the Private
+ * Use Area the Nerd Font also fills, so a module missing from this list would
+ * draw its characters as unrelated Nerd Font glyphs. #mode and #clock are text
+ * and stay on the JetBrainsMono face from `*`.
+ *
+ * font-weight picks the stroke: the variable font exposes named instances
+ * Thin..Bold (wght 100-700, outline FILL 0, opsz 24), which fontconfig matches
+ * like ordinary faces. Set explicitly so the global 600 doesn't silently apply.
+ *
+ * 18px puts the 20dp live area of the 24dp grid at ~15px, the same physical
+ * size as the old md icons at 177% of 14px. The line box is 1.2em (ascent 1056
+ * + descent 96 over 960 upem), ~22px, well inside the 32px bar. */
+#idle_inhibitor,
+#custom-powerprofile,
+#custom-mail,
+#custom-dnd,
+#custom-nightlight,
+#custom-recording,
+#pulseaudio,
+#backlight,
+#network,
+#bluetooth,
+#battery {
+    font-family: "Material Symbols Outlined";
+    font-size: 18px;
+    font-weight: 500;
 }
 
 /* ICON COLOUR — all of it, for every module, lives here and nowhere else.
- * The config template emits size-only pango spans (no inline foreground),
- * because inline markup beats CSS colour and would pin an icon to one value
+ * The config template emits bare glyphs (no pango spans at all, so no inline
+ * foreground), because inline markup beats CSS colour and would pin an icon to one value
  * across both themes. White-ish on dark, near-black on light, following the
  * palette. No accent blue on the icons.
  *
@@ -127,7 +164,7 @@ window#waybar > box {
  * light, recording and the rest never change colour with their state. There are
  * deliberately no .muted / .disconnected / .off colour rules: those states are
  * carried entirely by the GLYPH (crossed-out speaker, slashed wifi and
- * bluetooth, sleep vs sleep-off), the same distinct-shape-not-just-colour rule
+ * bluetooth, bedtime vs bedtime-off), the same distinct-shape-not-just-colour rule
  * the config follows for colour-blind readability. A state colour on any of
  * them would single that module out of the row.
  *

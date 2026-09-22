@@ -10,15 +10,18 @@
 # so a theme switch needs no module re-exec.
 
 # Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
-# convention in waybar-powerprofile. Plain moon (not a "disabled" variant — none
-# exists in this font) reads as "night mode" here; the muted colour plus this
-# module only ever appearing while OFF is what signals the state, same as the
-# other signal-driven modules.
-icon=$(printf '\363\260\226\224')  # U+F0594 md-weather_night
+# convention in waybar-powerprofile; a Material Symbols Private Use Area
+# codepoint emitted bare, since style.css gives this module its font and size.
+# wb_twilight (sun on the horizon) reads as "warm evening light". Not a moon:
+# the idle inhibitor's resting icon is bedtime, a crescent, and the two sit
+# side by side whenever night light is off. There is no "disabled" variant;
+# this module only ever appearing while OFF is what signals the state, same as
+# the other signal-driven modules.
+icon=$(printf '\356\207\206')  # U+E1C6 wb_twilight
 
 flag="${XDG_RUNTIME_DIR:-/tmp}/nightlight.off"
 if [ -e "$flag" ]; then
-    printf '{"text":"<span size=\\"159%%\\">%s</span>","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
+    printf '{"text":"%s","tooltip":"Night light disabled — click to re-enable","class":"nightlight"}\n' \
         "$icon"
 else
     printf '{"text":""}\n'

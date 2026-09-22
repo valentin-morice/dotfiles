@@ -13,11 +13,13 @@
 # re-runs on the RTMIN+8 signal (interval: once), so a ticking timer would freeze
 # at its start value — a "click to stop" hint is the honest affordance instead.
 # Glyph is a UTF-8 octal escape (pure-ASCII source, unmanglable), matching the
-# convention in waybar-powerprofile.
-icon=$(printf '\363\260\273\202')  # U+F0EC2 md-record_circle
+# convention in waybar-powerprofile. It is a Material Symbols Private Use Area
+# codepoint,
+# emitted bare: style.css gives this module its font and size.
+icon=$(printf '\356\240\267')  # U+E837 radio_button_checked
 
 if pgrep -x wf-recorder >/dev/null 2>&1; then
-    printf '{"text":"<span size=\\"177%%\\">%s</span>","tooltip":"Screen recording in progress — click to stop","class":"recording"}\n' \
+    printf '{"text":"%s","tooltip":"Screen recording in progress — click to stop","class":"recording"}\n' \
         "$icon"
 else
     printf '{"text":""}\n'
