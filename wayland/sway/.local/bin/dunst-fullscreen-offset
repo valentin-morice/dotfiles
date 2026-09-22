@@ -33,7 +33,7 @@ apply() {
     dunstctl reload
 }
 
-state=unset
+state="unset"
 apply
 # window: fullscreen toggles, closes; workspace: switching away from/to one.
 swaymsg -t subscribe -m '["window", "workspace"]' | while read -r _; do
