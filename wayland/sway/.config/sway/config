@@ -600,6 +600,10 @@ bindsym $mod+g mode "gaps"
 ### Gaps / borders -----------------------------------------------------------
 gaps inner 10
 gaps outer 0
+# Mostly cancels waybar's 8px transparent shadow strip (its height is 42 for a
+# 34px bar); -6 rather than -8 leaves 2px extra under the bar, since the shadow
+# eats into that gap and makes it look tighter than the other sides.
+gaps top -6
 # Both off so a lone window keeps its gap and border too, instead of filling
 # the screen edge to edge.
 smart_gaps off

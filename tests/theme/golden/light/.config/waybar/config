@@ -57,7 +57,9 @@
     "position": "top",
     // 34 keeps the same proportion to the bar font (16px) that 30 had to the
     // old 14px, now that the font size is matched to alacritty/rofi.
-    "height": 34,
+    // 42 = the 34px bar + an 8px transparent strip for its drop shadow (see
+    // window#waybar > box in style.css); the visible bar is still 34.
+    "height": 42,
     // macOS menu-bar layout: workspaces alone on the left, every status icon
     // collected on the right, clock last (right-most). Nothing is centred any
     // more, so the old custom/clockpad counterweight is gone.

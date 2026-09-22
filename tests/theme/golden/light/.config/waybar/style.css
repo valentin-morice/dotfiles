@@ -25,7 +25,15 @@
     min-height: 0;
 }
 
+/* Drop shadow: a layer surface can't paint outside itself, so the surface is
+ * made transparent and 8px taller than the bar (height 42 in the config), and
+ * the visible bar is the inner box, which casts its shadow into that strip. */
 window#waybar {
+    background-color: transparent;
+}
+window#waybar > box {
+    margin-bottom: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
     background-color: #f4f6f8;
     color: #1d2329;
     /* Cross-fade the bar surface on theme switch (reload_style_on_change applies
