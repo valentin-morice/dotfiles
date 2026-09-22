@@ -33,7 +33,7 @@ window#waybar {
 }
 window#waybar > box {
     margin-bottom: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.30);
     background-color: ${THEME_bg};
     color: ${THEME_fg};
     /* Cross-fade the bar surface on theme switch (reload_style_on_change applies
@@ -101,6 +101,12 @@ window#waybar > box {
 #battery,
 #tray {
     padding: 0 9px;
+}
+/* Nudge tray icons 1px down: their pixmaps sit optically high in the bar.
+ * 2px, not 1, because the icon is centred in what's left of the height, so
+ * top padding only moves it half as far. */
+#tray {
+    padding-top: 2px;
 }
 
 /* Power-profile icon. The clock is no longer centred (macOS layout: it sits at
