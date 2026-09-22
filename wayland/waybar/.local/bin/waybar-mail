@@ -27,12 +27,13 @@ esc() {
         | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/\\/\\\\/g; s/"/\\"/g'
 }
 
-count_field() {
-    # $1 (the unread count) is deliberately NOT printed: the bar is icon-only
-    # now, and the icon appearing at all already means "unread". The count and
-    # the subject live in the tooltip instead.
-    printf '{"text":"<span size=\\"177%%\\">%s</span>","tooltip":"%s unread — %s","class":"%s"}\n' \
-        "$icon" "$1" "$2" "$3"
+# $1 = tooltip body, $2 = class. The bar is icon-only, so the unread count is
+# deliberately NOT printed: the icon appearing at all already means "unread".
+# The count and the subject live in the tooltip instead, prefixed "Mail: " to
+# match the other module tooltips ("Bluetooth: Off", "Power profile: Balanced").
+emit() {
+    printf '{"text":"<span size=\\"177%%\\">%s</span>","tooltip":"Mail: %s","class":"%s"}\n' \
+        "$icon" "$1" "$2"
 }
 
 c=$(awk 'NR==1' "$state" 2>/dev/null)
@@ -48,11 +49,11 @@ if [ ! -e "$state" ]; then
     # enabled) — stay blank rather than nag with a permanent "?" badge.
     printf '{"text":"","class":"read"}\n'
 elif [ "$((now - mtime))" -gt "$stale_after" ]; then
-    count_field "?" "mail daemon not updating" "stale"
+    emit "daemon not updating" "stale"
 elif [ "$c" = "?" ]; then
-    count_field "?" "mail check failed" "stale"
+    emit "check failed" "stale"
 elif [ -z "$c" ] || [ "$c" = "0" ]; then
     printf '{"text":"","class":"read"}\n'
 else
-    count_field "$c" "$(esc "$subj")" "unread"
+    emit "$c unread — $(esc "$subj")" "unread"
 fi
