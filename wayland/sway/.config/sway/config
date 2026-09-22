@@ -95,6 +95,9 @@ exec gammastep
 # (see the XF86Audio binds). Started once; harmless if already running.
 exec playerctld daemon
 
+# Mic-mute LED is owned by userspace (udev detaches the kernel trigger); resync at start
+exec_always ~/.local/bin/toggle-mic-mute --sync
+
 # Polkit authentication agent (GUI auth prompts for gparted, etc.).
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 

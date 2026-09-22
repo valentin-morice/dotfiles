@@ -3,9 +3,20 @@ set -eu
 command -v pactl >/dev/null || { echo "toggle-mic-mute: pactl not found" >&2; exit 1; }
 WIDTH=44
 
+# --sync: only re-derive the LED from the current mute state (used at sway startup).
+# The kernel trigger is detached by a udev rule, so this script is the LED's only owner.
+if [ "${1:-}" = "--sync" ]; then
+    if [ "$(pactl get-source-mute @DEFAULT_SOURCE@)" = "Mute: yes" ]; then
+        brightnessctl -d platform::micmute s 1 >/dev/null 2>&1 || true
+    else
+        brightnessctl -d platform::micmute s 0 >/dev/null 2>&1 || true
+    fi
+    exit 0
+fi
+
 pactl set-source-mute @DEFAULT_SOURCE@ toggle
 if [ "$(pactl get-source-mute @DEFAULT_SOURCE@)" = "Mute: yes" ]; then
-    brightnessctl -d platform::micmute s 1 >/dev/null 2>&1 || true  # mute LED is cosmetic
+    brightnessctl -d platform::micmute s 1 >/dev/null 2>&1 || true
     icon="󰍭"; right="muted"
 else
     brightnessctl -d platform::micmute s 0 >/dev/null 2>&1 || true
