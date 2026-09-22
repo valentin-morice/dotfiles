@@ -230,6 +230,25 @@ if command -v systemctl >/dev/null; then
     done
 fi
 
+# --- tmux plugins (TPM) ---------------------------------------------------
+# TPM and its plugin checkouts live outside the repo (~/.tmux/plugins); the
+# plugin list is in the stowed ~/.tmux.conf. install_plugins reads that list
+# from a running server, so start one only for the duration of the install
+# when none is up. Idempotent: already-present plugins are skipped.
+tpm="$HOME/.tmux/plugins/tpm"
+if [ ! -d "$tpm" ]; then
+    info "Cloning TPM (tmux plugin manager)"
+    git clone -q https://github.com/tmux-plugins/tpm "$tpm"
+fi
+info "Installing tmux plugins"
+started_tmux=""
+if ! tmux has-session 2>/dev/null; then
+    tmux new-session -d -s dotfiles-install && started_tmux=1
+fi
+"$tpm/bin/install_plugins" >/dev/null && ok "tmux plugins installed" \
+    || warn "tmux plugin install failed — run 'prefix I' inside tmux to retry"
+[ -n "$started_tmux" ] && tmux kill-session -t dotfiles-install
+
 # --- generate the non-stowed (theme-rendered) configs ---------------------
 # dunst, fastfetch, gtk, waybar, etc. are produced by theme-render
 # from the active palette (defaults to dark). --no-reload just writes files —
