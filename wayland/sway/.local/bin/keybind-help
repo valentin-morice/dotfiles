@@ -32,8 +32,8 @@ WINDOWS & APPS
   Mod+w              window switcher
   Mod+c              clipboard history
   Mod+p              CPU power-profile
-  Mod+n              Wi-Fi menu (nmtui)
-  Mod+b              Bluetooth (bluetui)
+  Mod+n              Wi-Fi menu
+  Mod+b              Bluetooth menu
   Mod+grave          drop-down terminal
   Mod+Shift+q        close window
 

@@ -9,7 +9,7 @@
 #
 #   rofi-confirm <label> <command> [glyph-name] [message]
 #
-# Callers pass a glyph NAME (logout|reboot|shutdown); the octal escapes live
+# Callers pass a glyph NAME (logout|reboot|shutdown|bluetooth); the octal escapes live
 # here so sources stay pure ASCII (same technique as rofi-power/rofi-profile).
 # They are Material Symbols glyphs, the same ones rofi-power shows for each
 # action, wrapped by card_glyph so they render in the icon font.
@@ -33,6 +33,7 @@ case "$glyph_name" in
     logout)   glyph="$(card_glyph "$(printf '\356\246\272')")" ;;  # U+E9BA logout
     reboot)   glyph="$(card_glyph "$(printf '\357\201\223')")" ;;  # U+F053 restart_alt
     shutdown) glyph="$(card_glyph "$(printf '\357\243\207')")" ;;  # U+F8C7 power_settings_new
+    bluetooth) glyph="$(card_glyph "$(printf '\356\207\247')")" ;;  # U+E1A7 bluetooth (rofi-bluetooth)
     *)        glyph="$(card_glyph "$(printf '\357\202\203')")" ;;  # U+F083 warning
 esac
 cancel_glyph="$(card_glyph "$(printf '\356\227\215')")"            # U+E5CD close

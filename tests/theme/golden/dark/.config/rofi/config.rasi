@@ -128,6 +128,20 @@ element selected.normal {
     text-color:       @accent;
 }
 
+/* .active rows (rofi -a), used by the wifi picker (networkmanager-dmenu) to
+   mark the connected network. Same leak as above: without these the default
+   theme paints active rows cream. Accent text on the normal background marks
+   "current"; selecting it looks like any other selected row. */
+element normal.active,
+element alternate.active {
+    background-color: transparent;
+    text-color:       @accent;
+}
+element selected.active {
+    background-color: @bg-sel;
+    text-color:       @accent;
+}
+
 /* matched-substring highlight (fuzzel's `match` colour). rofi's `highlight`
    property takes a literal colour, not an @reference — so the palette value is
    inlined here (still re-rendered on every theme-switch). */

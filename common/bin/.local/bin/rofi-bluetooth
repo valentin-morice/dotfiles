@@ -1,0 +1,508 @@
+#!/usr/bin/env python3
+"""rofi Bluetooth menu — the waybar bluetooth click target.
+
+A list-style rofi menu (the base config.rasi look, like rofi-clip/rofi-window):
+
+  Bluetooth: On / Off            power toggle (rfkill-unblocks if needed)
+  <paired devices>               connected first; icon from BlueZ's device type,
+                                 status + battery % dimmed after the name
+  Scan for new devices…          ~8s discovery, then a list of what was found
+
+Picking a device opens its submenu (connect/disconnect, trust, forget). Picking
+a scanned device pairs, trusts and connects it in one go.
+
+Pairing is why this is Python and not a bluetoothctl wrapper: devices that ask
+for a code (keyboards, phones, some mice) need an org.bluez.Agent1 to answer
+BlueZ. This script registers one on its own D-Bus connection only while it
+runs — BlueZ routes the prompts for a pairing to the agent of the client that
+started it — and answers them through rofi:
+
+  RequestConfirmation   "Does 482 913 match the code on <device>?" as a
+                        rofi-confirm card (Pair / Cancel, Cancel pre-selected)
+  DisplayPasskey/PinCode a notification with the code to type on the device
+  RequestPinCode/Passkey a rofi text prompt (legacy devices)
+
+Everything talks to BlueZ over the system bus (org.bluez) via Gio; long calls
+run inside a GLib main loop so the agent can answer while they are pending.
+Icons are Material Symbols Outlined spans, like the waybar icons.
+"""
+import os
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+BLUEZ = "org.bluez"
+AGENT_PATH = "/org/dotfiles/rofi_bluetooth/agent"
+NOTIFY_TAG = "rofi-bluetooth"
+SCAN_SECONDS = 8
+# Character columns in one list row after the icon + its two spaces, measured on
+# screen: config.rasi's 720px window leaves 660px of row text, the icon span
+# takes ~38px, and JetBrains Mono at 11.5pt advances 9px a column. Padding the
+# label to this width puts the dimmed detail flush against the row's right edge
+# (the menu font is monospaced, so spaces ARE the alignment). 70 overflows and
+# rofi ellipsizes. Same number as the wifi picker's format (56 + 13). Re-measure
+# if the rofi window width or font size changes.
+ROW_COLS = 69
+
+# Material Symbols Outlined codepoints (from the font's .codepoints file), as
+# escapes so the source stays pure ASCII.
+G = {
+    "bluetooth": "\ue1a7",
+    "bluetooth_disabled": "\ue1a9",
+    "bluetooth_searching": "\ue60f",
+    "headphones": "\uf01f",
+    "headset_mic": "\ue311",
+    "speaker": "\ue32d",
+    "keyboard": "\ue312",
+    "mouse": "\ue323",
+    "sports_esports": "\uea28",
+    "smartphone": "\ue7ba",
+    "computer": "\ue31e",
+    "tv": "\ue63b",
+    "photo_camera": "\ue412",
+    "print": "\ue8ad",
+    "stylus": "\uf604",
+    "watch": "\ue334",
+    "devices_other": "\ue337",
+    "link": "\ue250",
+    "link_off": "\ue16f",
+    "verified_user": "\uf013",
+    "remove_moderator": "\ue9d4",
+    "delete": "\ue92e",
+    "arrow_back": "\ue5c4",
+    "refresh": "\ue5d5",
+}
+
+# BlueZ's Device1.Icon (freedesktop icon-naming names) -> Material glyph.
+DEVICE_ICON = {
+    "audio-headset": "headset_mic",
+    "audio-headphones": "headphones",
+    "audio-card": "speaker",
+    "input-keyboard": "keyboard",
+    "input-mouse": "mouse",
+    "input-gaming": "sports_esports",
+    "input-tablet": "stylus",
+    "phone": "smartphone",
+    "computer": "computer",
+    "video-display": "tv",
+    "camera-photo": "photo_camera",
+    "camera-video": "photo_camera",
+    "printer": "print",
+    "multimedia-player": "speaker",
+}
+
+BUS = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+
+
+# --- presentation -----------------------------------------------------------
+
+def glyph(name):
+    """A Material Symbols icon span. Same size/rise as the wifi picker's icons
+    (networkmanager-dmenu config.ini), so the two list menus line up. The
+    explicit font_family is load-bearing: these are Private Use Area codepoints
+    the Nerd Font also fills.
+
+    rise -5120 is measured, not cosmetic: the bigger icon font adds line height
+    ABOVE the text, and rofi centres the whole line, so with a small rise the
+    label sat ~2.5px low in its row. At -5120 both the label and the icon are
+    within 0.5px of the row's centre, like drun's labels."""
+    return ("<span font_family='Material Symbols Outlined' weight='500' "
+            f"size='15360' rise='-5120'>{G[name]}</span>")
+
+
+def esc(text):
+    return GLib.markup_escape_text(text)
+
+
+def row(icon, label, detail=""):
+    """icon, the label, then an optional dimmed detail (alpha, not a colour, so
+    it follows the theme's text colour in light and dark), right-aligned by
+    padding to ROW_COLS. Lengths are counted on the raw text, before escaping."""
+    out = f"{glyph(icon)}  {esc(label)}"
+    if detail:
+        pad = max(2, ROW_COLS - len(label) - len(detail))
+        out += " " * pad + f"<span alpha='36000'>{esc(detail)}</span>"
+    return out
+
+
+def rofi(rows, prompt, selected=0):
+    """Show a list, return the picked index (or None on Escape)."""
+    try:
+        p = subprocess.run(
+            ["rofi", "-dmenu", "-i", "-markup-rows", "-format", "i",
+             "-selected-row", str(selected), "-p", f"{prompt} ❯"],
+            input="\n".join(rows), capture_output=True, text=True)
+    except FileNotFoundError:
+        sys.exit("rofi-bluetooth: rofi not found")
+    out = p.stdout.strip()
+    return int(out) if p.returncode == 0 and out.isdigit() else None
+
+
+def rofi_input(prompt):
+    """Free-text prompt (no rows): a single-line rofi input, same theme string
+    as rofi-pinentry — the list is dropped from mainbox's children (an empty
+    listview still adds mainbox spacing below the input) and the theme's
+    "Search" placeholder is blanked. Returns the typed text or None."""
+    p = subprocess.run(["rofi", "-dmenu", "-p", f"{prompt} ❯", "-theme-str",
+                        'mainbox { children: [ inputbar ]; } entry { placeholder: ""; }'],
+                       input="", capture_output=True, text=True)
+    out = p.stdout.strip()
+    return out if p.returncode == 0 and out else None
+
+
+def confirm(question, action):
+    """rofi-confirm card dialog; True only if the action card was picked.
+    rofi-confirm runs its command on confirm, so the answer comes back through
+    a flag file it touches (it exits 0 either way)."""
+    flag = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"),
+                        f"rofi-bluetooth.confirm.{os.getpid()}")
+    try:
+        os.unlink(flag)
+    except FileNotFoundError:
+        pass
+    subprocess.run([os.path.expanduser("~/.local/bin/rofi-confirm"), action,
+                    f"touch '{flag}'", "bluetooth", question])
+    ok = os.path.exists(flag)
+    if ok:
+        os.unlink(flag)
+    return ok
+
+
+def notify(summary, body="", urgency="normal", timeout=4000):
+    """One replacing notification per run (dunst stack tag), so the pairing
+    steps update a single toast instead of stacking."""
+    subprocess.run(["notify-send", "-a", "Bluetooth", "-u", urgency,
+                    "-t", str(timeout), "-h", f"string:x-dunst-stack-tag:{NOTIFY_TAG}",
+                    summary, body], check=False)
+
+
+# --- BlueZ plumbing -----------------------------------------------------------
+
+def objects():
+    return BUS.call_sync(BLUEZ, "/", "org.freedesktop.DBus.ObjectManager",
+                         "GetManagedObjects", None, None,
+                         Gio.DBusCallFlags.NONE, -1, None).unpack()[0]
+
+
+def adapter():
+    for path, ifaces in objects().items():
+        if "org.bluez.Adapter1" in ifaces:
+            return path, ifaces["org.bluez.Adapter1"]
+    return None, None
+
+
+def devices():
+    out = []
+    for path, ifaces in objects().items():
+        d = ifaces.get("org.bluez.Device1")
+        if d:
+            d = dict(d)
+            d["path"] = path
+            d["battery"] = ifaces.get("org.bluez.Battery1", {}).get("Percentage")
+            out.append(d)
+    return out
+
+
+def set_prop(path, iface, name, value):
+    BUS.call_sync(BLUEZ, path, "org.freedesktop.DBus.Properties", "Set",
+                  GLib.Variant("(ssv)", (iface, name, value)), None,
+                  Gio.DBusCallFlags.NONE, -1, None)
+
+
+def call(path, iface, method, args=None, timeout_ms=30000):
+    """Run a (possibly slow) BlueZ call inside a main loop, so the agent below
+    can answer prompts while it is pending. Returns (message, error_name):
+    (None, "") on success, else the D-Bus error text and its name (e.g.
+    org.bluez.Error.AuthenticationFailed)."""
+    loop = GLib.MainLoop()
+    result = {}
+
+    def done(bus, res):
+        try:
+            bus.call_finish(res)
+        except GLib.Error as e:
+            name = Gio.DBusError.get_remote_error(e) or ""
+            # Drop the "GDBus.Error:<name>: " prefix by hand: PyGObject's
+            # DBusError.strip_remote_error doesn't touch the Python exception.
+            msg = e.message.split(f"{name}:", 1)[-1] if name else e.message
+            result["name"] = name
+            result["err"] = msg.strip() or name
+        loop.quit()
+
+    BUS.call(BLUEZ, path, iface, method, args, None,
+             Gio.DBusCallFlags.NONE, timeout_ms, None, done)
+    loop.run()
+    return result.get("err"), result.get("name", "")
+
+
+def wait(seconds):
+    loop = GLib.MainLoop()
+    GLib.timeout_add(int(seconds * 1000), loop.quit)
+    loop.run()
+
+
+def label_of(d):
+    return d.get("Alias") or d.get("Name") or d.get("Address", "?")
+
+
+def icon_of(d):
+    return DEVICE_ICON.get(d.get("Icon", ""), "devices_other")
+
+
+# --- pairing agent ------------------------------------------------------------
+
+AGENT_XML = """
+<node><interface name="org.bluez.Agent1">
+  <method name="Release"/>
+  <method name="RequestPinCode"><arg type="o" direction="in"/><arg type="s" direction="out"/></method>
+  <method name="DisplayPinCode"><arg type="o" direction="in"/><arg type="s" direction="in"/></method>
+  <method name="RequestPasskey"><arg type="o" direction="in"/><arg type="u" direction="out"/></method>
+  <method name="DisplayPasskey"><arg type="o" direction="in"/><arg type="u" direction="in"/><arg type="q" direction="in"/></method>
+  <method name="RequestConfirmation"><arg type="o" direction="in"/><arg type="u" direction="in"/></method>
+  <method name="RequestAuthorization"><arg type="o" direction="in"/></method>
+  <method name="AuthorizeService"><arg type="o" direction="in"/><arg type="s" direction="in"/></method>
+  <method name="Cancel"/>
+</interface></node>
+"""
+
+
+def device_name(path):
+    try:
+        props = BUS.call_sync(BLUEZ, path, "org.freedesktop.DBus.Properties", "GetAll",
+                              GLib.Variant("(s)", ("org.bluez.Device1",)), None,
+                              Gio.DBusCallFlags.NONE, -1, None).unpack()[0]
+        return label_of(props)
+    except GLib.Error:
+        return "the device"
+
+
+def split_code(n):
+    s = f"{n:06d}"
+    return f"{s[:3]} {s[3:]}"
+
+
+def agent_call(conn, sender, path, iface, method, params, inv):
+    args = params.unpack()
+    reject = lambda: inv.return_dbus_error("org.bluez.Error.Rejected", "Rejected")
+    if method == "RequestConfirmation":
+        dev, passkey = args
+        if confirm(f"Does {split_code(passkey)} match the code on {device_name(dev)}?", "Pair"):
+            inv.return_value(None)
+        else:
+            reject()
+    elif method == "RequestAuthorization":
+        if confirm(f"Allow {device_name(args[0])} to pair?", "Pair"):
+            inv.return_value(None)
+        else:
+            reject()
+    elif method == "DisplayPasskey":
+        dev, passkey, _entered = args
+        notify(f"Type {split_code(passkey)} on {device_name(dev)}", "then press Enter on it",
+               timeout=0)
+        inv.return_value(None)
+    elif method == "DisplayPinCode":
+        dev, pin = args
+        notify(f"Type {pin} on {device_name(dev)}", "then press Enter on it", timeout=0)
+        inv.return_value(None)
+    elif method == "RequestPinCode":
+        pin = rofi_input(f"PIN for {device_name(args[0])}")
+        inv.return_value(GLib.Variant("(s)", (pin,))) if pin else reject()
+    elif method == "RequestPasskey":
+        key = rofi_input(f"Passkey for {device_name(args[0])}")
+        if key and key.isdigit():
+            inv.return_value(GLib.Variant("(u)", (int(key),)))
+        else:
+            reject()
+    elif method == "AuthorizeService":
+        inv.return_value(None)  # only asked for devices we're pairing ourselves
+    else:  # Release, Cancel
+        if method == "Cancel":
+            notify("Pairing cancelled")
+        inv.return_value(None)
+
+
+def register_agent():
+    info = Gio.DBusNodeInfo.new_for_xml(AGENT_XML).interfaces[0]
+    # register_object is deprecated in current PyGObject; the closures2 variant
+    # takes the same handler. Fall back for older GLib.
+    register = getattr(BUS, "register_object_with_closures2", BUS.register_object)
+    register(AGENT_PATH, info, agent_call, None, None)
+    BUS.call_sync(BLUEZ, "/org/bluez", "org.bluez.AgentManager1", "RegisterAgent",
+                  GLib.Variant("(os)", (AGENT_PATH, "KeyboardDisplay")), None,
+                  Gio.DBusCallFlags.NONE, -1, None)
+
+
+# --- actions ------------------------------------------------------------------
+
+def power(on):
+    path, _ = adapter()
+    if on:
+        # A soft rfkill block makes Powered=true fail with org.bluez.Error.Blocked.
+        subprocess.run(["rfkill", "unblock", "bluetooth"], check=False)
+    try:
+        set_prop(path, "org.bluez.Adapter1", "Powered", GLib.Variant("b", on))
+    except GLib.Error as e:
+        notify("Bluetooth", f"Couldn't turn {'on' if on else 'off'}: {e.message}", "critical")
+
+
+def connect(d):
+    name = label_of(d)
+    notify(f"Connecting to {name}…", timeout=0)
+    err, _ = call(d["path"], "org.bluez.Device1", "Connect")
+    notify(f"Connected to {name}" if not err else f"Couldn't connect to {name}",
+           err or "", "critical" if err else "normal")
+
+
+def disconnect(d):
+    err, _ = call(d["path"], "org.bluez.Device1", "Disconnect")
+    notify(f"Disconnected {label_of(d)}" if not err else f"Couldn't disconnect {label_of(d)}",
+           err or "")
+
+
+def pair(d):
+    name = label_of(d)
+    notify(f"Pairing with {name}…", "Follow any prompt on the device", timeout=0)
+    err, ename = call(d["path"], "org.bluez.Device1", "Pair", timeout_ms=60000)
+    if err and not ename.endswith("AlreadyExists"):
+        reason = {
+            "org.bluez.Error.AuthenticationFailed": "the code didn't match or was rejected",
+            "org.bluez.Error.AuthenticationCanceled": "pairing was cancelled",
+            "org.bluez.Error.AuthenticationRejected": "the device refused",
+            "org.bluez.Error.AuthenticationTimeout": "the device didn't answer in time",
+            "org.bluez.Error.ConnectionAttemptFailed": "the device is out of range or not in pairing mode",
+        }.get(ename, err)
+        notify(f"Couldn't pair with {name}", reason, "critical")
+        return
+    set_trusted(d, True)
+    connect(d)
+
+
+def forget(d):
+    name = label_of(d)
+    if not confirm(f"Forget {name}? You'll have to pair it again.", "Forget"):
+        return
+    path, _ = adapter()
+    try:
+        BUS.call_sync(BLUEZ, path, "org.bluez.Adapter1", "RemoveDevice",
+                      GLib.Variant("(o)", (d["path"],)), None,
+                      Gio.DBusCallFlags.NONE, -1, None)
+        notify(f"Forgot {name}")
+    except GLib.Error as e:
+        notify(f"Couldn't forget {name}", e.message, "critical")
+
+
+def set_trusted(d, value):
+    try:
+        set_prop(d["path"], "org.bluez.Device1", "Trusted", GLib.Variant("b", value))
+    except GLib.Error as e:
+        notify(f"Couldn't change trust for {label_of(d)}", e.message, "critical")
+
+
+# --- menus --------------------------------------------------------------------
+
+def device_menu(d):
+    name = label_of(d)
+    items = []
+    if d.get("Connected"):
+        items.append((row("link_off", "Disconnect"), lambda: disconnect(d)))
+    else:
+        items.append((row("link", "Connect"), lambda: connect(d)))
+    if d.get("Trusted"):
+        items.append((row("remove_moderator", "Untrust", "won't auto-reconnect"),
+                      lambda: set_trusted(d, False)))
+    else:
+        items.append((row("verified_user", "Trust", "auto-reconnect"),
+                      lambda: set_trusted(d, True)))
+    items.append((row("delete", "Forget device"), lambda: forget(d)))
+    items.append((row("arrow_back", "Back"), None))
+    i = rofi([r for r, _ in items], name)
+    if i is None:
+        return False  # Escape closes everything
+    action = items[i][1]
+    if action is None:
+        return True  # Back
+    action()
+    return False
+
+
+def scan_menu():
+    path, _ = adapter()
+    notify("Scanning for devices…", "Put the device in pairing mode", timeout=0)
+    call(path, "org.bluez.Adapter1", "SetDiscoveryFilter",
+         GLib.Variant("(a{sv})", ({"Transport": GLib.Variant("s", "auto")},)))
+    err, _ = call(path, "org.bluez.Adapter1", "StartDiscovery")
+    if err:
+        notify("Couldn't scan", err, "critical")
+        return False
+    wait(SCAN_SECONDS)
+    call(path, "org.bluez.Adapter1", "StopDiscovery")
+    # Replace the sticky "Scanning…" toast (same stack tag) with a short one.
+    notify("Scan finished", timeout=1500)
+
+    found = [d for d in devices() if not d.get("Paired")]
+    # Named devices first (unnamed ones are usually beacons), strongest first.
+    found.sort(key=lambda d: (d.get("Name") is None, -(d.get("RSSI") or -999)))
+    rows = [row("refresh", "Scan again")]
+    rows += [row(icon_of(d), label_of(d), "" if d.get("Name") else "no name")
+             for d in found]
+    rows.append(row("arrow_back", "Back"))
+    i = rofi(rows, "pair")
+    if i is None:
+        return False
+    if i == 0:
+        return scan_menu()
+    if i == len(rows) - 1:
+        return True
+    pair(found[i - 1])
+    return False
+
+
+def main_menu():
+    path, props = adapter()
+    if path is None:
+        notify("Bluetooth", "No Bluetooth adapter found", "critical")
+        return False
+    if not props.get("Powered"):
+        i = rofi([row("bluetooth_disabled", "Bluetooth: Off", "turn on")], "bluetooth")
+        if i == 0:
+            power(True)
+            return True  # reopen with devices listed
+        return False
+
+    paired = [d for d in devices() if d.get("Paired")]
+    paired.sort(key=lambda d: (not d.get("Connected"), label_of(d).lower()))
+    rows = [row("bluetooth", "Bluetooth: On", "turn off")]
+    for d in paired:
+        detail = "Connected" if d.get("Connected") else "Paired"
+        if d.get("battery") is not None:
+            detail += f" · {d['battery']}%"
+        rows.append(row(icon_of(d), label_of(d), detail))
+    rows.append(row("bluetooth_searching", "Scan for new devices…"))
+    i = rofi(rows, "bluetooth")
+    if i is None:
+        return False
+    if i == 0:
+        power(False)
+        return False
+    if i == len(rows) - 1:
+        return scan_menu()
+    return device_menu(paired[i - 1])
+
+
+def main():
+    try:
+        register_agent()
+    except GLib.Error as e:
+        # Not fatal: connect/trust/forget work without it; only code-based
+        # pairing needs it.
+        print(f"rofi-bluetooth: no pairing agent ({e.message})", file=sys.stderr)
+    while main_menu():
+        pass
+
+
+if __name__ == "__main__":
+    main()

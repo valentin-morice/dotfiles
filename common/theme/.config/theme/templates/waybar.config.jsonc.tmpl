@@ -202,29 +202,36 @@
 
     // Wi-Fi and Bluetooth are waybar modules again (nm-applet and blueman are
     // uninstalled, so the tray no longer carries them — it's for real graphical
-    // apps only now). Click opens the same floating TUI as the $mod+n / $mod+b
-    // bind: `--class` is alacritty's flag for the Wayland app_id (there is no
-    // --app-id), and it must stay in sync with sway's for_window rules.
+    // apps only now). Click opens a rofi list menu in the same look as the other
+    // menus: networkmanager_dmenu (wifi picker, config in
+    // ~/.config/networkmanager-dmenu) and rofi-bluetooth (devices, pairing with
+    // its own agent). $mod+n / $mod+b open the same two menus.
     "network": {
         "interval": 5,
-        // Signal-strength ramp: waybar splits signalStrength into len() equal
-        // buckets (0-19 ... 80-100), bars filling up like the phone indicator.
+        // Signal-strength ramp in the dot-and-arcs style: wifi_1_bar (the dot),
+        // wifi_2_bar (dot + one arc), wifi (full). Material only draws this
+        // family in three steps, so waybar's len() buckets are 0-32 / 33-65 /
+        // 66-100. Every state below stays in the same family — the slashed arcs
+        // for disconnected, full arcs for the brief linked state — so the icon
+        // never switches drawing style (the framed-wedge set was tried first).
         // Disconnected is signal_wifi_off, the slashed WEDGE, not wifi_off (the
         // slashed arcs): same drawing style as the ramp, so losing the link
         // changes the state, not the icon family.
         "format-wifi": "{icon}",
-        "format-icons": ["", "", "", "", ""],
+        "format-icons": ["", "", ""],
         "format-ethernet": "",
-        "format-disconnected": "",
+        "format-disconnected": "",
         // "linked" = carrier up but no IPv4 (waybar only looks at IPv4 by
         // default). Happens on IPv6-only networks like an iPhone hotspot;
         // without this the built-in fallback prints "wlp1s0 (No IP)" as text.
+        // It also flashes by for a moment on every connect/disconnect, so it
+        // must stay in the ramp's dot-and-arcs family (full `wifi`).
         "format-linked": "",
         "tooltip-format-wifi": "Network: {essid} ({signalStrength}%)",
         "tooltip-format-linked": "Network: {ifname} (no IPv4)",
         "tooltip-format-ethernet": "Network: {ifname}",
         "tooltip-format-disconnected": "Network: Disconnected",
-        "on-click": "alacritty --class netmenu-float -e nmtui"
+        "on-click": "networkmanager_dmenu"
     },
 
     "bluetooth": {
@@ -238,7 +245,7 @@
         "tooltip-format-connected": "Bluetooth: {device_alias}",
         "tooltip-format-off": "Bluetooth: Off",
         "tooltip-format-disabled": "Bluetooth: Off",
-        "on-click": "alacritty --class btmenu-float -e bluetui"
+        "on-click": "$HOME/.local/bin/rofi-bluetooth"
     },
 
     "battery": {

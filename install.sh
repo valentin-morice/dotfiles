@@ -52,10 +52,12 @@ REPO_PKGS=(
     # thumbnails image clips in the rofi-clip menu.
     cliphist wtype imagemagick
     xorg-xwayland xdg-desktop-portal-wlr
-    # Network + Bluetooth TUIs, each opened in a floating terminal from $mod+n /
-    # $mod+b and from the waybar module click. No GUI applet backs either one:
-    # nmtui (in networkmanager) carries NM's secret agent and bluetui registers
-    # its own bluez pairing agent, so the prompts live in the TUIs.
+    # NetworkManager (nmtui ships in it: the wifi menu's "Launch Connection
+    # Manager"). Wi-Fi and Bluetooth themselves are rofi menus on $mod+n /
+    # $mod+b and the waybar clicks — networkmanager-dmenu (AUR, below) and
+    # ~/.local/bin/rofi-bluetooth, which registers its own pairing agent while it
+    # runs. bluetui is no longer bound to anything; kept as a full BT TUI for the
+    # rare job the menu doesn't cover.
     networkmanager bluetui
     # Desktop
     alacritty dunst fastfetch
@@ -89,12 +91,13 @@ REPO_PKGS=(
 AUR_PKGS=(
     swaylock-effects                # screen locker with blur (sway session)
     bluetuith                       # heavier BT TUI: OBEX file transfer, PBAP,
-                                    # PAN tethering. Not bound to a key — bluetui
-                                    # (repo) is what $mod+b opens. Kept for the
-                                    # transfer/tethering jobs bluetui can't do.
+                                    # PAN tethering. Not bound to a key ($mod+b is
+                                    # rofi-bluetooth). Kept for the transfer/
+                                    # tethering jobs the menu can't do.
     vscodium-bin                    # editor
     sway-audio-idle-inhibit-git     # inhibit idle while audio plays
     1password 1password-cli         # secrets + SSH commit signing
+    networkmanager-dmenu-git        # rofi wifi picker (waybar network click)
     ttf-material-symbols-variable-git  # waybar + rofi card icons (Material
                                     # Symbols Outlined); without it those
                                     # glyphs fall back to unrelated Nerd Font

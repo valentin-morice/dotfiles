@@ -1,0 +1,47 @@
+#!/bin/bash
+# Minimal pinentry for networkmanager-dmenu's wifi passphrase prompt, as a
+# single-line rofi input instead of the full-height network list (which is what
+# networkmanager-dmenu shows when it reuses its dmenu command for the password).
+#
+# Speaks just enough of the pinentry (Assuan) protocol for that caller: it pipes
+# "setdesc … / setprompt … / getpin" on stdin and keeps the first "D <pin>"
+# line of the reply. Wired up in ~/.config/networkmanager-dmenu/config.ini as
+# `pinentry = sh -c 'exec "$HOME/.local/bin/rofi-pinentry"'` (waybar's PATH has
+# no ~/.local/bin, and that option isn't ~-expanded).
+#
+# The pin is sent raw, NOT percent-escaped as the Assuan spec wants: the only
+# caller reads the D line verbatim, so escaping would corrupt passwords with a
+# '%' in them. rofi input is one line, so no CR/LF can reach it.
+set -u
+
+prompt="password"
+
+# One-line prompt. The list is removed from mainbox's children, not just
+# emptied with -l 0: an empty listview still takes mainbox's 10px spacing,
+# which left more padding under the input than above it. The base theme's
+# "Search" placeholder is blanked because it reads wrong on a password field.
+# rofi-bluetooth's PIN prompt (rofi_input) uses the same theme string.
+ask() {
+    rofi -dmenu -password -p "$prompt ❯" \
+        -theme-str 'mainbox { children: [ inputbar ]; } entry { placeholder: ""; }' </dev/null
+}
+
+echo "OK rofi-pinentry ready"
+while IFS= read -r line; do
+    case "${line%% *}" in
+        [Ss][Ee][Tt][Pp][Rr][Oo][Mm][Pp][Tt])
+            prompt="${line#* }"
+            prompt="${prompt%: }"; prompt="${prompt%:}"
+            echo OK ;;
+        [Gg][Ee][Tt][Pp][Ii][Nn])
+            if pin=$(ask) && [ -n "$pin" ]; then
+                printf 'D %s\nOK\n' "$pin"
+            else
+                echo "ERR 83886179 Operation cancelled"
+            fi ;;
+        [Bb][Yy][Ee])
+            echo OK; exit 0 ;;
+        *)
+            echo OK ;;  # setdesc, option, … accepted and ignored
+    esac
+done
