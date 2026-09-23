@@ -262,7 +262,7 @@
         // spot every time — it settles anywhere from ~79.3% to ~81.x%, so the
         // floored capacity read 79 one day and 81 the next. While parked on AC
         // (not charging) within 79-82, the *-at-cap entries below show a flat
-        // 80% and pin the glyph to battery_android_frame_6, the ramp step 80
+        // 80% and pin the glyph to battery_android_6, the ramp step 80
         // lands on, so the icon can't flip at a bucket edge either. States take the LOWEST threshold >= capacity, so
         // "below-cap" fences 11-78 off from "at-cap"; neither is styled in CSS.
         "states": { "critical": 10, "below-cap": 78, "at-cap": 82 },
@@ -273,24 +273,30 @@
         "tooltip-format-not-charging-at-cap": "Battery: 80%",
         "tooltip-format-plugged-at-cap": "Battery: 80%",
         "tooltip-format-full-at-cap": "Battery: 80%",
-        "format-not-charging-at-cap": "",
-        "format-plugged-at-cap": "",
-        "format-full-at-cap": "",
-        // Material's Android-style battery, FRAME variant: an outline cell with
-        // 1-6 bars inside, then full. The plain battery_android_* set is a solid
-        // block whose charging/alert glyphs are outlines, so plugging in made the
-        // icon visibly lose weight; the frame set draws levels, charging and
-        // alert as one family. There is no frame_0, so the ramp starts at one
-        // bar. Low -> high; waybar splits capacity into len() equal buckets, so
-        // the seven steps are 14 wide (0-13, 14-27, ... 70-83, 84+).
+        "format-not-charging-at-cap": "",
+        "format-plugged-at-cap": "",
+        "format-full-at-cap": "",
+        // Material's Android-style battery, SOLID variant (battery_android_*):
+        // the fill sits flush against the outline. The FRAME variant
+        // (battery_android_frame_*) was dropped: it floats its fill inside the
+        // outline with a sub-pixel inset, which at 18px (0.75px per design unit)
+        // anti-aliases unevenly — one gap crisp, the other smeared, so the fill
+        // looked off-centre, and no font size fixed it in the live bar.
+        // Trade-off: this set has no charging ramp, and its bolt and alert
+        // glyphs are outlines, so plugging in makes the icon lighter.
+        //
+        // battery_android_0 is skipped so the ramp keeps seven steps; below 10%
+        // the critical alert glyph takes over anyway. Low -> high; waybar splits
+        // capacity into len() equal buckets, so the seven steps are 14 wide
+        // (0-13, 14-27, ... 70-83, 84+).
         "format-icons": {
-            // Keyed by STATE. There is a single charging cell (no level ramp),
+            // Keyed by status. There is a single charging cell (no level ramp),
             // so charging is one glyph at every capacity.
-            "charging": [""],
-            "default": ["", "", "", "", "", "", ""]
+            "charging": [""],
+            "default": ["", "", "", "", "", "", ""]
         },
         "format": "{icon}",
-        // Under 10% the glyph becomes battery_android_frame_alert, on top of the red that
+        // Under 10% the glyph becomes battery_android_alert, on top of the red that
         // style.css gives .critical — the alarm is carried by shape as well as
         // colour, like every other state in the bar.
         //
@@ -299,7 +305,7 @@
         // fall back to format-critical and show the alert cell instead of the
         // charging one. That entry is what keeps "plugged in" readable at low
         // charge.
-        "format-critical": "",
+        "format-critical": "",
         "format-charging-critical": "{icon}"
     },
 
