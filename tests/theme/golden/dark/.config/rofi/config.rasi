@@ -49,22 +49,45 @@ configuration {
     text-color:       @fg;
 }
 
+/* Dimmed backdrop: the window covers the whole focused output with translucent
+   black, so everything behind the menu (bar included) is shaded while it is
+   open. Mainline sway can't blur (see the SwayFX notes), so this is a plain dim
+   — no screenshot, no launch cost. The visible card is mainbox, centred by the
+   expanding pad boxes around it: vpad above/below the row, hpad either side.
+   Unknown child names become plain boxes in rofi, so they need no other setup.
+
+   The card menus (rofi-card-theme.sh) size and style mainbox, not window, for
+   the same reason — window is always the full-output dim now. */
 window {
-    location:         center;
+    fullscreen:       true;
+    border:           0;
+    padding:          0px;
+    background-color: rgba(0, 0, 0, 0.35);
+    orientation:      vertical;
+    children:         [ vpad, row, vpad ];
+}
+
+row {
+    orientation: horizontal;
+    expand:      false;
+    children:    [ hpad, mainbox, hpad ];
+}
+
+vpad, hpad {
+    expand: true;
+}
+
+mainbox {
+    expand:           false;
     /* fixed 720px — the width fuzzel's ~72-char setting was tuned to match */
     width:            720px;
     border:           2px;
     border-color:     @border-c;
     border-radius:    0px;
     background-color: @bg;
-    padding:          0px;
-}
-
-mainbox {
-    padding:  14px 16px;
-    spacing:  10px;
-    border:   0;
-    children: [ inputbar, listview ];
+    padding:          14px 16px;
+    spacing:          10px;
+    children:         [ inputbar, listview ];
 }
 
 inputbar {

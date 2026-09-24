@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shared rofi card-grid theme, sourced by rofi-power, rofi-profile and
 # rofi-confirm (which had ~28 identical lines of -theme-str each). Emits the
-# theme body; the per-card styling is identical across menus — only the window
+# theme body; the per-card styling is identical across menus — only the card
 # width and grid shape (rows x columns) differ, so those are arguments.
 #
 #   rofi_card_theme <width> <columns> <lines>
@@ -32,8 +32,7 @@ card_glyph() {
 rofi_card_theme() {
     local width="$1" columns="$2" lines="$3"
     cat <<EOF
-window    { width: ${width}; border: 2px; border-color: @border-c; background-color: @bg; }
-mainbox   { children: [ listview ]; padding: 22px; background-color: transparent; border: 0; }
+mainbox   { children: [ listview ]; width: ${width}; padding: 22px; border: 2px; border-color: @border-c; background-color: @bg; }
 inputbar  { enabled: false; }
 listview  { columns: ${columns}; lines: ${lines}; spacing: 14px; fixed-height: true; fixed-columns: true;
             border: 0; background-color: transparent; scrollbar: false; }
