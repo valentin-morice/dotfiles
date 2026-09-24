@@ -91,7 +91,13 @@
         // workspaces living on its own output, so the unfocused screen's bar has
         // no .focused button at all. That absence, plus the .visible fill in
         // style.css, is the "which screen am I typing on" cue.
-        "all-outputs": false
+        "all-outputs": false,
+        // Pointer cursor over the buttons. Waybar only shows the hand by itself
+        // for modules with an on-click (or a built-in click, like
+        // idle_inhibitor); workspace clicks are handled by the buttons, so the
+        // module has to ask for it. true = Gdk HAND2, set once on the module's
+        // window; the buttons' input windows inherit it.
+        "cursor": true
     },
 
     // Binding-mode indicator (e.g. "resize"); auto-hidden in the default mode,
@@ -321,6 +327,10 @@
         // the bar and the tray would read as a tighter cluster. 12 makes one
         // even row.
         "spacing": 12,
-        "icon-size": 19
+        "icon-size": 19,
+        // Pointer cursor over the tray icons. Every item is clickable, but its
+        // clicks go to the item itself, not the module, so waybar never shows
+        // the hand here unless asked (see sway/workspaces).
+        "cursor": true
     }
 }
