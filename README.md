@@ -40,8 +40,8 @@ For example `wayland/sway/.config/sway/config` → `~/.config/sway/config`
 (stowed with `stow -d wayland sway`).
 
 ```
-common/   alacritty  applications  bash  bin  claude  git  imap  lazydocker
-          lazygit  nvim  systemd  theme  tmux  xdg  zsh
+common/   alacritty  applications  bash  bin  claude  fontconfig  git  imap
+          lazydocker  lazygit  nvim  systemd  theme  tmux  xdg  zsh
 wayland/  gammastep  kanshi  portal  sway  waybar
 ```
 
@@ -85,7 +85,7 @@ Without the script, stow each group (the `-d` flag is the Stow directory; the
 target is `$HOME`):
 
 ```sh
-stow -d common  -t ~ alacritty applications bash bin claude git imap lazydocker lazygit nvim systemd theme tmux xdg zsh
+stow -d common  -t ~ alacritty applications bash bin claude fontconfig git imap lazydocker lazygit nvim systemd theme tmux xdg zsh
 stow -d wayland -t ~ gammastep kanshi portal sway waybar
 ```
 
