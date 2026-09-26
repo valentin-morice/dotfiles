@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Wrapper around /usr/bin/rofi (shadows it via ~/.local/bin on PATH) that dims
+# the OTHER outputs while a menu is open. rofi's own dim is its fullscreen
+# window, which only covers the focused output; rofi-dim covers the rest.
+#
+# A wrapper rather than a change per caller because rofi is launched from many
+# places: sway bindings, the rofi-* menus, dunst-dmenu, emoji-picker, and
+# networkmanager-dmenu (which we don't control). All of them just run `rofi`.
+#
+# Transparent otherwise: args, stdin (dmenu input), stdout (the pick) and the
+# exit code all pass through. rofi-dim's own output goes to /dev/null so it can
+# never leak into a dmenu result.
+real=/usr/bin/rofi
+
+# Non-UI invocations and anything outside a Wayland session: no dim.
+[ -n "${WAYLAND_DISPLAY:-}" ] || exec "$real" "$@"
+for a in "$@"; do
+    case "$a" in
+        -version|-help|-h|--help|-dump-*|-list-*) exec "$real" "$@" ;;
+    esac
+done
+
+"$(dirname "${BASH_SOURCE[0]}")/rofi-dim" >/dev/null 2>&1 &
+dim=$!
+trap 'kill "$dim" 2>/dev/null' EXIT
+
+"$real" "$@"

@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+# Dim every output EXCEPT the focused one, until killed. Started by the `rofi`
+# wrapper next to this script for as long as a menu is open.
+#
+# rofi's own dim is its window: fullscreen with a translucent background
+# (config.rasi's `window` block). But a rofi window lives on one output (the
+# focused one), so with a second screen plugged in, that screen stayed bright.
+# This covers the others with the same 35% black on the overlay layer, above
+# waybar, like rofi's window. Keep the colour in sync with rofi.rasi.tmpl.
+#
+# No keyboard focus (rofi keeps the keyboard); clicks on the dimmed screens are
+# swallowed so they can't focus a window behind an open menu. Quits on its own if
+# the wrapper dies without killing it, so an overlay can never outlive a menu.
+import json
+import os
+import subprocess
+import sys
+
+DIM = "rgba(0, 0, 0, 0.35)"
+
+# Ask sway first: with one output (the common case) there is nothing to cover,
+# and this exits before paying for the GTK import.
+try:
+    outputs = json.loads(subprocess.run(
+        ["swaymsg", "-r", "-t", "get_outputs"],
+        capture_output=True, text=True, timeout=2).stdout)
+except Exception:
+    sys.exit(0)
+others = {(o["rect"]["x"], o["rect"]["y"])
+          for o in outputs if o.get("active") and not o.get("focused")}
+if not others:
+    sys.exit(0)
+
+import gi  # noqa: E402
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("GtkLayerShell", "0.1")
+from gi.repository import Gdk, GLib, Gtk, GtkLayerShell  # noqa: E402
+
+css = Gtk.CssProvider()
+css.load_from_data(f"window {{ background-color: {DIM}; }}".encode())
+screen = Gdk.Screen.get_default()
+Gtk.StyleContext.add_provider_for_screen(
+    screen, css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+# GTK3 doesn't expose the connector name (eDP-1, DP-2) on Wayland, so match
+# sway's outputs to GDK monitors by their logical position instead.
+display = Gdk.Display.get_default()
+windows = []
+for i in range(display.get_n_monitors()):
+    mon = display.get_monitor(i)
+    geo = mon.get_geometry()
+    if (geo.x, geo.y) not in others:
+        continue
+    w = Gtk.Window()
+    w.set_visual(screen.get_rgba_visual())
+    GtkLayerShell.init_for_window(w)
+    GtkLayerShell.set_namespace(w, "rofi-dim")
+    GtkLayerShell.set_layer(w, GtkLayerShell.Layer.OVERLAY)
+    GtkLayerShell.set_monitor(w, mon)
+    for edge in (GtkLayerShell.Edge.TOP, GtkLayerShell.Edge.BOTTOM,
+                 GtkLayerShell.Edge.LEFT, GtkLayerShell.Edge.RIGHT):
+        GtkLayerShell.set_anchor(w, edge, True)
+    GtkLayerShell.set_exclusive_zone(w, -1)  # cover the bar too
+    w.show_all()
+    windows.append(w)
+
+if not windows:
+    sys.exit(0)
+
+parent = os.getppid()
+
+
+def parent_alive():
+    if os.getppid() != parent:
+        Gtk.main_quit()
+        return False
+    return True
+
+
+GLib.timeout_add(250, parent_alive)
+Gtk.main()
