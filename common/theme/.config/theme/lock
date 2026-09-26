@@ -48,6 +48,11 @@ done
 bg_args=(--screenshots)
 [ -n "${THEME_wallpaper:-}" ] && [ -r "${THEME_wallpaper:-}" ] && bg_args=(--image "$THEME_wallpaper")
 
+# No --fade-in: it only fades the background (cross-fading from a screenshot
+# of the live desktop), while the ring + clock pop in at full opacity on the
+# first frame, so they showed over the sharp desktop before the blur arrived.
+# Without it, blur + ring + clock appear together in one frame.
+#
 # Frosted-glass lock (swaylock-effects). Blurs the wallpaper with a soft edge
 # vignette; the indicator is a translucent accent ring that solidifies as you
 # type. Backspace fades to neutral grey; hue is spent only where it carries
@@ -61,7 +66,6 @@ swaylock \
     "${bg_args[@]}" \
     --effect-blur 7x5 \
     --effect-vignette 0.5:0.5 \
-    --fade-in 0.2 \
     --clock \
     --indicator \
     --indicator-caps-lock \
