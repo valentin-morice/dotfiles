@@ -266,4 +266,28 @@ if [ "$reload" -eq 1 ]; then
         swaymsg "$(grep -E '^[[:space:]]*client\.' "$HOME/.config/sway/colors.conf" | paste -sd ';')" >/dev/null 2>&1 || true
         "$HOME/.config/waybar/launch.sh"
     fi
+
+    # qBittorrent's tray icon (like dunst above, a daemon that doesn't follow):
+    # it hands waybar only the NAME qbittorrent-tray, and waybar resolves that
+    # through the GTK icon theme once per NewIcon signal — so the gsettings
+    # icon-theme flip above (Papirus-Dark <-> Papirus-Light panel icons) shows
+    # only when qBittorrent next re-sends it. It re-sends on every Preferences
+    # change, but only a real one (SettingsStorage::save is a no-op when nothing
+    # differs, so a same-value write does nothing). So flip an inert pref (the
+    # performance-warning log toggle) through the localhost Web API
+    # (auth-exempt; port shared with vpn-portforward) and restore it: two
+    # NewIcons, net no change. Placed last so waybar's GtkSettings has taken the
+    # new icon theme by the time the signal lands. Not running = refused, ignored.
+    if command -v curl >/dev/null && command -v jq >/dev/null; then
+        __qbt=http://127.0.0.1:18089/api/v2/app
+        __pw=$(curl -fsS --max-time 2 "$__qbt/preferences" 2>/dev/null | jq -r '.performance_warning' 2>/dev/null) || true
+        if [ "$__pw" = true ] || [ "$__pw" = false ]; then
+            if [ "$__pw" = true ]; then __flip=false; else __flip=true; fi
+            curl -fsS --max-time 2 --data-urlencode "json={\"performance_warning\":$__flip}" \
+                "$__qbt/setPreferences" >/dev/null 2>&1 || true
+            curl -fsS --max-time 2 --data-urlencode "json={\"performance_warning\":$__pw}" \
+                "$__qbt/setPreferences" >/dev/null 2>&1 || true
+        fi
+        unset __qbt __pw __flip
+    fi
 fi

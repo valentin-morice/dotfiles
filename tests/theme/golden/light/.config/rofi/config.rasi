@@ -24,7 +24,7 @@ configuration {
        icons). icon-theme follows the palette's Papirus variant so app icons
        track light/dark. */
     show-icons:          false;
-    icon-theme:          "Papirus";
+    icon-theme:          "Papirus-Light";
     terminal:            "alacritty";
     /* drun search fields mirror fuzzel's fields=name,generic,keywords */
     drun-match-fields:   "name,generic,keywords";

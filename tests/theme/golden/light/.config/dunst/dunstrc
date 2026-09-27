@@ -43,7 +43,7 @@
     max_icon_size = 40
     # Resolve app-sent icon *names* (not just paths) against the themed icon set,
     # searching subdirs — otherwise name-only icons render as blank space.
-    icon_theme = "Papirus"
+    icon_theme = "Papirus-Light"
     enable_recursive_icon_lookup = true
 
     sticky_history = yes

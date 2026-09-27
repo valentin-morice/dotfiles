@@ -85,10 +85,13 @@ export THEME_urgent_bare=c8332b
 
 # GTK / Qt. Light uses the plain (built-in) Adwaita name; dark uses Adwaita-dark
 # (see dark.sh) so GTK3 reloads on the name change. GTK4/libadwaita + Qt follow
-# gsettings color-scheme / the portal.
+# gsettings color-scheme / the portal. Icons are Papirus-Light, not plain
+# Papirus: the two differ only in panel/ (tray icons), which plain Papirus draws
+# in #dfdfdf for dark panels — invisible on the light bar (qBittorrent's tray
+# icon is looked up by name through this theme).
 export THEME_gtk_theme=Adwaita
 export THEME_gtk_prefer_dark=0
-export THEME_gtk_icon=Papirus
+export THEME_gtk_icon=Papirus-Light
 export THEME_gtk_color_scheme=prefer-light
 
 # VSCodium theme applied by theme-render (Claude Code follows the terminal via "auto")
