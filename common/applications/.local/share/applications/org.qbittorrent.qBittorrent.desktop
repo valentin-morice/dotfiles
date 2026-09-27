@@ -1,0 +1,25 @@
+# Dotfiles override: launches qBittorrent on the qt6ct platform theme so it
+# recolours live on theme-switch. The xdgdesktopportal theme from .zshenv only
+# flips Qt's light/dark hint, not a running Widgets palette; qt6ct re-applies
+# the palette theme-render writes to ~/.config/qt6ct. Same desktop ID as
+# /usr/share/applications/org.qbittorrent.qBittorrent.desktop, so it shadows
+# it everywhere, including the magnet: / .torrent handler (xdg-mime).
+#
+# Known gap: qBittorrent re-picks its status-text colours (downloading green,
+# seeding blue...) and light/dark icon set only when Qt reports a colour-scheme
+# change, which qt6ct never does. Those stay in the launch-time mode until the
+# next start; the rest of the window follows live.
+[Desktop Entry]
+Categories=Network;FileTransfer;P2P;Qt;
+Exec=env QT_QPA_PLATFORMTHEME=qt6ct qbittorrent %U
+GenericName=BitTorrent client
+Comment=Download and share files over BitTorrent
+Icon=qbittorrent
+MimeType=application/x-bittorrent;x-scheme-handler/magnet;
+Name=qBittorrent
+Terminal=false
+Type=Application
+StartupNotify=false
+StartupWMClass=qbittorrent
+Keywords=bittorrent;torrent;magnet;download;p2p;
+SingleMainWindow=true

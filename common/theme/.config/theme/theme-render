@@ -97,6 +97,11 @@ render gtk4.settings.ini.tmpl         "$HOME/.config/gtk-4.0/settings.ini"
 render delta.gitconfig.tmpl           "$HOME/.config/git/delta-theme.gitconfig"
 render nvim.palette.lua.tmpl          "$HOME/.config/nvim/lua/theme/palette.lua"
 render tmux.theme.conf.tmpl           "$HOME/.config/tmux/theme.conf"
+# qt6ct palette for Qt apps that opt in (qBittorrent). Order matters: the
+# colours first, then qt6ct.conf, whose replacement is what qt6ct's directory
+# watch picks up to reload running apps (see the templates).
+render qt6ct.colors.conf.tmpl         "$HOME/.config/qt6ct/colors/theme.conf"
+render qt6ct.conf.tmpl                "$HOME/.config/qt6ct/qt6ct.conf"
 
 # bluetuith (Bluetooth TUI). Rendered as a whole file rather than patched in
 # place (cf. VSCodium below): it renders via tcell in truecolor, so named colors
@@ -160,9 +165,14 @@ fi
 
 # Qt — apps use QT_QPA_PLATFORMTHEME=xdgdesktopportal (.zshenv) and follow the
 # freedesktop appearance "color-scheme" that the portal derives from the
-# gsettings color-scheme set just above, flipping light/dark live (Qt 6.8+),
-# with no restart. QtWebEngine maps it to prefers-color-scheme, so web-content
-# apps (e.g. zapzap) flip too. Light/dark only by design — no per-app palette.
+# gsettings color-scheme set just above. That flips Qt's colorScheme hint live
+# (Qt 6.8+), and QtWebEngine maps the hint to prefers-color-scheme, so web
+# content (e.g. zapzap) flips too. But the Widgets PALETTE doesn't: Qt 6.11
+# keeps the Fusion palette it picked at launch (checked 2026-09-27: the hint
+# changed, app palette stayed #323232 either way, and re-setting the style
+# didn't help). A Qt Widgets window only recolours on its next launch. Apps
+# that need live recolour opt into qt6ct instead, which re-applies the palette
+# rendered above; today that's qBittorrent, via its .desktop override.
 
 if [ "$reload" -eq 1 ]; then
     # Reload daemons that don't auto-reload. alacritty live-reloads its import;

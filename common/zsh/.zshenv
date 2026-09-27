@@ -49,10 +49,13 @@ else
 fi
 
 # Qt apps follow the freedesktop appearance color-scheme via the xdg-desktop-
-# portal theme plugin, so they flip light/dark live on theme-switch (Qt 6.8+,
-# incl. QtWebEngine prefers-color-scheme — fixes zapzap's half-themed window).
-# theme-render drives it through the gsettings color-scheme. Force Fusion so the
-# style follows the scheme cleanly. Needs: xdg-desktop-portal + -gtk backend.
+# portal theme plugin. theme-render drives it through the gsettings
+# color-scheme. Live, only the hint flips (QtWebEngine's prefers-color-scheme
+# follows it, which fixes zapzap's half-themed window); a Qt Widgets palette
+# is picked at launch and kept (Qt 6.11), so native windows recolour on their
+# next start. qBittorrent opts into qt6ct for live recolour instead (see
+# theme-render). Force Fusion so the style follows the scheme cleanly.
+# Needs: xdg-desktop-portal + -gtk backend.
 export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 export QT_STYLE_OVERRIDE=Fusion
 
