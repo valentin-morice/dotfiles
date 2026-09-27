@@ -1,0 +1,31 @@
+#!/bin/bash
+# Build dunst with per-notification-width.patch and install it to
+# ~/.local/bin/dunst, where it shadows /usr/bin/dunst for sway's `exec dunst`.
+#
+# Stock dunst draws every visible notification at the width of the widest one,
+# so a long notification stretches the short volume/brightness OSD next to it.
+# The patch gives each box its own width (right-aligned with a top-right
+# origin) when gap_size > 0, and makes the empty space beside a narrower box
+# click-through.
+#
+# Builds the release matching the installed dunst package, so re-run this after
+# a pacman dunst upgrade — the ~/.local/bin copy is NOT replaced by pacman and
+# would silently stay on the old version. If the patch stops applying, upstream
+# moved draw.c; rebase the patch against the new tag.
+# Requires: git, make, the dunst makedepends (pacman -S --needed dunst pulls
+# the runtime libs; headers ship with them on Arch).
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+ver=$(pacman -Q dunst | awk '{print $2}' | sed 's/-[0-9]*$//')
+src=$(mktemp -d)
+trap 'rm -rf "$src"' EXIT
+
+git clone -q --depth 1 --branch "v$ver" https://github.com/dunst-project/dunst.git "$src"
+git -C "$src" apply "$here/per-notification-width.patch"
+# Same paths as Arch's package, so the fallback /etc/xdg/dunst/dunstrc resolves
+make -C "$src" -j"$(nproc)" PREFIX=/usr SYSCONFDIR=/etc/xdg dunst >/dev/null
+
+install -Dm755 "$src/dunst" "$HOME/.local/bin/dunst"
+echo "dunst $ver + per-notification-width installed to ~/.local/bin/dunst"
+echo "restart it: pkill -x dunst; setsid -f dunst"

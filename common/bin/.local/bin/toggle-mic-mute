@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 command -v pactl >/dev/null || { echo "toggle-mic-mute: pactl not found" >&2; exit 1; }
-WIDTH=44
+WIDTH=30
 
 # --sync: only re-derive the LED from the current mute state (used at sway startup).
 # The kernel trigger is detached by a udev rule, so this script is the LED's only owner.

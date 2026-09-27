@@ -5,7 +5,7 @@
 set -eu
 command -v brightnessctl >/dev/null || { echo "brightness-notify: brightnessctl not found" >&2; exit 1; }
 
-WIDTH=44
+WIDTH=30
 
 case "${1:-}" in
     up)   brightnessctl set +5% >/dev/null ;;

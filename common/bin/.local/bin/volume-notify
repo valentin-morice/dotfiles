@@ -10,7 +10,7 @@ sink="@DEFAULT_SINK@"
 
 # Width target (in monospace chars) for the title row. Tune if the percentage
 # doesn't sit flush right against the box edge.
-WIDTH=44
+WIDTH=30
 
 case "${1:-}" in
     up)   pactl set-sink-mute "$sink" 0

@@ -1,0 +1,315 @@
+diff --git a/src/draw.c b/src/draw.c
+index ff8088e..86f3550 100644
+--- a/src/draw.c
++++ b/src/draw.c
+@@ -35,6 +35,7 @@ struct colored_layout {
+         cairo_surface_t *icon;
+         struct notification *n;
+         bool is_xmore;
++        int w; /**< own box width, frame included */
+ };
+ 
+ const struct output *output;
+@@ -42,6 +43,8 @@ window win;
+ 
+ PangoFontDescription *pango_fdesc;
+ 
++static GArray *boxes = NULL;
++
+ // NOTE: Saves some characters
+ #define COLOR(cl, field) (cl)->n->colors.field
+ 
+@@ -351,6 +354,7 @@ static struct dimensions calculate_dimensions(GSList *layouts)
+                 dim.h += n_dim.h;
+                 LOG_D("Notification dimensions %ix%i", n_dim.w, n_dim.h);
+                 dim.w = MAX(dim.w, n_dim.w + settings.frame_width);
++                cl->w = n_dim.w + settings.frame_width + 2 * settings.frame_width;
+         }
+ 
+         dim.w += 2 * settings.frame_width;
+@@ -363,6 +367,14 @@ static struct dimensions calculate_dimensions(GSList *layouts)
+                 dim.w = max_width;
+         }
+ 
++        /* With a gap every notification is its own box, so let each one keep
++         * its own width instead of stretching all of them to the widest.
++         * Without a gap they form a single stacked box and must line up. */
++        for (GSList *iter = layouts; iter; iter = iter->next) {
++                struct colored_layout *cl = iter->data;
++                cl->w = settings.gap_size ? MIN(cl->w, dim.w) : dim.w;
++        }
++
+         if (settings.gap_size) {
+                 int extra_frame_height = layout_count * (2 * settings.frame_width);
+                 int extra_gap_height = (layout_count * settings.gap_size) - settings.gap_size;
+@@ -708,6 +720,7 @@ void draw_rounded_rect(cairo_t *c, float x, float y, int width, int height, int
+ static cairo_surface_t *render_background(cairo_surface_t *srf,
+                                           struct colored_layout *cl,
+                                           struct colored_layout *cl_next,
++                                          int x,
+                                           int y,
+                                           int width,
+                                           int height,
+@@ -716,7 +729,6 @@ static cairo_surface_t *render_background(cairo_surface_t *srf,
+                                           int *ret_width,
+                                           double scale)
+ {
+-        int x = 0;
+         int radius_int = corner_radius;
+ 
+         cairo_t *c = cairo_create(srf);
+@@ -768,7 +780,7 @@ static cairo_surface_t *render_background(cairo_surface_t *srf,
+                 struct color sep_color = layout_get_sepcolor(cl, cl_next);
+                 cairo_set_source_rgba(c, sep_color.r, sep_color.g, sep_color.b, sep_color.a);
+ 
+-                draw_rect(c, settings.frame_width, y + height, width, settings.separator_height, scale);
++                draw_rect(c, x, y + height, width, settings.separator_height, scale);
+ 
+                 cairo_fill(c);
+         }
+@@ -944,11 +956,33 @@ static struct dimensions layout_render(cairo_surface_t *srf,
+         int bg_height = MAX(settings.height.min, 2 * settings.padding + cl_h);
+         bg_height = MIN(settings.height.max, bg_height);
+ 
+-        cairo_surface_t *content = render_background(srf, cl, cl_next, dim.y, dim.w, bg_height, dim.corner_radius, corners, &bg_width, scale);
++        /* Line narrower boxes up with the screen edge the window hugs */
++        int bg_x;
++        switch (settings.origin) {
++                case ORIGIN_TOP_LEFT:
++                case ORIGIN_LEFT_CENTER:
++                case ORIGIN_BOTTOM_LEFT:
++                        bg_x = 0;
++                        break;
++                case ORIGIN_TOP_RIGHT:
++                case ORIGIN_RIGHT_CENTER:
++                case ORIGIN_BOTTOM_RIGHT:
++                        bg_x = dim.w - cl->w;
++                        break;
++                default:
++                        bg_x = (dim.w - cl->w) / 2;
++                        break;
++        }
++        cl->n->displayed_x = bg_x;
++        cl->n->displayed_width = cl->w;
++
++        cairo_surface_t *content = render_background(srf, cl, cl_next, bg_x, dim.y, cl->w, bg_height, dim.corner_radius, corners, &bg_width, scale);
+         cairo_t *c = cairo_create(content);
+ 
+         render_content(c, cl, bg_width, bg_height, scale);
+ 
++        cairo_rectangle_int_t box = { .x = bg_x, .y = dim.y, .width = cl->w };
++
+         /* adding frame */
+         if (corners & (C_TOP | _C_FIRST))
+                 dim.y += settings.frame_width;
+@@ -958,6 +992,11 @@ static struct dimensions layout_render(cairo_surface_t *srf,
+ 
+         dim.y += bg_height;
+ 
++        box.height = dim.y - box.y;
++        if (!settings.gap_size && !(corners & (C_BOT | _C_LAST)))
++                box.height += settings.separator_height;
++        g_array_append_val(boxes, box);
++
+         if (settings.gap_size)
+                 dim.y += settings.gap_size;
+         else
+@@ -1038,6 +1077,10 @@ void draw(void)
+                                                                     round(dim.w * scale),
+                                                                     round(dim.h * scale));
+ 
++        if (!boxes)
++                boxes = g_array_new(FALSE, FALSE, sizeof(cairo_rectangle_int_t));
++        g_array_set_size(boxes, 0);
++
+         enum corner_pos corners = (settings.corners & C_TOP) | _C_FIRST;
+         for (GSList *iter = layouts; iter; iter = iter->next) {
+ 
+@@ -1077,3 +1120,8 @@ double draw_get_scale(void)
+                 return 1;
+         }
+ }
++
++const GArray *draw_get_boxes(void)
++{
++        return boxes;
++}
+diff --git a/src/draw.h b/src/draw.h
+index 734d08f..cbe8755 100644
+--- a/src/draw.h
++++ b/src/draw.h
+@@ -85,6 +85,13 @@ void draw_setup(void);
+ 
+ void draw(void);
+ 
++/**
++ * The notification boxes (frame included) laid out by the last draw(), as
++ * cairo_rectangle_int_t in window coordinates. Everything outside of them is
++ * transparent.
++ */
++const GArray *draw_get_boxes(void);
++
+ void draw_rounded_rect(cairo_t *c, float x, float y, int width, int height, int corner_radius, double scale, enum corner_pos corners);
+ 
+ // TODO get rid of this function by passing scale to everything that needs it.
+diff --git a/src/input.c b/src/input.c
+index 47ba59c..7bf868d 100644
+--- a/src/input.c
++++ b/src/input.c
+@@ -37,7 +37,7 @@ int get_notification_clickable_height(struct notification *n, bool first, bool l
+         return notification_size;
+ }
+ 
+-struct notification *get_notification_at(const int y)
++struct notification *get_notification_at(const int x, const int y)
+ {
+         int curr_y = 0;
+         bool first = true;
+@@ -51,6 +51,9 @@ struct notification *get_notification_at(const int y)
+                 int notification_size = get_notification_clickable_height(current, first, last);
+ 
+                 if (y >= curr_y && y < curr_y + notification_size) {
++                        if (x < current->displayed_x
++                            || x >= current->displayed_x + current->displayed_width)
++                                return NULL;
+                         return current;
+                 }
+ 
+@@ -108,7 +111,7 @@ void input_handle_click(unsigned int button, bool button_down, int mouse_x, int
+                 }
+ 
+                 if (act == MOUSE_DO_ACTION || act == MOUSE_CLOSE_CURRENT || act == MOUSE_REMOVE_CURRENT || act == MOUSE_CONTEXT || act == MOUSE_OPEN_URL) {
+-                        struct notification *n = get_notification_at(mouse_y);
++                        struct notification *n = get_notification_at(mouse_x, mouse_y);
+ 
+                         if (n) {
+                                 if (act == MOUSE_CLOSE_CURRENT) {
+diff --git a/src/notification.h b/src/notification.h
+index 59761bf..3973b7f 100644
+--- a/src/notification.h
++++ b/src/notification.h
+@@ -114,6 +114,8 @@ struct notification {
+         bool first_render;      /**< markup has been rendered before? */
+         int dup_count;          /**< amount of duplicate notifications stacked onto this */
+         int displayed_height;
++        int displayed_x;        /**< left edge of the drawn box, relative to the window */
++        int displayed_width;    /**< width of the drawn box, frame included */
+         enum behavior_fullscreen fullscreen; //!< The instruction what to do with it, when desktop enters fullscreen
+         bool script_run;        /**< Has the script been executed already? */
+         guint8 marked_for_closure;
+diff --git a/src/wayland/wl.c b/src/wayland/wl.c
+index 8665bd9..a5a7b4b 100644
+--- a/src/wayland/wl.c
++++ b/src/wayland/wl.c
+@@ -32,6 +32,7 @@
+ 
+ #include "wl.h"
+ #include "pool-buffer.h"
++#include "../draw.h"
+ #include "../dunst.h"
+ #include "../log.h"
+ #include "../settings.h"
+@@ -646,6 +647,7 @@ static void send_frame(void) {
+         assert(ctx.configured);
+ 
+         // Yay we can finally draw something!
++        wl_surface_set_input_region(ctx.surface, ctx.input_region);
+         wl_surface_set_buffer_scale(ctx.surface, scale);
+         wl_surface_damage_buffer(ctx.surface, 0, 0, INT32_MAX, INT32_MAX);
+         wl_surface_attach(ctx.surface, ctx.current_buffer->buffer, 0, 0);
+@@ -739,6 +741,17 @@ void wl_display_surface(cairo_surface_t *srf, window winptr, const struct dimens
+ 
+         ctx.cur_dim = *dim;
+ 
++        // Leave the transparent space beside narrower notifications (and the
++        // gaps between them) click-through
++        if (ctx.input_region)
++                wl_region_destroy(ctx.input_region);
++        ctx.input_region = wl_compositor_create_region(ctx.compositor);
++        const GArray *boxes = draw_get_boxes();
++        for (guint i = 0; boxes && i < boxes->len; i++) {
++                cairo_rectangle_int_t *box = &g_array_index(boxes, cairo_rectangle_int_t, i);
++                wl_region_add(ctx.input_region, box->x, box->y, box->width, box->height);
++        }
++
+         set_dirty();
+         wl_display_roundtrip(ctx.display);
+ }
+diff --git a/src/wayland/wl_ctx.h b/src/wayland/wl_ctx.h
+index 7a91dda..09788aa 100644
+--- a/src/wayland/wl_ctx.h
++++ b/src/wayland/wl_ctx.h
+@@ -54,6 +54,7 @@ struct wl_ctx {
+         bool dirty;
+ 
+         struct dimensions cur_dim;
++        struct wl_region *input_region;
+ 
+         int32_t width, height;
+         struct pool_buffer buffers[2];
+diff --git a/test/input.c b/test/input.c
+index f44bf9e..6035d43 100644
+--- a/test/input.c
++++ b/test/input.c
+@@ -96,6 +96,8 @@ TEST test_notification_at(void)
+         for (GSList *iter = notifications; iter; iter = iter->next) {
+                 n = iter->data;
+                 n->displayed_height = display_height;
++                n->displayed_x = 0;
++                n->displayed_width = 100;
+                 queues_notification_insert(n, STATUS_NORMAL);
+         }
+ 
+@@ -114,37 +116,46 @@ TEST test_notification_at(void)
+ 
+         int top_y_coord;
+         top_y_coord = 0;
+-        result = get_notification_at(top_y_coord);
++        result = get_notification_at(0, top_y_coord);
+         ASSERT(result != NULL);
+         ASSERT(result == top_notification);
+ 
+         top_y_coord = top_notification_height - 1;
+-        result = get_notification_at(top_y_coord);
++        result = get_notification_at(0, top_y_coord);
+         ASSERT(result != NULL);
+         ASSERT(result == top_notification);
+ 
+         int middle_y_coord;
+         middle_y_coord = top_notification_height;
+-        result = get_notification_at(middle_y_coord);
++        result = get_notification_at(0, middle_y_coord);
+         ASSERT(result != NULL);
+         ASSERT(result == middle_notification);
+ 
+         middle_y_coord = top_notification_height;
+-        result = get_notification_at(middle_y_coord);
++        result = get_notification_at(0, middle_y_coord);
+         ASSERT(result != NULL);
+         ASSERT(result == middle_notification);
+ 
+         int bottom_y_coord;
+         bottom_y_coord = top_notification_height + middle_notification_height;
+-        result = get_notification_at(bottom_y_coord);
++        result = get_notification_at(0, bottom_y_coord);
+         ASSERT(result != NULL);
+         ASSERT(result == bottom_notification);
+ 
+         bottom_y_coord = top_notification_height + middle_notification_height + bottom_notification_height - 1;
+-        result = get_notification_at(bottom_y_coord);
++        result = get_notification_at(0, bottom_y_coord);
+         ASSERT(result != NULL);
+         ASSERT(result == bottom_notification);
+ 
++        /* a narrower box leaves empty space beside it that isn't clickable */
++        middle_notification->displayed_x = 40;
++        middle_notification->displayed_width = 60;
++        middle_y_coord = top_notification_height;
++        ASSERT(get_notification_at(39, middle_y_coord) == NULL);
++        ASSERT(get_notification_at(40, middle_y_coord) == middle_notification);
++        ASSERT(get_notification_at(99, middle_y_coord) == middle_notification);
++        ASSERT(get_notification_at(100, middle_y_coord) == NULL);
++
+         queues_teardown();
+         g_slist_free(notifications);
+         PASS();
