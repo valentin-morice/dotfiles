@@ -1,0 +1,71 @@
+#!/bin/bash
+# Connect or disconnect Proton VPN (proton-vpn-cli), refresh the waybar
+# custom/vpn module, and toast the result. Bound to the module's click.
+#
+# Always the fastest P2P server (`--p2p`): those are the only servers that
+# forward a port, which vpn-portforward then keeps alive for qBittorrent.
+# Choosing a country or server is a terminal job (`protonvpn connect --help`).
+# Sign in once first with `protonvpn signin`: without a session the connect
+# fails, and the CLI's own message ends up in the toast.
+set -u
+
+toast() {
+    notify-send -t 2500 -h string:x-canonical-private-synchronous:vpn "$@"
+}
+refresh() { pkill -RTMIN+12 waybar 2>/dev/null || true; }
+
+# Return to waybar at once and do the work in a detached copy. Before every
+# run of a polling custom module's exec (interval or signal), waybar's worker
+# waitpid()s on the click commands it forked (Custom::delayWorker in waybar
+# 0.15), so while this script ran, each refresh it sent, including the instant
+# pulsing state, stalled until it had exited, i.e. until the connect was over.
+if [ "${VPN_TOGGLE_DETACHED:-}" != 1 ]; then
+    VPN_TOGGLE_DETACHED=1 setsid -f "$0" "$@" </dev/null >/dev/null 2>&1
+    exit 0
+fi
+
+if ! command -v protonvpn >/dev/null 2>&1; then
+    toast "VPN unavailable" "proton-vpn-cli is not installed"
+    exit 0
+fi
+
+# A connect takes several seconds; a second click in that window would start a
+# racing disconnect. Hold a lock for the whole run and drop repeat clicks.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/vpn-toggle.lock"
+flock -n 9 || exit 0
+
+# proton0 is the tunnel device for both WireGuard and OpenVPN (see waybar-vpn).
+if [ -e /sys/class/net/proton0 ]; then
+    action=disconnect done_msg="VPN disconnected"
+else
+    action=connect done_msg="VPN connected (P2P)"
+fi
+args=("$action")
+[ "$action" = connect ] && args+=(--p2p)
+
+# Instant feedback: tell the bar what's coming BEFORE starting the CLI, which
+# spends ~0.6s just loading Python and seconds more on the API and handshake.
+# waybar-vpn shows the pulsing in-flight glyph while this file exists; it's
+# removed before the final refresh, and the EXIT trap covers failures.
+pending="${XDG_RUNTIME_DIR:-/tmp}/vpn-pending"
+out=$(mktemp)
+trap 'rm -f "$out" "$pending"' EXIT
+printf '%s\n' "$action" > "$pending"
+refresh
+
+timeout 60 protonvpn "${args[@]}" </dev/null >"$out" 2>&1
+rc=$?
+rm -f "$pending"
+refresh
+
+if [ "$rc" -eq 0 ]; then
+    server=$(nmcli -t -f NAME,TYPE,DEVICE connection show --active 2>/dev/null \
+        | awk -F: '($2 == "wireguard" && $3 == "proton0") || $2 == "vpn" { sub(/^ProtonVPN /, "", $1); print $1; exit }')
+    toast "$done_msg" "$server"
+else
+    # Last non-empty line of the CLI's output, colour codes stripped: that's
+    # where it puts the reason ("not signed in", "daemon not running", ...).
+    reason=$(sed 's/\x1b\[[0-9;]*m//g' "$out" | awk 'NF { l = $0 } END { print l }')
+    [ "$rc" -eq 124 ] && reason="timed out after 60s"
+    toast -u critical "VPN $action failed" "${reason:-exit code $rc}"
+fi

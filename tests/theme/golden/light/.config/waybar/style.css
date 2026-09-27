@@ -101,6 +101,7 @@ window#waybar > box {
 #backlight,
 #network,
 #bluetooth,
+#custom-vpn,
 #battery,
 #tray {
     padding: 0 6px;
@@ -148,6 +149,7 @@ window#waybar > box {
 #backlight,
 #network,
 #bluetooth,
+#custom-vpn,
 #battery {
     font-family: "Material Symbols Outlined";
     font-size: 18px;
@@ -185,6 +187,7 @@ window#waybar > box {
 #backlight,
 #network,
 #bluetooth,
+#custom-vpn,
 #battery,
 #clock {
     color: #1d2329;
@@ -223,6 +226,26 @@ window#waybar > box {
  * stays byte-identical across light and dark like the other invariant rules. */
 #custom-mail.stale {
     opacity: 0.55;
+}
+
+/* VPN connect/disconnect in flight (a few seconds of CLI + handshake). The
+ * glyph already shows where it's heading; the pulse says "not there yet". A
+ * static dim (0.55, like .stale above) was tried first and was too easy to miss
+ * for something you just clicked: motion reads at a glance where a shade
+ * doesn't. Softened from 0.25 over 0.7s after living with it: 0.5 over 0.9s
+ * still reads as motion without flashing. Opacity, not colour, for the same
+ * reasons as .stale. The class
+ * appears within ~0.1s of the click (vpn-toggle's vpn-pending file), so the
+ * animation doubles as the click's acknowledgement.
+ *
+ * The kill-switch state (.blocked) is carried by the vpn_key_alert glyph alone,
+ * per the one-colour rule. */
+@keyframes vpn-busy {
+    from { opacity: 1; }
+    to   { opacity: 0.5; }
+}
+#custom-vpn.busy {
+    animation: vpn-busy 0.9s ease-in-out infinite alternate;
 }
 
 tooltip {

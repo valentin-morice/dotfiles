@@ -67,14 +67,15 @@
     // The fixed row is grouped by what each icon is ABOUT, left to right:
     //   screen        idle_inhibitor, backlight   (does it sleep, how bright)
     //   audio         pulseaudio                  (the one you scroll most)
-    //   connectivity  bluetooth, network
+    //   connectivity  bluetooth, custom/vpn, network  (vpn next to the link
+    //                 it rides on)
     //   power         custom/powerprofile, battery (spend vs. what's left)
     //   clock
     // wifi / battery / clock end the row in the order every desktop uses, so
     // they're found without looking. Spacing stays uniform: a wider gap between
     // groups was tried and rejected, so the grouping is carried by adjacency
     // alone.
-    "modules-right": ["sway/mode", "custom/recording", "custom/dnd", "custom/nightlight", "tray", "custom/mail", "idle_inhibitor", "backlight", "pulseaudio", "bluetooth", "network", "custom/powerprofile", "battery", "clock"],
+    "modules-right": ["sway/mode", "custom/recording", "custom/dnd", "custom/nightlight", "tray", "custom/mail", "idle_inhibitor", "backlight", "pulseaudio", "bluetooth", "custom/vpn", "network", "custom/powerprofile", "battery", "clock"],
 
     "sway/workspaces": {
         "disable-scroll": true,
@@ -161,6 +162,19 @@
         "interval": "once",
         "signal": 10,
         "on-click": "$HOME/.local/bin/nightlight-toggle"
+    },
+
+    // Proton VPN. Unlike the signal-driven indicators above it is always
+    // shown (vpn_key / vpn_key_off, like bluetooth's rune / slashed rune),
+    // because it is also the click target to connect. vpn-toggle sends
+    // RTMIN+12 as it starts and finishes; the interval catches connects made
+    // from a terminal with `protonvpn`. Hidden when proton-vpn-cli is absent.
+    "custom/vpn": {
+        "exec": "$HOME/.local/bin/waybar-vpn",
+        "return-type": "json",
+        "interval": 5,
+        "signal": 12,
+        "on-click": "$HOME/.local/bin/vpn-toggle"
     },
 
     // Click-to-caffeinate: inhibits the swayidle timers while activated.

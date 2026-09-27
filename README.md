@@ -49,7 +49,7 @@ The IMAP mail backend (`common/imap` → the `imap-daemon` Go module at
 `~/.config/imap/`, plus its `imap.env` secret) is display-agnostic: it writes
 `$XDG_RUNTIME_DIR/imap.txt`, which the `waybar` `custom/mail` module just reads.
 
-`dunst`, `fastfetch`, and `bluetuith` have no package of their own — their configs are *generated* by `theme-render` from the active palette, not stowed. (`bluetuith` renders in truecolor so it can't follow the terminal palette, and it rewrites its config in HJSON on exit; the template carries its keybindings too, and it picks up colours on next launch.) The `sway` colours (`colors.conf`), and the whole `waybar` `config` + `style.css`, are likewise theme-rendered (gitignored). Each package ships the `~/.local/bin` helpers its config calls: `sway` → `idle.sh` (swayidle) + `screenshot` / `screenrecord` / `dropdown-term` / `keybind-help`; `waybar` → `launch.sh` + `waybar-mail` / `-dnd` / `-nightlight` / `-recording`. (`verify-wayland`, a session self-test, lives in the `bin` package.)
+`dunst`, `fastfetch`, and `bluetuith` have no package of their own — their configs are *generated* by `theme-render` from the active palette, not stowed. (`bluetuith` renders in truecolor so it can't follow the terminal palette, and it rewrites its config in HJSON on exit; the template carries its keybindings too, and it picks up colours on next launch.) The `sway` colours (`colors.conf`), and the whole `waybar` `config` + `style.css`, are likewise theme-rendered (gitignored). Each package ships the `~/.local/bin` helpers its config calls: `sway` → `idle.sh` (swayidle) + `screenshot` / `screenrecord` / `dropdown-term` / `keybind-help`; `waybar` → `launch.sh` + `waybar-mail` / `-dnd` / `-nightlight` / `-recording` / `-vpn`. (`verify-wayland`, a session self-test, lives in the `bin` package.)
 
 `nvim` follows the theme through its own colorscheme, `graphite` (`colors/graphite.lua` in the nvim package): `theme-render` renders the palette into `lua/theme/palette.lua` (gitignored, like alacritty's `colors.toml`), and the colorscheme — plus a matching lualine theme — maps it onto the editor. One adaptive scheme serves both palettes; `Normal` is exactly alacritty's fg/bg so the editor is seamless in the terminal. Running instances recolour live: theme-render pushes `require("theme").reload()` over each instance's RPC socket (`$XDG_RUNTIME_DIR/nvim.*.0`), the same idea as zathura's D-Bus `SourceConfig` push. Before the first render the colorscheme falls back to an embedded copy of the dark palette, so a fresh clone starts clean.
 
@@ -57,9 +57,9 @@ The IMAP mail backend (`common/imap` → the `imap-daemon` Go module at
 
 Packages bundle their own `~/.local/bin` helpers where the config needs them: `theme` ships `theme-switch`/`theme-render`/`lock`. These deploy automatically with their package.
 
-`systemd` holds the `imap.service` user unit that runs the shared mail daemon (`imap-daemon`, built from the `common/imap` package). It's stowed by `install.sh`, but **enabling** it is left to you (it needs real IMAP credentials first — see Post-install).
+`systemd` holds the `imap.service` user unit that runs the shared mail daemon (`imap-daemon`, built from the `common/imap` package), and `vpn-portforward.service` (Proton VPN port forwarding, optional — see Post-install). It's stowed by `install.sh`, but **enabling** it is left to you (it needs real IMAP credentials first — see Post-install).
 
-`common/bin` holds the remaining personal `~/.local/bin` helpers that aren't tied to one config: volume/brightness/mic notifiers, the DND toggle, a clipboard notifier + history browser, the rofi menus (clipboard, power-profile, power, window, emoji) + their shared `rofi-card-theme.sh`, and the `verify-wayland` self-test. It **is** deployed by `install.sh` — the always-stowed `sway`/`waybar`/`dunst` configs bind and exec these helpers, so leaving it out would ship dead keys and menus.
+`common/bin` holds the remaining personal `~/.local/bin` helpers that aren't tied to one config: volume/brightness/mic notifiers, the DND and VPN toggles, a clipboard notifier + history browser, the rofi menus (clipboard, power-profile, power, window, emoji) + their shared `rofi-card-theme.sh`, and the `verify-wayland` self-test. It **is** deployed by `install.sh` — the always-stowed `sway`/`waybar`/`dunst` configs bind and exec these helpers, so leaving it out would ship dead keys and menus.
 
 ## Install
 
@@ -104,7 +104,7 @@ Editor: `neovim ripgrep unzip` — the `nvim` package is a LazyVim config (picke
 Build: `go` — compiles `imap-daemon`, the mail backend (see Post-install)
 Theming: `xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme` — live GTK/Qt light-dark on `theme-switch` (Qt via `QT_QPA_PLATFORMTHEME=xdgdesktopportal`; GTK3 via the xdg settings portal)
 Signing/secrets: `1password` + `1password-cli` (SSH agent & commit signing)
-`bin` helpers: `power-profiles-daemon` (rofi-profile) · `wl-clipboard` + `cliphist` + `imagemagick` (clip-notify / rofi-clip; imagemagick thumbnails image clips) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) — `pactl`/`brightnessctl` are already listed above
+`bin` helpers: `power-profiles-daemon` (rofi-profile) · `wl-clipboard` + `cliphist` + `imagemagick` (clip-notify / rofi-clip; imagemagick thumbnails image clips) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) · `proton-vpn-cli` (optional: `vpn-toggle` + the waybar VPN icon, which hides itself without it) · `libnatpmp` + `qbittorrent` (optional: `vpn-portforward`, see Post-install) — `pactl`/`brightnessctl` are already listed above
 
 ## Post-install (not tracked in the repo)
 
@@ -124,6 +124,19 @@ here for the manual path and for reference. The **wallpaper** is always manual.
   systemctl --user enable --now imap.service
   ```
   The daemon writes `$XDG_RUNTIME_DIR/imap.txt`; the waybar `custom/mail` module (`waybar-mail`, in the `waybar` package) just reads it — already in place, no extra step.
+- **VPN port forwarding** (optional; Proton Plus or higher). The waybar VPN
+  click connects to the fastest P2P server; `vpn-portforward.service` (`systemd`
+  package) keeps that server's forwarded port alive over NAT-PMP and sets it as
+  qBittorrent's listen port. One-time setup:
+  ```sh
+  protonvpn signin
+  protonvpn config set port-forwarding on
+  systemctl --user enable --now vpn-portforward.service
+  ```
+  In qBittorrent: enable the Web UI on `127.0.0.1` port `18089` with *Bypass
+  authentication for clients on localhost*, bind *Network interface* to
+  `proton0` (so torrents can't leave outside the tunnel), and turn off
+  UPnP / NAT-PMP. The port shows in the VPN icon's tooltip.
 - **Wallpaper** is not included; drop one under `~/Pictures/Wallpapers/` (path set per-palette in `~/.config/theme/palettes/*.sh`).
 - **Commit signing** uses a 1Password-held SSH key (`op-ssh-sign`). Because this repo *tracks its own `~/.gitconfig`* via symlink, a history rewrite (e.g. `git rebase`) rewinds that file mid-operation and breaks identity/signing. Fix on a fresh clone — set them in the repo's **local** config (the script reads these straight from the tracked gitconfig):
   ```sh

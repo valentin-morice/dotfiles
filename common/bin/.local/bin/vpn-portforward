@@ -1,0 +1,82 @@
+#!/bin/bash
+# Keep a Proton VPN forwarded port alive and point qBittorrent at it. Run by
+# vpn-portforward.service (systemd package).
+#
+# proton-vpn-cli's `port-forwarding` setting only lets the server forward; it
+# never tells you the port or keeps it. Per Proton's Linux guide the port is a
+# NAT-PMP lease from the tunnel gateway, which lapses unless renewed, so while
+# the tunnel is up this loop asks for it again every 45s on a 60s lease.
+#
+# Each cycle it also reconciles qBittorrent's listen port through the Web API
+# (localhost-only, auth bypassed for localhost), rather than only pushing on a
+# change: that covers qBittorrent being started after the VPN, and Proton handing
+# out a new port on reconnect. qBittorrent not running is normal, not an error.
+#
+# The current port goes to $XDG_RUNTIME_DIR/vpn-port for waybar-vpn's tooltip,
+# refreshed with the same RTMIN+12 vpn-toggle sends.
+set -u
+
+gateway=10.2.0.1               # Proton's in-tunnel gateway (WireGuard + OpenVPN)
+qbt=http://127.0.0.1:18089     # qBittorrent Web UI, off 8080 to stay clear of dev servers
+lease=60 renew=45 idle=5       # seconds
+state="${XDG_RUNTIME_DIR:-/tmp}/vpn-port"
+
+log() { printf '%s\n' "$*"; }  # stdout lands in the journal
+refresh() { pkill -RTMIN+12 waybar 2>/dev/null || true; }
+
+set_port() {  # $1 = port, or empty for none; only acts on a change
+    [ "$1" = "$port" ] && return
+    port=$1
+    if [ -n "$port" ]; then printf '%s\n' "$port" > "$state"; else rm -f "$state"; fi
+    refresh
+}
+
+# Prints the public port for $1 (udp|tcp). natpmpc reports it as
+# "Mapped public port 51234 protocol TCP to local port 0 lifetime 60".
+map() {
+    natpmpc -a 1 0 "$1" "$lease" -g "$gateway" 2>/dev/null \
+        | awk '/Mapped public port/ { print $4; exit }'
+}
+
+qbt_sync() {
+    local cur
+    cur=$(curl -fsS --max-time 3 "$qbt/api/v2/app/preferences" 2>/dev/null \
+        | jq -r '.listen_port // empty') || return 0
+    [ -z "$cur" ] || [ "$cur" = "$port" ] && return 0
+    if curl -fsS --max-time 3 --data-urlencode "json={\"listen_port\":$port}" \
+        "$qbt/api/v2/app/setPreferences" >/dev/null 2>&1; then
+        log "qBittorrent listen port $cur -> $port"
+    else
+        log "qBittorrent reachable but refused the port change"
+    fi
+}
+
+port="" failing=0
+trap 'rm -f "$state"; refresh' EXIT
+trap 'exit 0' TERM INT
+
+while :; do
+    if [ ! -e /sys/class/net/proton0 ]; then
+        set_port ""
+        failing=0
+        sleep "$idle" & wait $!
+        continue
+    fi
+
+    udp=$(map udp) tcp=$(map tcp)
+    if [ -n "$tcp" ]; then
+        [ "$failing" = 1 ] && log "port mapping recovered"
+        failing=0
+        [ "$tcp" != "$port" ] && log "forwarded port: $tcp"
+        [ -n "$udp" ] && [ "$udp" != "$tcp" ] && log "warning: udp mapped to $udp, tcp to $tcp"
+        set_port "$tcp"
+        qbt_sync
+    else
+        # Not a P2P server, port-forwarding off in `protonvpn config`, or the
+        # tunnel is still coming up. Log once, keep retrying.
+        [ "$failing" = 0 ] && log "no port from $gateway (P2P server? protonvpn config set port-forwarding on?)"
+        failing=1
+        set_port ""
+    fi
+    sleep "$renew" & wait $!
+done

@@ -138,7 +138,7 @@ W "manual: Super+Shift+t toggles theme — GTK + Qt apps should recolour live"
 H "UX polish (media routing, bar modules, lock-screen keys)"
 have playerctl && P "playerctl present" || W "playerctl missing (media keys won't work)"
 running playerctld && P "playerctld running (media keys hit the active player)" || W "playerctld not running (media keys hit the first-registered player)"
-for m in waybar-recording waybar-dnd waybar-nightlight; do
+for m in waybar-recording waybar-dnd waybar-nightlight waybar-vpn; do
     if [ -x "$HOME/.local/bin/$m" ]; then
         "$HOME/.local/bin/$m" >/dev/null 2>&1 && P "$m runs cleanly" || W "$m errored"
     else

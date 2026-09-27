@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# waybar custom/vpn module — Proton VPN state, read from NetworkManager rather
+# than `protonvpn status`: nmcli answers in milliseconds, the Python CLI takes
+# about a second, and this runs every 5s. Click toggles via vpn-toggle, which
+# sends `pkill -RTMIN+12 waybar` before and after so the bar follows at once
+# (vpn-portforward sends it too when the forwarded port changes); the interval
+# catches connects made from a terminal.
+#
+# Always visible (like bluetooth), since it's the click target to connect. The
+# state is carried by the glyph: vpn_key while connected, vpn_key_off while not,
+# vpn_key_alert when the kill switch is up with no tunnel (all traffic blocked).
+# While a connect/disconnect is in flight it shows the glyph it's heading to,
+# pulsing via the .busy class in style.css.
+#
+# Hidden entirely (empty text) when proton-vpn-cli isn't installed, so a
+# machine without it gets no dead icon.
+#
+# How Proton's connections look in NetworkManager (proton-vpn-api-core):
+#   WireGuard  TYPE wireguard, DEVICE proton0, NAME "ProtonVPN CH#12"
+#   OpenVPN    TYPE vpn, DEVICE = the uplink (wlp1s0), NAME = server; its tun
+#              also shows up as an external "proton0" tun connection, skipped
+#              here so the name comes from the vpn row
+#   kill switch  NAME pvpn-killswitch[-perm], on a pvpnksintrf* dummy. Not
+#              pvpn-killswitch-ipv6: that's the IPv6 leak guard, up for every
+#              session whatever the kill-switch setting
+# Tailscale's tailscale0 is a tun connection too, which is why type tun is
+# ignored rather than counted as "a VPN".
+set -u
+
+command -v protonvpn >/dev/null 2>&1 || { printf '{"text":""}\n'; exit 0; }
+
+# Glyphs are UTF-8 octal escapes (pure-ASCII source, unmanglable), matching the
+# convention in waybar-powerprofile; Material Symbols Private Use Area
+# codepoints emitted bare, since style.css gives this module its font and size.
+on=$(printf '\356\203\232')      # U+E0DA vpn_key
+off=$(printf '\356\255\272')     # U+EB7A vpn_key_off
+alert=$(printf '\357\233\214')   # U+F6CC vpn_key_alert
+
+# Pango markup in the tooltip: escape the server name (it carries a '#', and
+# a future one could carry '&').
+esc() {
+    printf '%s' "$1" \
+        | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/\\/\\\\/g; s/"/\\"/g'
+}
+
+emit() {  # $1 glyph, $2 tooltip body, $3 class
+    printf '{"text":"%s","tooltip":"VPN: %s","class":"%s"}\n' "$1" "$2" "$3"
+}
+
+server="" state="" killswitch=0
+# -t separates fields with ':' and escapes any ':' inside a field as '\:';
+# server names have none, and read -r keeps the backslash if one ever did.
+while IFS=: read -r name type st dev; do
+    case "$name" in pvpn-killswitch|pvpn-killswitch-perm) killswitch=1; continue ;; esac
+    if { [ "$type" = wireguard ] && [ "$dev" = proton0 ]; } || [ "$type" = vpn ]; then
+        server=${name#ProtonVPN } state=$st
+    fi
+done < <(nmcli -t -f NAME,TYPE,STATE,DEVICE connection show --active 2>/dev/null)
+
+# A connect spends a few seconds in the CLI (API, server pick) before NM sees
+# anything, so NM state alone would leave the click without feedback.
+#
+# 1. vpn-toggle writes "connect"/"disconnect" to vpn-pending before it even
+#    starts the CLI: the click's instant signal. Ignored once older than 90s
+#    (the toggle's 60s timeout plus slack), so a toggle killed outright can't
+#    leave the icon pulsing forever.
+# 2. Otherwise a running `protonvpn connect` typed in a terminal. Anchored on
+#    the interpreter so a shell whose command line merely mentions it doesn't
+#    match.
+# Disconnect is matched first: "*connect*" matches it too.
+pending="${XDG_RUNTIME_DIR:-/tmp}/vpn-pending"
+if [ -f "$pending" ] && [ $(( $(date +%s) - $(stat -c %Y "$pending") )) -lt 90 ]; then
+    busy=$(cat "$pending" 2>/dev/null)
+else
+    busy=$(pgrep -af '^[^ ]*python[^ ]* [^ ]*/protonvpn (dis)?connect( |$)' 2>/dev/null)
+fi
+case "$busy" in
+    *disconnect*) emit "$off" "Disconnecting…" "busy"; exit 0 ;;
+    *connect*)    emit "$on" "Connecting…" "busy"; exit 0 ;;
+esac
+
+case "$state" in
+    activated)
+        # Forwarded port, written by vpn-portforward while its lease is live.
+        port=$(cat "${XDG_RUNTIME_DIR:-/tmp}/vpn-port" 2>/dev/null)
+        emit "$on" "$(esc "$server")${port:+ · port $port}" "connected"
+        ;;
+    activating)   emit "$on" "Connecting to $(esc "$server")…" "busy" ;;
+    deactivating) emit "$off" "Disconnecting…" "busy" ;;
+    *)
+        if [ "$killswitch" = 1 ]; then
+            emit "$alert" "Off — kill switch is blocking traffic" "blocked"
+        else
+            emit "$off" "Off" "disconnected"
+        fi
+        ;;
+esac

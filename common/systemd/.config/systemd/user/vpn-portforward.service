@@ -1,0 +1,15 @@
+[Unit]
+Description=Proton VPN port forwarding (NAT-PMP renewals + qBittorrent listen port)
+# Session-independent like imap.service: it idles until the proton0 tunnel
+# exists, so it's wired to default.target. Skipped outright on a machine
+# without natpmpc (libnatpmp), where there's nothing for it to do.
+ConditionPathExists=/usr/bin/natpmpc
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/vpn-portforward
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=default.target
