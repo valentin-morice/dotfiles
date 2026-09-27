@@ -9,8 +9,12 @@
 # fails, and the CLI's own message ends up in the toast.
 set -u
 
+# dunst's normal timeout (8s), not a short one: a 2.5s toast was easy to miss
+# while watching the bar icon pulse. The "vpn" replace tag is shared with
+# vpn-portforward, which updates the connected toast in place once the
+# forwarded port is known (a few seconds after the connect).
 toast() {
-    notify-send -t 2500 -h string:x-canonical-private-synchronous:vpn "$@"
+    notify-send -h string:x-canonical-private-synchronous:vpn "$@"
 }
 refresh() { pkill -RTMIN+12 waybar 2>/dev/null || true; }
 

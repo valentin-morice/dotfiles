@@ -13,12 +13,17 @@
 # out a new port on reconnect. qBittorrent not running is normal, not an error.
 #
 # The current port goes to $XDG_RUNTIME_DIR/vpn-port for waybar-vpn's tooltip,
-# refreshed with the same RTMIN+12 vpn-toggle sends.
+# refreshed with the same RTMIN+12 vpn-toggle sends. When a port is first
+# obtained (or changes), it also updates vpn-toggle's "VPN connected" toast in
+# place (shared replace tag) to add the port. The port only arrives a few
+# seconds after the connect, so it can't be in vpn-toggle's own toast.
 set -u
 
 gateway=10.2.0.1               # Proton's in-tunnel gateway (WireGuard + OpenVPN)
 qbt=http://127.0.0.1:18089     # qBittorrent Web UI, off 8080 to stay clear of dev servers
-lease=60 renew=45 idle=5       # seconds
+lease=60 renew=45 idle=2       # seconds; idle is the tunnel-up poll, kept
+                               # short so the port toast lands while vpn-toggle's
+                               # 8s one is still showing
 state="${XDG_RUNTIME_DIR:-/tmp}/vpn-port"
 
 log() { printf '%s\n' "$*"; }  # stdout lands in the journal
@@ -27,8 +32,21 @@ refresh() { pkill -RTMIN+12 waybar 2>/dev/null || true; }
 set_port() {  # $1 = port, or empty for none; only acts on a change
     [ "$1" = "$port" ] && return
     port=$1
-    if [ -n "$port" ]; then printf '%s\n' "$port" > "$state"; else rm -f "$state"; fi
+    if [ -n "$port" ]; then
+        printf '%s\n' "$port" > "$state"
+        notify_port
+    else
+        rm -f "$state"
+    fi
     refresh
+}
+
+notify_port() {
+    local server
+    server=$(nmcli -t -f NAME,TYPE,DEVICE connection show --active 2>/dev/null \
+        | awk -F: '($2 == "wireguard" && $3 == "proton0") || $2 == "vpn" { sub(/^ProtonVPN /, "", $1); print $1; exit }')
+    notify-send -h string:x-canonical-private-synchronous:vpn \
+        "VPN connected (P2P)" "${server:+$server · }port $port" 2>/dev/null || true
 }
 
 # Prints the public port for $1 (udp|tcp). natpmpc reports it as
