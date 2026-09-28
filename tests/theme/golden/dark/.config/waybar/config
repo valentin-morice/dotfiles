@@ -282,8 +282,11 @@
         // spot every time — it settles anywhere from ~79.3% to ~81.x%, so the
         // floored capacity read 79 one day and 81 the next. While parked on AC
         // (not charging) within 79-82, the *-at-cap entries below show a flat
-        // 80% and pin the glyph to battery_android_6, the ramp step 80
-        // lands on, so the icon can't flip at a bucket edge either. States take the LOWEST threshold >= capacity, so
+        // 80% in the tooltip and pin the glyph to battery_android_full: at the
+        // cap the battery is as full as it's allowed to get, so the icon says
+        // "full" rather than the ramp step 80 lands on (battery_android_6), and
+        // being pinned it can't flip at a bucket edge either. The ramp takes over
+        // again as soon as it's unplugged. States take the LOWEST threshold >= capacity, so
         // "below-cap" fences 11-78 off from "at-cap"; neither is styled in CSS.
         "states": { "critical": 10, "below-cap": 78, "at-cap": 82 },
         "tooltip-format": "Battery: {capacity}%",
@@ -293,9 +296,9 @@
         "tooltip-format-not-charging-at-cap": "Battery: 80%",
         "tooltip-format-plugged-at-cap": "Battery: 80%",
         "tooltip-format-full-at-cap": "Battery: 80%",
-        "format-not-charging-at-cap": "",
-        "format-plugged-at-cap": "",
-        "format-full-at-cap": "",
+        "format-not-charging-at-cap": "",
+        "format-plugged-at-cap": "",
+        "format-full-at-cap": "",
         // Material's Android-style battery, SOLID variant (battery_android_*):
         // the fill sits flush against the outline. The FRAME variant
         // (battery_android_frame_*) was dropped: it floats its fill inside the
