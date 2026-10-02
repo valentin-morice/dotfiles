@@ -112,6 +112,13 @@ window#waybar > box {
 #tray {
     padding-top: 2px;
 }
+/* Same 1px nudge for the mail envelope, for a different reason: the glyph is
+ * geometrically centred (ink rows 10-21 of the 32px bar) but its flap piles the
+ * ink at the top, so its weight centre sits ~1px above the rest of the icon row
+ * and it reads as riding high. */
+#custom-mail {
+    padding-top: 2px;
+}
 
 /* Power-profile icon. The clock is no longer centred (macOS layout: it sits at
  * the right end), so the old custom/clockpad counterweight and the min-width
