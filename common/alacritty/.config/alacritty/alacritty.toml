@@ -24,3 +24,17 @@ import = ["~/.config/alacritty/colors.toml"]
 key = "Return"
 mods = "Shift"
 chars = "\u001B\r"
+
+# Links (click, or Ctrl+Shift+O) open via open-link instead of plain xdg-open,
+# so Firefox on another workspace pulls you over to it rather than just going
+# urgent — see ~/.local/bin/open-link for why. Defining a hint replaces
+# alacritty's built-in one, so everything else here restates the v0.17 default
+# (URL_REGEX in alacritty/src/config/ui_config.rs).
+[[hints.enabled]]
+command = "open-link"
+hyperlinks = true
+post_processing = true
+persist = false
+mouse.enabled = true
+binding = { key = "O", mods = "Control|Shift" }
+regex = "(ipfs:|ipns:|magnet:|mailto:|gemini://|gopher://|https://|http://|news:|file:|git://|ssh:|ftp://)[^\u0000-\u001F\u007F-\u009F<>\"\\s{-}\\^⟨⟩`\\\\]+"

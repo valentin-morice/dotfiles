@@ -1,0 +1,33 @@
+#!/bin/sh
+# xdg-open, but relaunched through sway's `exec` so the opened app may take
+# focus. Alacritty's link hint (click / Ctrl+Shift+O) points here.
+#
+# A running app that's handed a link (Firefox on another workspace) can only
+# switch you to itself with an xdg-activation token sway will honour: one sway
+# minted for its own `exec` (XDG_ACTIVATION_TOKEN in the child's env), or one
+# requested by the focused client. Alacritty requests none for hints, so plain
+# xdg-open from it only got Firefox marked urgent — no jump, despite
+# `focus_on_window_activation focus`. Measured 2026-09-27: the same link via
+# `swaymsg exec xdg-open …` jumped straight to Firefox's workspace.
+#
+# The link can't ride in the exec string: sway splits it on ; and , and hands
+# the rest to sh -c, so a crafted URL would run commands. It goes through a
+# private temp file instead, and the exec string holds only this script's path
+# and that file's name.
+set -u
+
+if [ "${1-}" = --run ]; then
+    url=$(cat "$2") && rm -f "$2" && exec xdg-open "$url"
+    exit 1
+fi
+
+[ $# -eq 1 ] || { echo "usage: open-link <url>" >&2; exit 2; }
+
+# Outside sway (or if the handoff fails) fall back to plain xdg-open.
+[ -n "${SWAYSOCK:-}" ] || exec xdg-open "$1"
+f=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/open-link.XXXXXXXXXX") || exec xdg-open "$1"
+printf '%s' "$1" > "$f"
+if ! swaymsg exec "$(readlink -f "$0") --run $f" >/dev/null 2>&1; then
+    rm -f "$f"
+    exec xdg-open "$1"
+fi
