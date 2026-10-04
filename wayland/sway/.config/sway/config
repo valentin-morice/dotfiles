@@ -311,6 +311,21 @@ for_window [class="Chromium" title="^Picture[- ]in[- ]picture"] floating enable,
 # keeps the "Write:" prefix as the user edits the subject.
 for_window [app_id="org.mozilla.Thunderbird" title="^Write:"] floating enable
 
+# qBittorrent's add-torrent dialog (a magnet/.torrent opened from the browser)
+# is parentless on purpose (guiaddtorrentmanager.cpp), so sway tiles it into
+# whatever workspace has focus. Same app_id as the main window; only the title
+# differs — the main window's always contains "qBittorrent v<ver>" (prefixed by
+# speeds when shown in the title), the dialog's is the torrent name or "Magnet
+# link". So: mark the main window, and send every other qBittorrent window to
+# that mark, floating and focused (focus follows it to qBittorrent's
+# workspace). Separate rules on purpose: with qBittorrent in the tray there's
+# no mapped main window and no mark, the move fails, and the dialog still
+# floats where you are. Other qBittorrent windows (Options, About, ...) have a
+# parent, already float, and open on the main window's workspace anyway.
+for_window [app_id="org.qbittorrent.qBittorrent" title="qBittorrent v[0-9]"] mark --add qbt-main
+for_window [app_id="org.qbittorrent.qBittorrent" title="^(?!.*qBittorrent v[0-9])"] move container to mark qbt-main
+for_window [app_id="org.qbittorrent.qBittorrent" title="^(?!.*qBittorrent v[0-9])"] floating enable, focus
+
 # Float transient XWayland windows — dialogs, pop-ups, splash screens — so they
 # pop over the layout instead of tiling in. window_type/window_role are X11-only
 # criteria, so these match ONLY XWayland windows (1Password, GIMP/Java dialogs,
