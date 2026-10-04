@@ -166,15 +166,18 @@
 
     // Proton VPN. Unlike the signal-driven indicators above it is always
     // shown (vpn_key / vpn_key_off, like bluetooth's rune / slashed rune),
-    // because it is also the click target to connect. vpn-toggle sends
-    // RTMIN+12 as it starts and finishes; the interval catches connects made
-    // from a terminal with `protonvpn`. Hidden when proton-vpn-cli is absent.
+    // because it is also the click target to connect. Click opens rofi-vpn (pick
+    // a country, or disconnect); right-click is the quick toggle (fastest P2P /
+    // off). vpn-toggle, which does the work for both, sends RTMIN+12 as it
+    // starts and finishes; the interval catches connects made from a terminal
+    // with `protonvpn`. Hidden when proton-vpn-cli is absent.
     "custom/vpn": {
         "exec": "$HOME/.local/bin/waybar-vpn",
         "return-type": "json",
         "interval": 5,
         "signal": 12,
-        "on-click": "$HOME/.local/bin/vpn-toggle"
+        "on-click": "$HOME/.local/bin/rofi-vpn",
+        "on-click-right": "$HOME/.local/bin/vpn-toggle"
     },
 
     // Click-to-caffeinate: inhibits the swayidle timers while activated.

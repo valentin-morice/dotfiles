@@ -104,7 +104,7 @@ Editor: `neovim ripgrep unzip` — the `nvim` package is a LazyVim config (picke
 Build: `go` — compiles `imap-daemon`, the mail backend (see Post-install)
 Theming: `xdg-desktop-portal-gtk gnome-themes-extra papirus-icon-theme` — live GTK light-dark on `theme-switch` (GTK3 via the xdg settings portal). Qt apps get the light/dark hint via `QT_QPA_PLATFORMTHEME=xdgdesktopportal`, which QtWebEngine content follows live, but a Qt Widgets window keeps its launch-time palette until restarted · `qt6ct` (optional: live palette for Qt apps that opt in, today qBittorrent via its `.desktop` override)
 Signing/secrets: `1password` + `1password-cli` (SSH agent & commit signing)
-`bin` helpers: `power-profiles-daemon` (rofi-profile) · `wl-clipboard` + `cliphist` + `imagemagick` (clip-notify / rofi-clip; imagemagick thumbnails image clips) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) · `proton-vpn-cli` (optional: `vpn-toggle` + the waybar VPN icon, which hides itself without it) · `libnatpmp` + `qbittorrent` (optional: `vpn-portforward`, see Post-install) — `pactl`/`brightnessctl` are already listed above
+`bin` helpers: `power-profiles-daemon` (rofi-profile) · `wl-clipboard` + `cliphist` + `imagemagick` (clip-notify / rofi-clip; imagemagick thumbnails image clips) · `libnotify` for `notify-send` (volume/brightness/mic notifiers) · `proton-vpn-cli` (optional: `vpn-toggle` / `rofi-vpn` + the waybar VPN icon, which hides itself without it) · `libnatpmp` + `qbittorrent` (optional: `vpn-portforward`, see Post-install) — `pactl`/`brightnessctl` are already listed above
 
 ## Post-install (not tracked in the repo)
 
@@ -125,9 +125,10 @@ here for the manual path and for reference. The **wallpaper** is always manual.
   ```
   The daemon writes `$XDG_RUNTIME_DIR/imap.txt`; the waybar `custom/mail` module (`waybar-mail`, in the `waybar` package) just reads it — already in place, no extra step.
 - **VPN port forwarding** (optional; Proton Plus or higher). The waybar VPN
-  click connects to the fastest P2P server; `vpn-portforward.service` (`systemd`
-  package) keeps that server's forwarded port alive over NAT-PMP and sets it as
-  qBittorrent's listen port. One-time setup:
+  click opens a country picker (`rofi-vpn`, fastest P2P server in the picked
+  country), right-click toggles the fastest P2P server; `vpn-portforward.service`
+  (`systemd` package) keeps that server's forwarded port alive over NAT-PMP and
+  sets it as qBittorrent's listen port. One-time setup:
   ```sh
   protonvpn signin
   protonvpn config set port-forwarding on

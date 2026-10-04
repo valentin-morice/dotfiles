@@ -253,11 +253,13 @@ bindsym $mod+c exec ~/.local/bin/rofi-clip
 bindsym $mod+w exec ~/.local/bin/rofi-window
 bindsym $mod+p exec ~/.local/bin/rofi-profile
 
-# Wi-Fi and Bluetooth rofi menus — the same two commands the waybar network/
-# bluetooth modules run on click. networkmanager_dmenu is the wifi picker
-# (config in ~/.config/networkmanager-dmenu); rofi-bluetooth lists devices and
-# pairs them with its own agent.
+# Wi-Fi, VPN and Bluetooth rofi menus — the same commands the waybar network/
+# vpn/bluetooth modules run on click. networkmanager_dmenu is the wifi picker
+# (config in ~/.config/networkmanager-dmenu); rofi-vpn picks a Proton VPN
+# country ($mod+Shift+n: the shifted network key); rofi-bluetooth lists devices
+# and pairs them with its own agent.
 bindsym $mod+n exec networkmanager_dmenu
+bindsym $mod+Shift+n exec ~/.local/bin/rofi-vpn
 bindsym $mod+b exec ~/.local/bin/rofi-bluetooth
 
 # Power menu (lock / logout / suspend / reboot / shutdown)

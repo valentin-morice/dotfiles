@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # waybar custom/vpn module — Proton VPN state, read from NetworkManager rather
 # than `protonvpn status`: nmcli answers in milliseconds, the Python CLI takes
-# about a second, and this runs every 5s. Click toggles via vpn-toggle, which
-# sends `pkill -RTMIN+12 waybar` before and after so the bar follows at once
+# about a second, and this runs every 5s. Clicks go through vpn-toggle (left
+# via the rofi-vpn country picker, right directly), which sends
+# `pkill -RTMIN+12 waybar` before and after so the bar follows at once
 # (vpn-portforward sends it too when the forwarded port changes); the interval
 # catches connects made from a terminal.
 #

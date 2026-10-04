@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+"""rofi Proton VPN menu — the waybar custom/vpn click target.
+
+A list-style rofi menu (the base config.rasi look, like rofi-bluetooth):
+
+  VPN: On · France               FR#505 · disconnect
+  VPN: Off                       connect · fastest P2P      (when off)
+  <countries, A-Z>               code, dimmed; "connected" on the current one
+
+Type to filter (the dimmed code matches too, so "ch" finds Switzerland). Only
+P2P servers are offered: they're the only ones that forward a port, which
+vpn-portforward keeps alive for qBittorrent, so countries without one aren't
+listed. Picking a country connects to its fastest P2P server, switching
+straight over when already connected (Proton tears the old tunnel down itself).
+The connect/disconnect itself is vpn-toggle's job (pulsing bar glyph, lock,
+toast), so it behaves exactly like the module's right-click toggle.
+
+Countries come from proton-vpn-cli's own cached server list rather than
+`protonvpn countries list`, which takes ~0.7s just to start and refetches the
+list whenever it's stale. That cache is 24MB, so the per-country summary is
+cached next to it, keyed on its mtime and size, and rebuilt (~0.4s) only after
+the CLI has refreshed it.
+"""
+import html
+import importlib.util
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+CACHE = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+SERVERLIST = os.path.join(CACHE, "Proton/VPN/serverlist.json")
+SUMMARY = os.path.join(CACHE, "rofi-vpn/p2p-countries.json")
+RUNTIME = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+VPN_TOGGLE = os.path.expanduser("~/.local/bin/vpn-toggle")
+
+# LogicalServer.Features bits (proton.vpn.session.servers.types.ServerFeatureEnum).
+SECURE_CORE, TOR, P2P = 1, 2, 4
+
+# Same width as rofi-bluetooth's rows (see ROW_COLS there for the measurement):
+# padding the label to it puts the dimmed detail flush right.
+ROW_COLS = 69
+
+# Material Symbols Outlined codepoints, as escapes so the source stays ASCII.
+G = {
+    "vpn_key": "",
+    "vpn_key_off": "",
+    "hourglass_top": "",
+    "flag": "",
+}
+
+
+# --- presentation -----------------------------------------------------------
+
+def glyph(name):
+    """Same span as rofi-bluetooth's glyph() (size/rise measured there), so the
+    two list menus line up."""
+    return ("<span font_family='Material Symbols Outlined' weight='500' "
+            f"size='15360' rise='-5120'>{G[name]}</span>")
+
+
+def row(icon, label, detail=""):
+    out = f"{glyph(icon)}  {html.escape(label)}"
+    if detail:
+        pad = max(2, ROW_COLS - len(label) - len(detail))
+        out += " " * pad + f"<span alpha='36000'>{html.escape(detail)}</span>"
+    return out
+
+
+def rofi(rows, prompt, selected=0):
+    """Show a list, return the picked index (or None on Escape)."""
+    p = subprocess.run(
+        ["rofi", "-dmenu", "-i", "-markup-rows", "-format", "i",
+         "-selected-row", str(selected), "-p", f"{prompt} ❯"],
+        input="\n".join(rows), capture_output=True, text=True)
+    out = p.stdout.strip()
+    return int(out) if p.returncode == 0 and out.isdigit() else None
+
+
+# --- state --------------------------------------------------------------------
+
+def country_names():
+    """Proton's own code -> name table (it says "UK", not "GB"). Loaded straight
+    from the file: importing it as a module runs proton.vpn.session's
+    __init__, which pulls in asyncio and the whole session stack."""
+    for base in sys.path:
+        path = os.path.join(base, "proton/vpn/session/servers/country_codes.py")
+        if os.path.exists(path):
+            spec = importlib.util.spec_from_file_location("proton_country_codes", path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return dict(mod.country_codes)
+    return {}
+
+
+def countries():
+    """{code: name} for every country with an online P2P server on the
+    account's tier (Secure Core and Tor ones left out). Empty before the CLI's
+    first connect has cached a server list."""
+    try:
+        st = os.stat(SERVERLIST)
+    except OSError:
+        return {}
+    key = [st.st_mtime_ns, st.st_size]
+    try:
+        with open(SUMMARY) as f:
+            cached = json.load(f)
+        if cached["key"] == key:
+            return cached["countries"]
+    except (OSError, ValueError, KeyError):
+        pass
+
+    with open(SERVERLIST) as f:
+        data = json.load(f)
+    tier = data.get("MaxTier", 0)
+    names = country_names()
+    out = {}
+    for s in data.get("LogicalServers", []):
+        features = s.get("Features", 0)
+        if (s.get("Tier", tier + 1) > tier or s.get("Status") != 1
+                or not features & P2P or features & (SECURE_CORE | TOR)):
+            continue
+        code = s["ExitCountry"]
+        out[code] = names.get(code, code)
+
+    os.makedirs(os.path.dirname(SUMMARY), exist_ok=True)
+    tmp = f"{SUMMARY}.{os.getpid()}"
+    with open(tmp, "w") as f:
+        json.dump({"key": key, "countries": out}, f)
+    os.replace(tmp, SUMMARY)
+    return out
+
+
+def connection():
+    """(server, busy): the connected server's name ("FR#505") or None, and
+    "connect"/"disconnect" while vpn-toggle is mid-run, else None. Read the same
+    way as waybar-vpn, which documents the NetworkManager side."""
+    server = None
+    try:
+        out = subprocess.run(
+            ["nmcli", "-t", "-f", "NAME,TYPE,DEVICE", "connection", "show", "--active"],
+            capture_output=True, text=True).stdout
+    except FileNotFoundError:
+        out = ""
+    for line in out.splitlines():
+        name, _, rest = line.partition(":")
+        typ, _, dev = rest.partition(":")
+        if (typ == "wireguard" and dev == "proton0") or typ == "vpn":
+            server = name.removeprefix("ProtonVPN ")
+            break
+
+    busy = None
+    pending = os.path.join(RUNTIME, "vpn-pending")
+    try:
+        if time.time() - os.stat(pending).st_mtime < 90:
+            with open(pending) as f:
+                busy = f.read().strip() or None
+    except OSError:
+        pass
+    return server, busy
+
+
+# --- menu ---------------------------------------------------------------------
+
+def main():
+    if shutil.which("protonvpn") is None:
+        subprocess.run([VPN_TOGGLE])  # toasts "proton-vpn-cli is not installed"
+        return
+
+    server, busy = connection()
+    # "FR#505" -> FR; a Secure Core "CH-FR#1" exits in its second country.
+    here = server.split("#")[0].split("-")[-1] if server else None
+    cs = countries()
+
+    rows, actions = [], []
+    if busy:
+        verb = "Disconnecting" if busy == "disconnect" else "Connecting"
+        rows.append(row("hourglass_top", f"VPN: {verb}…", "wait"))
+        actions.append(None)
+    elif server:
+        name = cs.get(here, here)
+        rows.append(row("vpn_key", f"VPN: On · {name}", f"{server} · disconnect"))
+        actions.append(["disconnect"])
+    else:
+        rows.append(row("vpn_key_off", "VPN: Off", "connect · fastest P2P"))
+        actions.append(["connect", "--p2p"])
+
+    for code, name in sorted(cs.items(), key=lambda kv: kv[1].lower()):
+        rows.append(row("flag", name, f"connected · {code}" if code == here else code))
+        actions.append(["connect", "--country", code, "--p2p"])
+
+    i = rofi(rows, "vpn")
+    if i is None or actions[i] is None:
+        return
+    subprocess.run([VPN_TOGGLE, *actions[i]])  # returns at once; it detaches
+
+
+if __name__ == "__main__":
+    # Detach from waybar first, like vpn-toggle: waybar 0.15 waitpid()s on a
+    # custom module's click children before each refresh, so with the menu open
+    # the bar's VPN glyph would freeze until it closed.
+    if os.environ.get("ROFI_VPN_DETACHED") != "1":
+        subprocess.Popen([os.path.abspath(__file__)],
+                         env={**os.environ, "ROFI_VPN_DETACHED": "1"},
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+        sys.exit(0)
+    main()
