@@ -1,0 +1,42 @@
+#!/bin/sh
+# mpv on a workspace of its own. The video/* defaults in mimeapps.list point
+# here (via mpv-workspace.desktop), so a video double-clicked in Thunar gets a
+# free workspace instead of tiling in next to the file manager. Audio stays on
+# plain mpv.desktop, and `mpv` typed in a terminal never comes through here.
+#
+# sway has no "next empty workspace" command and a for_window rule can't work
+# one out, so the pick happens here, BEFORE mpv starts: focus moves to the free
+# workspace first and mpv's window maps on it directly — no flash on the old
+# workspace, no move after the fact.
+#
+# Candidates are the fixed 1-8, the focused screen's own four first (1-4 live on
+# eDP-1, 5-8 on the external; see the Workspaces section of the sway config), so
+# docked it only jumps to the other monitor once its own four are taken. With
+# all eight in use it just opens where you are.
+set -u
+
+if [ -n "${SWAYSOCK:-}" ]; then
+    # Prints "<target> <focused>"; nothing when no workspace is free. Busy means
+    # holding a window: the focused workspace is listed even when empty, and an
+    # empty one already counts as free. Window counts come from get_tree, not
+    # get_workspaces: the latter always reports nodes/floating_nodes as [], so
+    # every workspace would look free.
+    pick=$(swaymsg -t get_tree 2>/dev/null | jq -r \
+        --argjson ws "$(swaymsg -t get_workspaces 2>/dev/null)" '
+        ($ws | map(select(.focused))[0]) as $f
+        | [.. | objects | select(.type? == "workspace")
+              | select(.nodes != [] or .floating_nodes != []) | .num] as $busy
+        | (if $f.output == "eDP-1" then [1,2,3,4,5,6,7,8] else [5,6,7,8,1,2,3,4] end)
+        | map(select(IN($busy[]) | not))
+        | if length > 0 then "\(.[0]) \($f.num)" else empty end' 2>/dev/null)
+    target=${pick% *}
+    focused=${pick#* }
+    # Skip when the pick IS the focused workspace (empty, so already free):
+    # workspace_auto_back_and_forth would turn the switch into a jump back.
+    if [ -n "$pick" ] && [ "$target" != "$focused" ]; then
+        swaymsg workspace number "$target" >/dev/null 2>&1
+    fi
+fi
+
+# Same invocation as the stock mpv.desktop.
+exec mpv --player-operation-mode=pseudo-gui -- "$@"

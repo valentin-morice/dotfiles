@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=mpv (own workspace)
+Comment=Play a video on a free sway workspace
+Icon=mpv
+TryExec=mpv
+Exec=/home/valentin/.local/bin/mpv-workspace %U
+Terminal=false
+NoDisplay=true
+Categories=AudioVideo;Video;Player;
+MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;video/x-msvideo;video/mpeg;video/ogg;video/x-flv;video/3gpp;
