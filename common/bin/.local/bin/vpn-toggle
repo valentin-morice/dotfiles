@@ -1,20 +1,31 @@
 #!/bin/bash
 # Connect or disconnect Proton VPN (proton-vpn-cli), refresh the waybar
-# custom/vpn module, and toast the result. Bound to the module's click.
+# custom/vpn module, and toast the result.
 #
-# Always the fastest P2P server (`--p2p`): those are the only servers that
-# forward a port, which vpn-portforward then keeps alive for qBittorrent.
-# Choosing a country or server is a terminal job (`protonvpn connect --help`).
-# Sign in once first with `protonvpn signin`: without a session the connect
-# fails, and the CLI's own message ends up in the toast.
+#   vpn-toggle                       toggle: disconnect, or connect fastest P2P
+#   vpn-toggle connect [ARGS...]     connect, or switch server if already up;
+#                                    ARGS go to `protonvpn connect` (default
+#                                    --p2p), e.g. --country FR --p2p
+#   vpn-toggle disconnect
+#
+# The bare toggle is the module's right-click; rofi-vpn (its left-click, the
+# country picker) calls the connect/disconnect forms. Fastest P2P by default:
+# those are the only servers that forward a port, which vpn-portforward then
+# keeps alive for qBittorrent. Sign in once first with `protonvpn signin`:
+# without a session the connect fails, and the CLI's own message ends up in
+# the toast.
 set -u
 
 # dunst's normal timeout (8s), not a short one: a 2.5s toast was easy to miss
 # while watching the bar icon pulse. The "vpn" replace tag is shared with
 # vpn-portforward, which updates the connected toast in place once the
 # forwarded port is known (a few seconds after the connect).
+#
+# Capped at 3s: notify-send waits for the daemon's reply, and a hung dunst
+# (2026-10-04: stuck loading an icon) made it block for 25s+, which kept this
+# run alive and every click in the meantime was dropped by the lock below.
 toast() {
-    notify-send -h string:x-canonical-private-synchronous:vpn "$@"
+    timeout 3 notify-send -h string:x-canonical-private-synchronous:vpn "$@" || true
 }
 refresh() { pkill -RTMIN+12 waybar 2>/dev/null || true; }
 
@@ -33,19 +44,30 @@ if ! command -v protonvpn >/dev/null 2>&1; then
     exit 0
 fi
 
-# A connect takes several seconds; a second click in that window would start a
-# racing disconnect. Hold a lock for the whole run and drop repeat clicks.
-exec 9>"${XDG_RUNTIME_DIR:-/tmp}/vpn-toggle.lock"
-flock -n 9 || exit 0
-
 # proton0 is the tunnel device for both WireGuard and OpenVPN (see waybar-vpn).
-if [ -e /sys/class/net/proton0 ]; then
-    action=disconnect done_msg="VPN disconnected"
-else
-    action=connect done_msg="VPN connected (P2P)"
-fi
+explicit=${1:+1}
+case "${1:-}" in
+    connect)    action=connect; shift ;;
+    disconnect) action=disconnect ;;
+    "")
+        if [ -e /sys/class/net/proton0 ]; then action=disconnect; else action=connect; fi
+        ;;
+    *) toast -u critical "vpn-toggle" "unknown action: $1"; exit 2 ;;
+esac
 args=("$action")
-[ "$action" = connect ] && args+=(--p2p)
+if [ "$action" = connect ]; then
+    if [ $# -gt 0 ]; then args+=("$@"); else args+=(--p2p); fi
+fi
+
+# A connect takes several seconds; a second click in that window would start a
+# racing disconnect. Hold a lock until the CLI is done and drop repeat clicks.
+# A bare click is dropped silently (it's usually a double-click), but a pick
+# from rofi-vpn is deliberate, so that one says why nothing happened.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/vpn-toggle.lock"
+if ! flock -n 9; then
+    [ -n "$explicit" ] && toast "VPN busy" "Still switching, try again in a moment"
+    exit 0
+fi
 
 # Instant feedback: tell the bar what's coming BEFORE starting the CLI, which
 # spends ~0.6s just loading Python and seconds more on the API and handshake.
@@ -57,15 +79,47 @@ trap 'rm -f "$out" "$pending"' EXIT
 printf '%s\n' "$action" > "$pending"
 refresh
 
-timeout 60 protonvpn "${args[@]}" </dev/null >"$out" 2>&1
+# In the background so a disconnect can stop waiting early (below).
+# PYTHONUNBUFFERED gets its "Disconnected." line into $out as it's printed
+# rather than at exit; 9>&- keeps the lock fd out of the CLI's process tree.
+PYTHONUNBUFFERED=1 timeout 60 protonvpn "${args[@]}" </dev/null >"$out" 2>&1 9>&- &
+cli=$!
+
+# After a disconnect, the CLI (api-core 5.6.20+) refetches the "where am I"
+# location and waits up to 10s for it before exiting. The request goes out the
+# instant the routes change, while Tailscale is rewriting resolv.conf, and on
+# 2026-10-04 it got no answer at all: 10 more seconds of pulsing icon and a
+# locked button for nothing. The tunnel is down once "Disconnected." prints, and
+# the rest is cosmetic, so give it a second to finish on its own, then stop it.
+if [ "$action" = disconnect ]; then
+    while kill -0 "$cli" 2>/dev/null; do
+        if grep -q '^Disconnected\.' "$out"; then
+            for _ in 1 2 3 4 5; do
+                kill -0 "$cli" 2>/dev/null || break
+                sleep 0.2
+            done
+            kill "$cli" 2>/dev/null
+            break
+        fi
+        sleep 0.2
+    done
+fi
+wait "$cli"
 rc=$?
+[ "$action" = disconnect ] && grep -q '^Disconnected\.' "$out" && rc=0
+
 rm -f "$pending"
+exec 9>&-
 refresh
 
-if [ "$rc" -eq 0 ]; then
+if [ "$rc" -eq 0 ] && [ "$action" = disconnect ]; then
+    toast "VPN disconnected"
+elif [ "$rc" -eq 0 ]; then
+    title="VPN connected"
+    case " ${args[*]} " in *" --p2p "*) title="VPN connected (P2P)" ;; esac
     server=$(nmcli -t -f NAME,TYPE,DEVICE connection show --active 2>/dev/null \
         | awk -F: '($2 == "wireguard" && $3 == "proton0") || $2 == "vpn" { sub(/^ProtonVPN /, "", $1); print $1; exit }')
-    toast "$done_msg" "$server"
+    toast "$title" "$server"
 else
     # Last non-empty line of the CLI's output, colour codes stripped: that's
     # where it puts the reason ("not signed in", "daemon not running", ...).

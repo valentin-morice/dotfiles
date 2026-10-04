@@ -45,7 +45,9 @@ notify_port() {
     local server
     server=$(nmcli -t -f NAME,TYPE,DEVICE connection show --active 2>/dev/null \
         | awk -F: '($2 == "wireguard" && $3 == "proton0") || $2 == "vpn" { sub(/^ProtonVPN /, "", $1); print $1; exit }')
-    notify-send -h string:x-canonical-private-synchronous:vpn \
+    # Capped like vpn-toggle's toast: a hung dunst makes notify-send block for
+    # 25s+, which here would push the next renewal past the 60s lease.
+    timeout 3 notify-send -h string:x-canonical-private-synchronous:vpn \
         "VPN connected (P2P)" "${server:+$server · }port $port" 2>/dev/null || true
 }
 
