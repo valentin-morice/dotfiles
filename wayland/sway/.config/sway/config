@@ -335,6 +335,22 @@ for_window [window_role="bubble"] floating enable
 for_window [window_type="dialog"] floating enable
 for_window [window_type="splash"] floating enable
 
+# Android Emulator (XWayland). It maps two windows: the phone itself ("Android
+# Emulator - <avd>") and its side toolbar, titled just "Emulator". Tiled, the
+# phone squeezes into half the screen and the toolbar lands loose in the middle.
+# The toolbar is matched by its X11 window type (utility), since it has no
+# title when it maps. The emulator also moves it back itself while Android boots,
+# without any event sway could react to, so the phone's rule re-docks it every
+# 3 s for the first 45 s, which covers the boot.
+# Float the phone centred, and dock the toolbar against its right edge: from the
+# centre, right by half the phone's width (416/2) + 3 px gap + half the toolbar's
+# (52/2), and up by half the height difference ((928 - 506) / 2). The phone's
+# size is the cefr_pixel_9 AVD's; another AVD needs other offsets. The toolbar is
+# 52 px wide, under sway's default 75 px floating minimum, hence the lower floor.
+floating_minimum_size 30 x 30
+for_window [class="Emulator" title="^Android Emulator"] floating enable, move position center, exec sh -c 'for i in $(seq 15); do sleep 3; swaymsg -q "[class=Emulator window_type=utility] resize set width 52 px height 506 px, move position center, move right 237 px, move up 211 px"; done'
+for_window [class="Emulator" window_type="utility"] floating enable
+
 # Mark XWayland (X11) clients in tabbed/stacked titlebars, so it's obvious at a
 # glance which windows aren't running natively on Wayland.
 for_window [shell="xwayland"] title_format "[X] %title"
