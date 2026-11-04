@@ -1,0 +1,30 @@
+# meetnotes config: sourced (as bash) by meeting-record and meeting-process.
+# Every key is optional; the scripts fall back to these same defaults.
+
+# Each meeting gets its own folder here: "<date> <HHMM> <slug>/" holding
+# audio.opus, transcript.md and notes.md.
+OUT_DIR="$HOME/Videos/Meetings"
+
+# PulseAudio/PipeWire source names. Both resolve to whatever the default is
+# at record start, so a plugged-in headset is picked up automatically.
+# Switching output device MID-call is not followed: the monitor stays bound
+# to the sink that was default when recording started.
+MIC_SOURCE="default"               # you             -> left channel  ("Me")
+CALL_SOURCE="@DEFAULT_MONITOR@"    # what you hear   -> right channel ("Them")
+
+# Opus bitrate for the stereo file. 64k keeps L/R fully separate (measured:
+# no audible cross-channel leak; 48k leaks at about -50 dB) at ~29 MB/hour.
+BITRATE="64k"
+
+# whisper.cpp model name (ggml-<name>.bin, fetched on first use into
+# ~/.local/share/meetnotes/models) and language: "auto" detects it per
+# channel from the first 30s. Set "fr"/"en" if a meeting is one language.
+WHISPER_MODEL="large-v3-turbo"
+WHISPER_LANG="auto"
+WHISPER_THREADS=8
+
+# claude -p model + effort for the notes; empty = Claude Code's default
+# (which is Opus 5.5 here: --setting-sources "" skips settings.json).
+# Notes from a transcript are easy work, so Sonnet at medium effort.
+CLAUDE_MODEL="claude-sonnet-5-5"
+CLAUDE_EFFORT="medium"   # low | medium | high | xhigh | max

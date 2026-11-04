@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# waybar custom/meeting module: the meetnotes start/stop button.
+#
+# Unlike custom/recording this is ALWAYS visible, because it is also the start
+# trigger, so it lives in the fixed icon row (audio group) rather than with
+# the transient indicators. Three states, carried by glyph shape only (the
+# bar's one-colour rule, see style.css):
+#   idle        mic              click starts a recording
+#   recording   graphic_eq       click stops it (tooltip has the start time)
+#   processing  hourglass_empty  transcription / notes running; a click starts
+#                                the next meeting (jobs queue behind a lock)
+# Recording wins over processing in the display, for the same reason.
+#
+# Refreshed on demand (signal 13: meeting-record and meeting-process send
+# RTMIN+13), so the tooltip shows a fixed start time, not a ticking timer.
+# Glyphs are UTF-8 octal escapes of Material Symbols PUA codepoints, matching
+# waybar-recording; style.css gives this module its font.
+state="${XDG_RUNTIME_DIR:-/tmp}/meetnotes"
+
+mic=$(printf '\356\200\251')          # U+E029 mic
+live=$(printf '\356\206\270')         # U+E1B8 graphic_eq
+busy=$(printf '\356\242\213')         # U+E88B hourglass_empty
+
+pid=$(cat "$state/pid" 2>/dev/null)
+if [ -n "$pid" ] && [ "$(cat "/proc/$pid/comm" 2>/dev/null)" = ffmpeg ]; then
+    started=$(cat "$state/started" 2>/dev/null)
+    printf '{"text":"%s","tooltip":"Recording meeting since %s — click to stop","class":"recording"}\n' \
+        "$live" "${started:-?}"
+    exit 0
+fi
+
+# Processing markers are named after their systemd unit; drop any whose unit
+# is gone (crashed / killed before its cleanup trap ran) so a dead job can't
+# pin the hourglass forever.
+busy_count=0
+for m in "$state"/processing/*; do
+    [ -e "$m" ] || continue
+    if systemctl --user is-active --quiet "$(basename "$m")" 2>/dev/null \
+       || [ "$(( $(date +%s) - $(stat -c %Y "$m") ))" -lt 10 ]; then
+        busy_count=$((busy_count + 1))
+    else
+        rm -f "$m"
+    fi
+done
+if [ "$busy_count" -gt 0 ]; then
+    printf '{"text":"%s","tooltip":"Transcribing + writing notes (%d) — journalctl --user -u meetnotes-process-*","class":"processing"}\n' \
+        "$busy" "$busy_count"
+    exit 0
+fi
+
+printf '{"text":"%s","tooltip":"Start meeting recording","class":"idle"}\n' "$mic"

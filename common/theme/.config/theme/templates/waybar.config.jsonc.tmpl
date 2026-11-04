@@ -66,7 +66,8 @@
     //
     // The fixed row is grouped by what each icon is ABOUT, left to right:
     //   screen        idle_inhibitor, backlight   (does it sleep, how bright)
-    //   audio         pulseaudio                  (the one you scroll most)
+    //   audio         custom/meeting, pulseaudio  (record a meeting; the one
+    //                 you scroll most)
     //   connectivity  bluetooth, custom/vpn, network  (vpn next to the link
     //                 it rides on)
     //   power         custom/powerprofile, battery (spend vs. what's left)
@@ -75,7 +76,7 @@
     // they're found without looking. Spacing stays uniform: a wider gap between
     // groups was tried and rejected, so the grouping is carried by adjacency
     // alone.
-    "modules-right": ["sway/mode", "custom/recording", "custom/dnd", "custom/nightlight", "tray", "custom/mail", "idle_inhibitor", "backlight", "pulseaudio", "bluetooth", "custom/vpn", "network", "custom/powerprofile", "battery", "clock"],
+    "modules-right": ["sway/mode", "custom/recording", "custom/dnd", "custom/nightlight", "tray", "custom/mail", "idle_inhibitor", "backlight", "custom/meeting", "pulseaudio", "bluetooth", "custom/vpn", "network", "custom/powerprofile", "battery", "clock"],
 
     "sway/workspaces": {
         "disable-scroll": true,
@@ -148,6 +149,21 @@
         "interval": "once",
         "signal": 8,
         "on-click": "$HOME/.local/bin/screenrecord"
+    },
+
+    // meetnotes: meeting recorder (home-grown Granola). ALWAYS visible — it is
+    // the start button too — so it sits in the fixed row's audio group, not
+    // with the transients above. Glyph per state: mic (idle), graphic_eq
+    // (recording), hourglass (transcribing). meeting-record/-process send
+    // RTMIN+13. setsid -f: meeting-record returns at once anyway, but waybar
+    // 0.15 waitpid()s on-click children before its next exec, so detach on
+    // principle.
+    "custom/meeting": {
+        "exec": "$HOME/.local/bin/waybar-meeting",
+        "return-type": "json",
+        "interval": "once",
+        "signal": 13,
+        "on-click": "setsid -f $HOME/.local/bin/meeting-record"
     },
     "custom/dnd": {
         "exec": "$HOME/.local/bin/waybar-dnd",

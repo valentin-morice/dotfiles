@@ -42,7 +42,15 @@ lock="$HOME/.local/bin/lock"
 # below checks this and no-ops while recording (the timers still run; they just
 # do nothing), which is simpler and dependency-free versus a Wayland inhibitor.
 # NOTE: the `lock` subcommand does NOT check this — see idle-lock vs lock below.
-recording_active() { pgrep -x wf-recorder >/dev/null 2>&1; }
+# Also true while meetnotes is recording a meeting (ffmpeg, via meeting-record):
+# a listen-only stretch of a call is just as hands-off, and a suspend would cut
+# the recording.
+recording_active() {
+    pgrep -x wf-recorder >/dev/null 2>&1 && return 0
+    local pid
+    pid=$(cat "${XDG_RUNTIME_DIR:-/tmp}/meetnotes/pid" 2>/dev/null) || return 1
+    [ -n "$pid" ] && [ "$(cat "/proc/$pid/comm" 2>/dev/null)" = ffmpeg ]
+}
 
 # True (exit 0) when on wall power. Scans every "Mains" power supply by type
 # rather than hardcoding an adapter name (AC/AC0/ADP0/ADP1/… vary by vendor), so

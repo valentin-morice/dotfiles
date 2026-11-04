@@ -87,6 +87,11 @@ REPO_PKGS=(
     # screen recording, battery notifier, XDG user dirs, and THE font every
     # config names (without it fontconfig substitutes garbage glyphs).
     wf-recorder batsignal xdg-user-dirs ttf-jetbrains-mono-nerd
+    # meetnotes (waybar meeting recorder): whisper.cpp + its Vulkan backend for
+    # the 780M (ggml loads backends at runtime, so without ggml-vulkan it runs
+    # silently on CPU). ffmpeg/jq/claude come from elsewhere; the whisper
+    # models are fetched by meeting-process on first use.
+    whisper-cpp ggml-vulkan
 )
 AUR_PKGS=(
     swaylock-effects                # screen locker with blur (sway session)

@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# Toggle a meeting recording (the waybar custom/meeting click, or a bind).
+#
+# Start: make a fresh folder under $OUT_DIR, record mic -> LEFT and the
+#   default sink's monitor (the call) -> RIGHT into audio.opus. Keeping the
+#   two sides on separate channels is what lets meeting-process label the
+#   transcript "Me" / "Them" without any diarization model.
+# Stop: SIGINT ffmpeg (it finalises the file), then hand the folder to
+#   meeting-process in its own transient systemd user unit, so transcription
+#   survives a waybar restart and logs to the journal
+#   (journalctl --user -u 'meetnotes-process-*').
+#
+# ffmpeg is launched detached and this script exits right away in both
+# directions. waybar's on-click waits for its child (waybar 0.15), so the
+# module must not be blocked on a long-lived process; the bar binding also
+# wraps this in setsid -f for the same reason.
+#
+# State lives in $XDG_RUNTIME_DIR/meetnotes/ (pid, dir, started), read by
+# waybar-meeting and sway's idle.sh.
+set -euo pipefail
+
+state="${XDG_RUNTIME_DIR:-/tmp}/meetnotes"
+mkdir -p "$state"
+
+conf="$HOME/.config/meetnotes/config"
+# shellcheck source=/dev/null
+[ -r "$conf" ] && . "$conf"
+OUT_DIR="${OUT_DIR:-$HOME/Videos/Meetings}"
+MIC_SOURCE="${MIC_SOURCE:-default}"
+CALL_SOURCE="${CALL_SOURCE:-@DEFAULT_MONITOR@}"
+BITRATE="${BITRATE:-64k}"
+
+# Capped: a wedged dunst (the glycin icon-load hang) must not wedge us.
+notify() { timeout 5 dunstify -a meetnotes "$@" >/dev/null 2>&1 || true; }
+refresh() { pkill -RTMIN+13 waybar 2>/dev/null || true; }
+
+# Serialise toggles: a double-click must not start two recorders or stop one
+# that is still coming up.
+exec 9>"$state/toggle.lock"
+flock -n 9 || exit 0
+
+# Prints the recorder's pid if one is running. Checks comm as well as
+# liveness so a stale pidfile whose pid got reused never gets SIGINTed.
+recorder_pid() {
+    local pid
+    pid=$(cat "$state/pid" 2>/dev/null) || return 1
+    [ -n "$pid" ] && [ "$(cat "/proc/$pid/comm" 2>/dev/null)" = ffmpeg ] || return 1
+    printf '%s\n' "$pid"
+}
+
+# --- stop -------------------------------------------------------------------
+if pid=$(recorder_pid); then
+    dir=$(cat "$state/dir")
+    kill -INT "$pid"
+    # ffmpeg flushes and writes the final Ogg page on SIGINT; give it up to 5s.
+    for _ in $(seq 50); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+    kill -0 "$pid" 2>/dev/null && kill -TERM "$pid"
+    rm -f "$state/pid" "$state/dir" "$state/started"
+
+    proc="$HOME/.local/bin/meeting-process"
+    if [ -x "$proc" ]; then
+        # Mark "processing" BEFORE refreshing the bar so the module goes
+        # straight from recording to the hourglass with no idle flash in
+        # between; meeting-process takes over (and removes) this marker.
+        mkdir -p "$state/processing"
+        unit="meetnotes-process-$(date +%s)"
+        : > "$state/processing/$unit"
+        if systemd-run --user --collect --quiet --nice=10 --unit "$unit" \
+                --description "meetnotes: transcribe + summarise" \
+                "$proc" "$dir"; then
+            notify -u low "Meeting saved" "Transcribing in the background…"
+        else
+            rm -f "$state/processing/$unit"
+            notify -u critical "Meeting saved, processing failed to start" "$dir"
+        fi
+    else
+        notify -u low "Meeting saved" "$dir/audio.opus"
+    fi
+    refresh
+    exit 0
+fi
+
+# --- start ------------------------------------------------------------------
+mkdir -p "$OUT_DIR"
+dir="$OUT_DIR/$(date '+%Y-%m-%d %H%M')"
+# Two starts in the same minute: disambiguate with seconds.
+[ -e "$dir" ] && dir="$OUT_DIR/$(date '+%Y-%m-%d %H%M%S')"
+mkdir -p "$dir"
+
+# -channels 1 makes the PipeWire/pulse server do the downmix, so a stereo
+# DMIC, a mono headset mic and a stereo sink monitor all arrive as mono.
+# -application voip tunes Opus for speech. -nostdin: ffmpeg would otherwise
+# read the terminal/pipe for its interactive 'q' and can stall detached.
+#
+# Plain `setsid` + & (not setsid -f): a background job of a non-interactive
+# shell is never a process-group leader, so setsid execs in place and $! IS
+# ffmpeg's pid, while still giving it its own session so it outlives us.
+# 9>&- : ffmpeg must not inherit the toggle lock, or it would hold it for the
+# whole meeting and the stop click could never get in.
+setsid ffmpeg -hide_banner -nostdin -loglevel warning \
+    -f pulse -name meetnotes -channels 1 -i "$MIC_SOURCE" \
+    -f pulse -name meetnotes -channels 1 -i "$CALL_SOURCE" \
+    -filter_complex "[0:a][1:a]join=inputs=2:channel_layout=stereo[a]" \
+    -map "[a]" -c:a libopus -b:a "$BITRATE" -application voip \
+    "$dir/audio.opus" 2>"$dir/record.log" </dev/null 9>&- &
+pid=$!
+disown
+
+# Give it a beat to fail fast (bad source name, pulse down) before claiming
+# success, so the "started" toast and the bar never lie.
+sleep 0.4
+if ! kill -0 "$pid" 2>/dev/null; then
+    notify -u critical "Meeting recording failed" "$(tail -n 3 "$dir/record.log" 2>/dev/null || echo 'ffmpeg exited immediately')"
+    exit 1   # folder kept: record.log in it says why
+fi
+
+printf '%s\n' "$pid" > "$state/pid"
+printf '%s\n' "$dir" > "$state/dir"
+date '+%H:%M' > "$state/started"
+refresh
+notify -u low "Meeting recording started" "Click the bar icon again to stop."
+exec 9>&-   # recorder is up and registered: let a stop click in from here
+
+# Mic sanity check, AFTER the recorder is up so it never delays the start.
+# Catches the dead-DMIC failure (constant ~-0.93 FS DC, no signal) and a
+# fully muted/absent mic: a silent "Me" channel is the one failure that
+# silently ruins the notes, so shout about it now while it can be fixed.
+stats=$(timeout 4 ffmpeg -hide_banner -nostdin -f pulse -name meetnotes-check \
+        -channels 1 -i "$MIC_SOURCE" -t 1 -af astats=metadata=0 -f null - 2>&1 || true)
+dc=$(sed -n 's/.*DC offset: \(-\{0,1\}[0-9.]*\).*/\1/p' <<<"$stats" | head -1)
+rms=$(sed -n 's/.*RMS level dB: \(-\{0,1\}[0-9.inf]*\).*/\1/p' <<<"$stats" | head -1)
+if [ -n "$dc" ] && [ -n "$rms" ]; then
+    if awk -v dc="$dc" -v rms="$rms" 'BEGIN { exit !((dc > 0.5 || dc < -0.5) || rms == "-inf" || rms < -90) }'; then
+        notify -u critical "Microphone looks dead" \
+            "DC ${dc}, RMS ${rms} dB. Your side won't be transcribed: check mute / reboot (ACP63 DMIC)."
+    fi
+fi

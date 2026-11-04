@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# meeting-process <meeting-dir>: audio.opus -> transcript.md -> notes.md,
+# then rename the folder after the meeting's title.
+#
+# Normally started by meeting-record in a transient systemd user unit
+# (meetnotes-process-<epoch>); safe to re-run by hand on any meeting folder.
+# Each step is skipped when its output already exists, so a failed run is
+# resumed, not redone. Delete transcript.md / notes.md to force that step.
+#
+#   1. split L (mic, "Me") / R (call, "Them") into 16 kHz mono wavs
+#   2. whisper.cpp on each channel, plus Silero VAD run SEPARATELY on it.
+#      Each channel is silent half the time and whisper invents text in
+#      silence ("Thank you." every 30s), so segments that don't overlap real
+#      speech get dropped. whisper's BUILT-IN --vad is deliberately not used:
+#      it transcribes the speech-only concatenation and maps times back, and
+#      a segment starting right after a skipped gap comes back stamped at the
+#      END of the previous speech (tested: 26.5s speech reported at 10.4s).
+#      That would scramble Me/Them ordering; native timestamps don't.
+#   3. merge both channels' segments by start time into transcript.md
+#   4. claude -p (no tools, no MCP, no settings/hooks) -> notes.md
+#   5. rename "<date> <HHMM>" -> "<date> <HHMM> <slug of the notes' title>"
+#
+# Jobs are serialised on a lock (two whisper runs at once would just fight
+# over the GPU/CPU); a queued job already shows as "processing" in the bar.
+set -euo pipefail
+
+dir="${1:?usage: meeting-process <meeting-dir>}"
+dir="${dir%/}"
+[ -f "$dir/audio.opus" ] || { echo "no audio.opus in $dir" >&2; exit 1; }
+
+state="${XDG_RUNTIME_DIR:-/tmp}/meetnotes"
+models="${XDG_DATA_HOME:-$HOME/.local/share}/meetnotes/models"
+mkdir -p "$state/processing" "$models"
+
+conf="$HOME/.config/meetnotes/config"
+# shellcheck source=/dev/null
+[ -r "$conf" ] && . "$conf"
+WHISPER_MODEL="${WHISPER_MODEL:-large-v3-turbo}"
+WHISPER_LANG="${WHISPER_LANG:-auto}"
+WHISPER_THREADS="${WHISPER_THREADS:-8}"
+CLAUDE_MODEL="${CLAUDE_MODEL:-}"
+CLAUDE_EFFORT="${CLAUDE_EFFORT:-}"
+prompt_file="$HOME/.config/meetnotes/notes-prompt.md"
+
+# systemd's user PATH may not include ~/.local/bin (claude lives there).
+PATH="$HOME/.local/bin:$PATH"
+
+notify() { timeout 5 dunstify -a meetnotes "$@" >/dev/null 2>&1 || true; }
+refresh() { pkill -RTMIN+13 waybar 2>/dev/null || true; }
+
+# The bar's "processing" marker, named after our systemd unit (meeting-record
+# pre-creates it so the bar never flashes idle); a hand run makes its own.
+# Removed on ANY exit and the bar refreshed, so the hourglass can't outlive us.
+unit=$(sed -n 's#.*/\(meetnotes-process-[0-9]*\)\.service$#\1#p' /proc/self/cgroup 2>/dev/null | head -1)
+marker="$state/processing/${unit:-manual-$$}"
+: > "$marker"
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/meetnotes.XXXXXX")
+cleanup() { rm -rf "$tmp"; rm -f "$marker"; refresh; }
+trap cleanup EXIT
+refresh
+
+fail() {
+    echo "meeting-process: $1" >&2
+    notify -u critical "Meeting notes failed: $1" \
+        "Audio is safe. Re-run: meeting-process '$dir'  (journalctl --user -u 'meetnotes-process-*')"
+    exit 1
+}
+
+exec 8>"$state/process.lock"
+flock 8
+
+# --- 1-3. transcript ----------------------------------------------------------
+# Merge by start time; consecutive segments from the same speaker become one
+# paragraph stamped with its first segment's time, until a 30s+ pause. Drops empty text and the
+# whole-segment non-speech tags whisper emits ([BLANK_AUDIO], (music), ...).
+# A segment survives only if >= 30% of its span is VAD speech: hallucinated
+# filler in silence overlaps ~0, while a real short "yes" overlaps fully.
+read -r -d '' merge <<'JQ' || true
+def speech($a; $b; $v):
+  [ $v[] | ([.e, $b] | min) - ([.s, $a] | max) | select(. > 0) ] | add // 0;
+def segs($f; $v; $who):
+  ($f[0].transcription // [])[]
+  | {t: .offsets.from, end: .offsets.to, who: $who, text: (.text | gsub("^\\s+|\\s+$"; ""))}
+  | select(.text != "" and (.text | test("^[\\[(].*[\\])]$") | not))
+  | select(speech(.t; .end; $v[0]) >= 0.3 * ([.end - .t, 1] | max));
+def pad: tostring | if length < 2 then "0" + . else . end;
+def stamp: (. / 1000 | floor) as $s
+  | if $s >= 3600 then "\($s / 3600 | floor):\($s % 3600 / 60 | floor | pad):\($s % 60 | pad)"
+    else "\($s / 60 | floor | pad):\($s % 60 | pad)" end;
+"# Transcript — \($title)\n",
+"_Me = microphone, Them = call audio. On laptop speakers (no headset) the",
+"mic also picks up the other side, so some Them lines repeat as Me._\n",
+( [segs($me; $mevad; "Me"), segs($them; $themvad; "Them")]
+  | sort_by(.t)
+  | reduce .[] as $s ([];
+      if length > 0 and .[-1].who == $s.who and $s.t - .[-1].end < 30000
+      then .[-1].text += " " + $s.text | .[-1].end = $s.end
+      else . + [$s] end)
+  | .[]
+  | "**[\(.t | stamp)] \(.who):** \(.text)\n" )
+JQ
+
+fetch() {   # fetch <url> <dest>: atomic, so a cut download is never "present"
+    [ -s "$2" ] && return 0
+    curl -fL --retry 3 --retry-delay 5 -o "$2.part" "$1" && mv "$2.part" "$2"
+}
+
+if [ ! -s "$dir/transcript.md" ]; then
+    command -v whisper-cli >/dev/null || fail "whisper-cli not installed (pacman -S whisper-cpp ggml-vulkan)"
+
+    # Models: fetched on first use, kept out of the repo and out of install.sh.
+    model="$models/ggml-$WHISPER_MODEL.bin"
+    vad="$models/ggml-silero-v5.1.2.bin"
+    [ -s "$model" ] || notify -u low "meetnotes: downloading whisper $WHISPER_MODEL" \
+        "First run only (~1.6 GB for large-v3-turbo)."
+    fetch "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-$WHISPER_MODEL.bin" "$model" \
+        || fail "couldn't download whisper model $WHISPER_MODEL"
+    fetch "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin" "$vad" \
+        || fail "couldn't download the VAD model"
+
+    for side in me them; do
+        ch=c0; [ "$side" = them ] && ch=c1
+        ffmpeg -hide_banner -nostdin -loglevel error -y -i "$dir/audio.opus" \
+            -af "pan=mono|c0=$ch" -ar 16000 -c:a pcm_s16le "$tmp/$side.wav" \
+            || fail "couldn't decode audio.opus"
+        # -oj -of: JSON with per-segment millisecond offsets -> $tmp/$side.json
+        # --suppress-nst: no "(music)"-style non-speech tokens.
+        whisper-cli -m "$model" -f "$tmp/$side.wav" -l "$WHISPER_LANG" \
+            -t "$WHISPER_THREADS" --suppress-nst -oj -of "$tmp/$side" -np \
+            || fail "whisper failed on the '$side' channel"
+        # Speech regions in centiseconds ("start = 29.00, end = 221.00")
+        # -> [{s,e}] in ms. -vp 200 pads each region so word edges count.
+        whisper-vad-speech-segments -vm "$vad" -f "$tmp/$side.wav" -vp 200 -np 2>/dev/null \
+            | sed -n 's/.*start = \([0-9.]*\), end = \([0-9.]*\).*/\1 \2/p' \
+            | jq -Rn '[inputs | split(" ") | map(tonumber * 10) | {s: .[0], e: .[1]}]' \
+            > "$tmp/$side.vad.json" \
+            || fail "VAD failed on the '$side' channel"
+    done
+
+    jq -rn --slurpfile me "$tmp/me.json" --slurpfile them "$tmp/them.json" \
+        --slurpfile mevad "$tmp/me.vad.json" --slurpfile themvad "$tmp/them.vad.json" \
+        --arg title "$(basename "$dir")" "$merge" > "$tmp/transcript.md" \
+        || fail "couldn't merge the transcripts"
+    grep -q '^\*\*\[' "$tmp/transcript.md" || fail "whisper heard no speech on either channel"
+    mv "$tmp/transcript.md" "$dir/transcript.md"
+fi
+
+# --- 4. notes -----------------------------------------------------------------
+if [ ! -s "$dir/notes.md" ]; then
+    [ -r "$prompt_file" ] || fail "missing prompt template $prompt_file"
+    command -v claude >/dev/null || fail "claude CLI not found"
+    args=(-p --tools "" --no-session-persistence --strict-mcp-config --setting-sources "")
+    [ -n "$CLAUDE_MODEL" ] && args+=(--model "$CLAUDE_MODEL")
+    [ -n "$CLAUDE_EFFORT" ] && args+=(--effort "$CLAUDE_EFFORT")
+    # Run from the scratch dir so no project CLAUDE.md gets picked up. The
+    # folder name (date + start time) rides along so the notes can state it.
+    ( cd "$tmp" && timeout 600 claude "${args[@]}" \
+        "$(cat "$prompt_file")"$'\n\n'"Meeting started: $(basename "$dir")" \
+        < "$dir/transcript.md" ) > "$tmp/notes.md" \
+        || fail "claude -p failed"
+    grep -q '^# ' "$tmp/notes.md" || fail "claude returned no '# Title' line"
+    mv "$tmp/notes.md" "$dir/notes.md"
+fi
+
+# --- 5. rename after the title ------------------------------------------------
+# Only a folder still bearing meeting-record's bare timestamp name; a re-run
+# on an already-named (or hand-renamed) folder leaves it alone.
+title=$(sed -n 's/^# //p' "$dir/notes.md" | head -1)
+base=$(basename "$dir")
+if [[ "$base" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{4,6}$ ]]; then
+    slug=$(printf '%s' "$title" | iconv -f utf-8 -t ascii//TRANSLIT 2>/dev/null \
+        | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' \
+        | sed 's/^-*//' | cut -c1-60 | sed 's/-*$//') || slug=""
+    if [ -n "$slug" ] && [ ! -e "$dir $slug" ]; then
+        mv "$dir" "$dir $slug"
+        dir="$dir $slug"
+    fi
+fi
+
+# --- done -----------------------------------------------------------------------
+# Clear the marker + refresh the bar before the toast, which blocks until it is
+# clicked or expires. "Open" launches the editor in its own transient unit:
+# anything forked from here would be killed when this unit's cgroup is torn down.
+rm -f "$marker"; refresh
+action=$(timeout 120 dunstify -a meetnotes -A open,Open "Meeting notes ready" "$title" 2>/dev/null || true)
+if [ "$action" = open ]; then
+    systemd-run --user --collect --quiet xdg-open "$dir/notes.md" || true
+fi
